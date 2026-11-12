@@ -1,0 +1,109 @@
+name: CI-CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - staging
+      - 'feature/**'
+      - 'fix/**'
+      - 'hotfix/**'
+  pull_request:
+    branches:
+      - main
+      - master
+      - staging
+
+env:
+  REGISTRY: ghcr.io
+  REPO_NAME: ${{ github.repository }}
+
+jobs:
+  ci-build-and-test:
+    name: 1. Build and Test Solution
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce Branch Flow Policy
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_BRANCH: ${{ github.base_ref }}
+          SOURCE_BRANCH: ${{ github.head_ref }}
+        run: |
+          echo "Validating Pull Request: '$SOURCE_BRANCH' -> '$BASE_BRANCH'"
+
+          if [[ "$BASE_BRANCH" == "main" || "$BASE_BRANCH" == "master" ]]; then
+            if [[ "$SOURCE_BRANCH" != "staging" && "$SOURCE_BRANCH" != hotfix/* ]]; then
+              echo "::error::Pull Requests into '$BASE_BRANCH' are ONLY allowed from 'staging' (or 'hotfix/*'). Your branch is '$SOURCE_BRANCH'."
+              exit 1
+            fi
+          fi
+
+          if [[ "$BASE_BRANCH" == "staging" ]]; then
+            if [[ "$SOURCE_BRANCH" != feature/* && "$SOURCE_BRANCH" != fix/* && "$SOURCE_BRANCH" != hotfix/* && "$SOURCE_BRANCH" != "main" && "$SOURCE_BRANCH" != "master" ]]; then
+              echo "::error::Pull Requests into 'staging' must come from a 'feature/*', 'fix/*', or 'hotfix/*' branch. Your branch is '$SOURCE_BRANCH'."
+              exit 1
+            fi
+          fi
+
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore NuGet packages
+        run: dotnet restore
+
+      - name: Compile C# solution
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Run automated unit tests
+        run: dotnet test --no-build --configuration Release
+
+  cd-publish-docker:
+    name: 2. Build and Push Docker Images
+    needs: ci-build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Locate project and set branch tag
+        id: meta
+        run: |
+          IMAGE_BASE=$(echo "${{ env.REGISTRY }}/${{ env.REPO_NAME }}/alks-ui-showcase" | tr '[:upper:]' '[:lower:]')
+          echo "image=$IMAGE_BASE" >> $GITHUB_OUTPUT
+
+          PROJECT_FILE=$(find . -name "ALKsPersonalUI.Showcase.csproj" | head -n 1)
+          PROJECT_DIR=$(dirname "$PROJECT_FILE")
+          echo "context_dir=$PROJECT_DIR" >> $GITHUB_OUTPUT
+          echo "dockerfile=$PROJECT_DIR/Dockerfile" >> $GITHUB_OUTPUT
+
+          if [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
+            echo "tag=staging" >> $GITHUB_OUTPUT
+          else
+            echo "tag=main" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push ALKsPersonalUI.Showcase image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ steps.meta.outputs.context_dir }}
+          file: ${{ steps.meta.outputs.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}
