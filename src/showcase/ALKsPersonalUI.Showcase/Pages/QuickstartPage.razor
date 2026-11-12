@@ -1,0 +1,229 @@
+﻿@page "/"
+@page "/cheatsheet"
+@inject ToastService Toast
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<PageTitle>ALK's Personal UI - Quickstart & Architecture</PageTitle>
+
+<Column Modifier="@(UIModifier.New.FillMaxWidth())" Gap="2rem">
+
+    <TitledWindow Title="4-Step Installation & Setup (Full-Width Copyable Guide)"
+                  Modifier="@ShowcaseStyles.SectionWindow">
+        <Text Variant="TypographyVariant.Body"
+              Muted="true"
+              Value="Follow these 4 steps to install and configure ALKsPersonalUI in any Blazor WebAssembly, Server, or Hybrid application." />
+
+        <Column Gap="1.25rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+
+            @* STEP 1: FULL SLOT *@
+            <Window Modifier="@ShowcaseStyles.CardWindow">
+                <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Wrap="true" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row Gap="0.6rem" VerticalAlignment="VerticalAlignment.Center">
+                        <Pill Variant="Pill.PillVariant.Accent" Text="Step 1" />
+                        <Text Variant="TypographyVariant.H3" Value="Install the NuGet Package" />
+                    </Row>
+                    <ActionButton Size="ActionButton.ButtonSize.Small"
+                                  Variant="ActionButton.ButtonVariant.Outline"
+                                  Modifier="@ShowcaseStyles.CopyButton"
+                                  Text="Copy CLI Command"
+                                  OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, CliSnippet, "CLI command"))" />
+                </Row>
+                <Text Variant="TypographyVariant.Body" Muted="true" Value="Run the following command in your project directory:" />
+                <Window Modifier="@ShowcaseStyles.CodeWindow">
+                    <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@CliSnippet" />
+                </Window>
+            </Window>
+
+            @* STEP 2: FULL SLOT *@
+            <Window Modifier="@ShowcaseStyles.CardWindow">
+                <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Wrap="true" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row Gap="0.6rem" VerticalAlignment="VerticalAlignment.Center">
+                        <Pill Variant="Pill.PillVariant.Accent" Text="Step 2" />
+                        <Text Variant="TypographyVariant.H3" Value="Register Services & Defaults in Program.cs" />
+                    </Row>
+                    <ActionButton Size="ActionButton.ButtonSize.Small"
+                                  Variant="ActionButton.ButtonVariant.Outline"
+                                  Modifier="@ShowcaseStyles.CopyButton"
+                                  Text="Copy Program.cs"
+                                  OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, ProgramCsSnippet, "Program.cs"))" />
+                </Row>
+                <Text Variant="TypographyVariant.Body" Muted="true" Value="Registers ToastService and UIThemeService, and optionally configures Auto touch detection and custom seed themes:" />
+                <Window Modifier="@ShowcaseStyles.CodeWindow">
+                    <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@ProgramCsSnippet" />
+                </Window>
+            </Window>
+
+            @* STEP 3: FULL SLOT *@
+            <Window Modifier="@ShowcaseStyles.CardWindow">
+                <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Wrap="true" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row Gap="0.6rem" VerticalAlignment="VerticalAlignment.Center">
+                        <Pill Variant="Pill.PillVariant.Success" Text="Step 3" />
+                        <Text Variant="TypographyVariant.H3" Value="Add Stylesheet (index.html / App.razor) & Namespace Imports (_Imports.razor)" />
+                    </Row>
+                    <ActionButton Size="ActionButton.ButtonSize.Small"
+                                  Variant="ActionButton.ButtonVariant.Outline"
+                                  Modifier="@ShowcaseStyles.CopyButton"
+                                  Text="Copy HTML & Imports"
+                                  OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, ImportsSnippet, "Imports"))" />
+                </Row>
+                <Text Variant="TypographyVariant.Body" Muted="true" Value="Include personal-ui.css inside <head>, and add the component namespaces to your root _Imports.razor:" />
+                <Window Modifier="@ShowcaseStyles.CodeWindow">
+                    <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@ImportsSnippet" />
+                </Window>
+            </Window>
+
+            @* STEP 4: FULL SLOT *@
+            <Window Modifier="@ShowcaseStyles.CardWindow">
+                <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Wrap="true" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row Gap="0.6rem" VerticalAlignment="VerticalAlignment.Center">
+                        <Pill Variant="Pill.PillVariant.Warning" Text="Step 4" />
+                        <Text Variant="TypographyVariant.H3" Value="Wrap MainLayout.razor in <Scaffold>" />
+                    </Row>
+                    <ActionButton Size="ActionButton.ButtonSize.Small"
+                                  Variant="ActionButton.ButtonVariant.Outline"
+                                  Modifier="@ShowcaseStyles.CopyButton"
+                                  Text="Copy MainLayout.razor"
+                                  OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, ScaffoldSnippet, "MainLayout.razor"))" />
+                </Row>
+                <Text Variant="TypographyVariant.Body" Muted="true" Value="<Scaffold> automatically injects all theme CSS variables (--ui-bg-app, --ui-accent, etc.) and mounts <ToastContainer />:" />
+                <Window Modifier="@ShowcaseStyles.CodeWindow">
+                    <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@ScaffoldSnippet" />
+                </Window>
+            </Window>
+
+        </Column>
+    </TitledWindow>
+
+    <TitledWindow Title="Core Mental Model: Component Parameters vs. UIModifier"
+                  Modifier="@ShowcaseStyles.SectionWindow">
+        <Grid MinColumnWidth="320px" Gap="1.5rem">
+            <Window Modifier="@ShowcaseStyles.CardWindow">
+                <Row Gap="0.5rem" VerticalAlignment="VerticalAlignment.Center">
+                    <Pill Variant="Pill.PillVariant.Accent" Text="Rule 1" />
+                    <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="Component Parameters = Behavior & Data" />
+                </Row>
+                <Text Variant="TypographyVariant.Body"
+                      Muted="true"
+                      Value="@("Use standard Blazor parameters for data binding (@bind-Value), semantic variants (Variant, Shape, Size), validation rules (Rules), and touch behaviors (PressEffect, HoldDurationMs, AutoRepeat, TouchMode).")" />
+            </Window>
+
+            <Window Modifier="@ShowcaseStyles.CardWindow">
+                <Row Gap="0.5rem" VerticalAlignment="VerticalAlignment.Center">
+                    <Pill Variant="Pill.PillVariant.Success" Text="Rule 2" />
+                    <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="UIModifier.New = Layout, Sizing & Colors" />
+                </Row>
+                <Text Variant="TypographyVariant.Body"
+                      Muted="true"
+                      Value="@("Every component accepts Modifier='@(UIModifier.New...)'. Use it to control Width, Height, FillMaxWidth(), Padding, Margin, Gap, Background, BorderColor, BaseColor, TextColor, Depth, and PressScale without writing custom CSS classes.")" />
+            </Window>
+
+            <Window Modifier="@ShowcaseStyles.CardWindow">
+                <Row Gap="0.5rem" VerticalAlignment="VerticalAlignment.Center">
+                    <Pill Variant="Pill.PillVariant.Warning" Text="Rule 3" />
+                    <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="Zero CSS Leaks (Scoped Variables)" />
+                </Row>
+                <Text Variant="TypographyVariant.Body"
+                      Muted="true"
+                      Value="Internally, components map UIModifier values to private CSS variables (--_w-padding, --_btn-base). Nesting a Window inside a TitledWindow never leaks padding, border color, or flex direction to child components." />
+            </Window>
+        </Grid>
+    </TitledWindow>
+
+    <TitledWindow Title="Interactive Component Decision Matrix (Search & Filter All v2.0 Components)"
+                  Modifier="@ShowcaseStyles.SectionWindow">
+        <Text Variant="TypographyVariant.Body"
+              Muted="true"
+              Value="Filter by category pill or search by keyword to find the right component and see its primary parameters:" />
+        <DataTable TItem="ComponentGuideItem"
+                   Items="_guideItems"
+                   Columns="_guideColumns"
+                   Modifier="@(UIModifier.New.FillMaxWidth())" />
+    </TitledWindow>
+
+</Column>
+
+@code {
+    public sealed record ComponentGuideItem(
+        string Category,
+        string Scenario,
+        string ComponentName,
+        string KeyParameters);
+
+    private readonly List<ComponentGuideItem> _guideItems =
+    [
+        new("Layout", "Root app shell with theme CSS variables & toasts", "<Scaffold>", "TopBar, BottomBar, FloatingAction, EnableToasts"),
+        new("Layout", "Flex/Grid alignment without borders", "<Row> / <Column> / <Grid> / <Box>", "Gap, Wrap, Columns, MinColumnWidth, ContentAlignment"),
+        new("Layout", "Push flex items apart or draw separator lines", "<Spacer> / <Divider>", "Vertical, Color, Thickness"),
+        new("Windows", "Bordered card or surface container", "<Window>", "Modifier (Width, Padding, Background, BorderColor)"),
+        new("Windows", "Card with top title bar & right action slot", "<TitledWindow>", "Title, HeaderActions, ChildContent, Modifier"),
+        new("Buttons", "Auto-adaptive 3D/Touch button with Hold & Repeat", "<ActionButton>", "Variant, Shape, Size, PressEffect, HoldDurationMs, AutoRepeat, IsLoading"),
+        new("Indicators", "Status badge or interactive filter chip", "<Pill>", "Text, Variant, Active, OnClick"),
+        new("Inputs", "Touch-friendly single-select button bar", "<SegmentedControl<TItem>>", "Items, @bind-Value, TextSelector"),
+        new("Inputs", "Modular kiosk virtual keyboard (no Windows key)", "<ScreenKeyboard>", "Setup (KeyboardSetup), @bind-Value, OnKeyPress, OnSubmit"),
+        new("Inputs", "Generic numeric keypad & PIN pad", "<TouchNumpad<TValue>>", "@bind-Value, Min, Max, QuickSteps, IsPinMode, OnConfirm"),
+        new("Inputs", "Text/Password input with auto ScreenKeyboard popup", "<TextInput>", "@bind-Value, @bind-SecretValue, Rules, TouchMode, KeyboardSetup"),
+        new("Inputs", "Generic INumber<T> stepper with hold-repeat & numpad", "<NumberInput<TValue>>", "@bind-Value, Step, Min, Max, Suffix, TouchMode"),
+        new("Sliders", "Linear or rotary range input", "<RangeSlider> / <RadioSlider>", "@bind-SelectedValue, MinValue, MaxValue, Step, SnapToTicks"),
+        new("Overlays", "Slide-up touch sheet or centered modal dialog", "<BottomSheet> / <Modal>", "@bind-IsOpen, Title, MaxWidth, FooterContent"),
+        new("Data", "Searchable, sortable table with category filter pills", "<DataTable<TItem>>", "Items, Columns (Title, GetValue, Template, ShowQuickFilters)"),
+        new("Loaders", "Velocity ring spinner or 3D planetary system", "<SimpleSpinner> / <OrbitalLoader> / <Mars>", "SystemSize, SatelliteCount, PlanetSize, ColonyProbability")
+    ];
+
+    private readonly List<DataTable<ComponentGuideItem>.Column> _guideColumns =
+    [
+        new("Category", item => item.Category, ShowQuickFilters: true),
+        new("When to Use", item => item.Scenario),
+        new("Component", item => item.ComponentName),
+        new("Key Parameters", item => item.KeyParameters)
+    ];
+
+    private const string CliSnippet = "dotnet add package ALKsPersonalUI --version 2.0.0";
+
+    private const string ProgramCsSnippet = @"using ALKsPersonalUI;
+using ALKsPersonalUI.Core;
+
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add<App>(""#app"");
+
+builder.Services.AddPersonalUILibrary(options =>
+{
+    // Auto uses 3D press on desktop mouse and inward squish on touchscreens:
+    options.DefaultPressEffect = ButtonPressEffect.Auto;
+
+    // Auto pops up ScreenKeyboard / TouchNumpad when inputs are tapped by finger:
+    options.DefaultTouchInputMode = TouchInputMode.Auto;
+});
+
+await builder.Build().RunAsync();";
+
+    private const string ImportsSnippet = @"<!-- 1. Add inside <head> in wwwroot/index.html or App.razor -->
+<link rel=""stylesheet"" href=""_content/ALKsPersonalUI/personal-ui.css"" />
+
+@* 2. Add to _Imports.razor *@
+@using ALKsPersonalUI
+@using ALKsPersonalUI.Buttons
+@using ALKsPersonalUI.Core
+@using ALKsPersonalUI.Data
+@using ALKsPersonalUI.Indicators
+@using ALKsPersonalUI.Inputs
+@using ALKsPersonalUI.Layout
+@using ALKsPersonalUI.Loaders
+@using ALKsPersonalUI.Loaders.Planets
+@using ALKsPersonalUI.Navigation
+@using ALKsPersonalUI.Overlays
+@using ALKsPersonalUI.Windows";
+
+    private const string ScaffoldSnippet = @"@inherits LayoutComponentBase
+
+<Scaffold Modifier=""@(UIModifier.New.AlignItems(HorizontalAlignment.Center).Padding(24))"">
+    <TopBar>
+        <Navbar Title=""My Touch & Desktop App"" BrandHref=""/"" />
+    </TopBar>
+    <ChildContent>
+        <Column Modifier=""@(UIModifier.New.FillMaxWidth().MaxWidth(1280))"" Gap=""1.5rem"">
+            @Body
+        </Column>
+    </ChildContent>
+</Scaffold>";
+}

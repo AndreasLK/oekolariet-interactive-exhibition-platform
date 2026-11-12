@@ -1,0 +1,222 @@
+﻿@page "/layout"
+@inject ToastService Toast
+@inject IJSRuntime JS
+
+<PageTitle>ALK's Personal UI - Layout, Windows, Spacers & Dividers</PageTitle>
+
+<Column Modifier="@(UIModifier.New.FillMaxWidth())" Gap="2rem">
+
+    <TitledWindow Title="Window vs. TitledWindow & Infinite Scoped Nesting"
+                  Modifier="@ShowcaseStyles.SectionWindow">
+        <Text Variant="TypographyVariant.Body"
+              Muted="true"
+              Value="Use <Window> for bordered surface cards and <TitledWindow> when you want a header bar with a right-aligned <HeaderActions> slot. Both scope their CSS variables locally so child components never inherit parent borders or padding." />
+
+        <Grid MinColumnWidth="400px" Gap="1.5rem">
+            <Window Modifier="@(UIModifier.New.FillMaxWidth().Padding(24).Gap(12).Background("var(--ui-bg-elevated)").BorderColor("var(--ui-accent)"))">
+                <Row HorizontalArrangement="Arrangement.SpaceBetween" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.H3" Value="Plain <Window>" />
+                    <Pill Variant="Pill.PillVariant.Neutral" Text="Surface Primitive" />
+                </Row>
+                <Text Variant="TypographyVariant.Body"
+                      Muted="true"
+                      Value="Controlled entirely via UIModifier. Ideal for cards, toolbars, and nested panels without a header bar." />
+            </Window>
+
+            <TitledWindow Title="Outer TitledWindow"
+                          Modifier="@(UIModifier.New.FillMaxWidth().Padding(20).Gap(14).HeaderBackground("var(--ui-bg-app)"))">
+                <HeaderActions>
+                    <Pill Variant="Pill.PillVariant.Accent" Text="HeaderActions Slot" />
+                </HeaderActions>
+                <ChildContent>
+                    <Window Modifier="@(UIModifier.New.FillMaxWidth().Padding(16, 20).Row().AlignItems(VerticalAlignment.Center).JustifyContent(Arrangement.SpaceBetween).Background("var(--ui-bg-elevated)"))">
+                        <Column Gap="0.25rem">
+                            <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.SemiBold" Value="Nested Inner Window" />
+                            <Text Variant="TypographyVariant.Caption" Muted="true" Value="Zero parent border or padding bleed" />
+                        </Column>
+                        <ActionButton Size="ActionButton.ButtonSize.Small"
+                                      Text="Test Nesting"
+                                      OnClick="@(() => Toast.ShowInfo("Clicked inside nested window!"))" />
+                    </Window>
+                </ChildContent>
+            </TitledWindow>
+        </Grid>
+
+        <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+            <Text Variant="TypographyVariant.Caption" Weight="FontWeight.Bold" Value="Window & TitledWindow Razor Markup:" />
+            <ActionButton Size="ActionButton.ButtonSize.Small"
+                          Variant="ActionButton.ButtonVariant.Outline"
+                          Modifier="@ShowcaseStyles.CopyButton"
+                          Text="Copy Window Code"
+                          OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, WindowCodeSnippet, "Window code"))" />
+        </Row>
+        <Window Modifier="@ShowcaseStyles.CodeWindow">
+            <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@WindowCodeSnippet" />
+        </Window>
+    </TitledWindow>
+
+    <TitledWindow Title="Layout Primitives: <Row>, <Spacer />, <Divider>, <Grid> & <Box> (With Code Snippets)"
+                  Modifier="@ShowcaseStyles.SectionWindow">
+        <Grid MinColumnWidth="420px" Gap="1.5rem">
+
+            @* ROW & SPACER CARD + CODE *@
+            <Window Modifier="@ShowcaseStyles.FullHeightCardWindow">
+                <Column Gap="0.85rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="1. <Row>, <Column> & <Spacer />" />
+                    <Text Variant="TypographyVariant.Caption" Muted="true" Value="Drop <Spacer /> inside a Row or Column to push sibling elements to opposite ends, or pass an explicit Width/Height via UIModifier:" />
+
+                    <Window Modifier="@(UIModifier.New.FillMaxWidth().Padding(14, 18).Background("var(--ui-bg-header)"))">
+                        <Row Modifier="@(UIModifier.New.FillMaxWidth())" VerticalAlignment="VerticalAlignment.Center">
+                            <Pill Variant="Pill.PillVariant.Accent" Text="Left Item" />
+                            <Spacer />
+                            <Text Variant="TypographyVariant.Caption" Muted="true" Value="<-- <Spacer /> expands -->" />
+                            <Spacer />
+                            <Pill Variant="Pill.PillVariant.Success" Text="Pushed Right" />
+                        </Row>
+                    </Window>
+                </Column>
+
+                <Column Gap="0.45rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="Row & Spacer Code:" />
+                        <ActionButton Size="ActionButton.ButtonSize.Small"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Modifier="@ShowcaseStyles.CopyButton"
+                                      Text="Copy Row & Spacer Code"
+                                      OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, RowSpacerSnippet, "Row & Spacer code"))" />
+                    </Row>
+                    <Window Modifier="@ShowcaseStyles.CodeWindow">
+                        <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@RowSpacerSnippet" />
+                    </Window>
+                </Column>
+            </Window>
+
+            @* DIVIDER CARD + CODE *@
+            <Window Modifier="@ShowcaseStyles.FullHeightCardWindow">
+                <Column Gap="0.85rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="2. <Divider> (Horizontal & Vertical)" />
+                    <Text Variant="TypographyVariant.Caption" Muted="true" Value="Use <Divider /> for a horizontal rule, or <Divider Vertical='true' /> inside a <Row> to separate toolbar items:" />
+
+                    <Window Modifier="@(UIModifier.New.FillMaxWidth().Padding(14, 18).Gap(12).Background("var(--ui-bg-header)"))">
+                        <Text Variant="TypographyVariant.Caption" Value="Above Horizontal Divider" />
+                        <Divider Color="var(--ui-accent)" Thickness="2px" />
+                        <Row Gap="1rem" Modifier="@(UIModifier.New.Height(32))" VerticalAlignment="VerticalAlignment.Center">
+                            <Pill Variant="Pill.PillVariant.Neutral" Text="Left Action" />
+                            <Divider Vertical="true" Color="var(--ui-accent)" Thickness="2px" />
+                            <Pill Variant="Pill.PillVariant.Neutral" Text="Middle Action" />
+                            <Divider Vertical="true" Color="var(--ui-border)" Thickness="1px" />
+                            <Pill Variant="Pill.PillVariant.Accent" Text="Right Action" />
+                        </Row>
+                    </Window>
+                </Column>
+
+                <Column Gap="0.45rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="Divider Code:" />
+                        <ActionButton Size="ActionButton.ButtonSize.Small"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Modifier="@ShowcaseStyles.CopyButton"
+                                      Text="Copy Divider Code"
+                                      OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, DividerSnippet, "Divider code"))" />
+                    </Row>
+                    <Window Modifier="@ShowcaseStyles.CodeWindow">
+                        <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@DividerSnippet" />
+                    </Window>
+                </Column>
+            </Window>
+
+            @* GRID & BOX CARD + CODE *@
+            <Window Modifier="@ShowcaseStyles.FullHeightCardWindow">
+                <Column Gap="0.85rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="3. Responsive <Grid> & 9-Point <Box>" />
+                    <Text Variant="TypographyVariant.Caption" Muted="true" Value="<Grid MinColumnWidth='220px'> automatically wraps columns without media queries. <Box> aligns content in 9 anchor positions:" />
+
+                    <Row Gap="0.5rem" Wrap="true">
+                        @foreach (var align in Enum.GetValues<BoxAlignment>())
+                        {
+                            <Pill Active="@(_boxAlign == align)"
+                                  Text="@align.ToString()"
+                                  OnClick="@(() => _boxAlign = align)" />
+                        }
+                    </Row>
+
+                    <Box ContentAlignment="_boxAlign"
+                         Modifier="@(UIModifier.New.FillMaxWidth().Height(110).Padding(14).Background("var(--ui-bg-header)").BorderRadius("var(--ui-radius-md)").Border(1, "var(--ui-border)"))">
+                        <Pill Variant="Pill.PillVariant.Accent" Text="@($"Anchored: {_boxAlign}")" />
+                    </Box>
+                </Column>
+
+                <Column Gap="0.45rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="Grid & Box Code:" />
+                        <ActionButton Size="ActionButton.ButtonSize.Small"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Modifier="@ShowcaseStyles.CopyButton"
+                                      Text="Copy Grid & Box Code"
+                                      OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, GridBoxSnippet, "Grid & Box code"))" />
+                    </Row>
+                    <Window Modifier="@ShowcaseStyles.CodeWindow">
+                        <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@GridBoxSnippet" />
+                    </Window>
+                </Column>
+            </Window>
+
+        </Grid>
+    </TitledWindow>
+
+</Column>
+
+@code {
+    private BoxAlignment _boxAlign = BoxAlignment.Center;
+
+    private const string WindowCodeSnippet = @"@* 1. Plain Surface Window *@
+<Window Modifier=""@(UIModifier.New.Width(320).Padding(24).Gap(12).Background(""var(--ui-bg-elevated)""))"">
+    <Text Variant=""TypographyVariant.H3"" Value=""Plain Window"" />
+</Window>
+
+@* 2. TitledWindow with HeaderActions Slot & Nested Child Window *@
+<TitledWindow Title=""Outer TitledWindow""
+              Modifier=""@(UIModifier.New.FillMaxWidth().Padding(20).Gap(14).HeaderBackground(""var(--ui-bg-app)""))"">
+    <HeaderActions>
+        <Pill Variant=""Pill.PillVariant.Accent"" Text=""Header Slot"" />
+    </HeaderActions>
+    <ChildContent>
+        <Window Modifier=""@(UIModifier.New.FillMaxWidth().Padding(16).Row().JustifyContent(Arrangement.SpaceBetween))"">
+            <Text Value=""Nested Inner Window"" />
+            <ActionButton Size=""ActionButton.ButtonSize.Small"" Text=""Action"" />
+        </Window>
+    </ChildContent>
+</TitledWindow>";
+
+    private const string RowSpacerSnippet = @"@* Flexible Spacer pushes items to opposite sides of a Row *@
+<Row Modifier=""@(UIModifier.New.FillMaxWidth())"" VerticalAlignment=""VerticalAlignment.Center"">
+    <Pill Variant=""Pill.PillVariant.Accent"" Text=""Left Item"" />
+    <Spacer />
+    <Pill Variant=""Pill.PillVariant.Success"" Text=""Pushed Right"" />
+</Row>
+
+@* Fixed-size Spacer (24px vertical gap) *@
+<Spacer Modifier=""@(UIModifier.New.Height(24))"" />";
+
+    private const string DividerSnippet = @"@* 1. Horizontal Divider (100% width) *@
+<Divider Color=""var(--ui-accent)"" Thickness=""2px"" />
+
+@* 2. Vertical Divider inside a Row *@
+<Row Gap=""1rem"" Modifier=""@(UIModifier.New.Height(32))"" VerticalAlignment=""VerticalAlignment.Center"">
+    <Text Value=""Section A"" />
+    <Divider Vertical=""true"" Color=""var(--ui-accent)"" Thickness=""2px"" />
+    <Text Value=""Section B"" />
+</Row>";
+
+    private const string GridBoxSnippet = @"@* Auto-responsive Grid (columns wrap automatically when narrower than MinColumnWidth) *@
+<Grid MinColumnWidth=""280px"" Gap=""1.5rem"">
+    <Window>Card 1</Window>
+    <Window>Card 2</Window>
+</Grid>
+
+@* 9-point Box alignment container *@
+<Box ContentAlignment=""BoxAlignment.BottomEnd""
+     Modifier=""@(UIModifier.New.FillMaxWidth().Height(120).Padding(16))"">
+    <Pill Text=""Bottom-Right Corner"" />
+</Box>";
+}

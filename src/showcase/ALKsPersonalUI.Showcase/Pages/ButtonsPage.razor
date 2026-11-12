@@ -1,0 +1,293 @@
+﻿@page "/buttons"
+@inject ToastService Toast
+@inject IJSRuntime JS
+
+<PageTitle>ALK's Personal UI - Buttons, Pills & Segmented Controls</PageTitle>
+
+<Column Modifier="@(UIModifier.New.FillMaxWidth())" Gap="2rem">
+
+    <TitledWindow Title="Interactive ActionButton Workbench & Live Code Generator"
+                  Modifier="@ShowcaseStyles.SectionWindow">
+        <Text Variant="TypographyVariant.Body"
+              Muted="true"
+              Value="Configure every visual and touch property on the left. The live preview and complete Razor + C# handler snippet on the right update automatically." />
+
+        <Grid MinColumnWidth="420px" Gap="1.5rem">
+            @* LEFT: CONTROLS *@
+            <Window Modifier="@ShowcaseStyles.CardWindow">
+                <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="1. Configure ActionButton" />
+
+                <Column Gap="0.35rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.Caption" Muted="true" Value="Variant:" />
+                    <SegmentedControl TItem="ActionButton.ButtonVariant"
+                                      Items="@(Enum.GetValues<ActionButton.ButtonVariant>())"
+                                      @bind-Value="_wbBtnVariant"
+                                      Modifier="@(UIModifier.New.FillMaxWidth())" />
+                </Column>
+
+                <Column Gap="0.35rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.Caption" Muted="true" Value="Shape:" />
+                    <SegmentedControl TItem="ActionButton.ButtonShape"
+                                      Items="@(Enum.GetValues<ActionButton.ButtonShape>())"
+                                      @bind-Value="_wbBtnShape"
+                                      Modifier="@(UIModifier.New.FillMaxWidth())" />
+                </Column>
+
+                <Column Gap="0.35rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.Caption" Muted="true" Value="PressEffect (Auto adapts to Mouse vs. Touch):" />
+                    <SegmentedControl TItem="ButtonPressEffect"
+                                      Items="@(Enum.GetValues<ButtonPressEffect>())"
+                                      @bind-Value="_wbBtnPress"
+                                      Modifier="@(UIModifier.New.FillMaxWidth())" />
+                </Column>
+
+                <Divider />
+
+                <Column Gap="0.4rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.Caption" Muted="true" Value="Base Color & Text Contrast:" />
+                    <Row Gap="0.45rem" Wrap="true">
+                        @foreach (var color in _swatchColors)
+                        {
+                            <Pill Active="@(_wbBtnColor == color.Hex)"
+                                  Text="@color.Name"
+                                  OnClick="@(() => { _wbBtnColor = color.Hex; _wbBtnTextColor = color.TextHex; })" />
+                        }
+                    </Row>
+                </Column>
+
+                <Grid MinColumnWidth="210px" Gap="1rem">
+                    <Column Gap="0.35rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="Hold-to-Confirm (ms):" />
+                        <NumberInput TValue="int"
+                                     @bind-Value="_wbBtnHoldMs"
+                                     Step="200"
+                                     Min="0"
+                                     Max="3000"
+                                     Suffix="ms"
+                                     Modifier="@(UIModifier.New.FillMaxWidth())" />
+                    </Column>
+
+                    <Column Gap="0.35rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="3D Depth (px):" />
+                        <NumberInput TValue="int"
+                                     @bind-Value="_wbBtnDepth"
+                                     Step="1"
+                                     Min="1"
+                                     Max="10"
+                                     Suffix="px"
+                                     Modifier="@(UIModifier.New.FillMaxWidth())" />
+                    </Column>
+                </Grid>
+
+                <Row Gap="1.25rem" Wrap="true">
+                    <Checkbox @bind-Checked="_wbBtnAutoRepeat" IsSwitch="true" Label="AutoRepeat (Hold)" />
+                    <Checkbox @bind-Checked="_wbBtnLoading" IsSwitch="true" Label="IsLoading" />
+                    <Checkbox @bind-Checked="_wbBtnDisabled" IsSwitch="true" Label="IsDisabled" />
+                </Row>
+            </Window>
+
+            @* RIGHT: FULL-HEIGHT PREVIEW + EXPANDED CODE *@
+            <Window Modifier="@ShowcaseStyles.FullHeightCardWindow">
+                <Column Gap="0.75rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="2. Live Interactive Stage" />
+                        <Pill Variant="Pill.PillVariant.Accent" Text="@($"Triggered: {_wbBtnClickCount}x")" />
+                    </Row>
+
+                    <Box ContentAlignment="BoxAlignment.Center"
+                         Modifier="@(UIModifier.New.FillMaxWidth().MinHeight(120).Padding(24).Background("var(--ui-bg-header)").BorderRadius("var(--ui-radius-md)"))">
+                        <ActionButton Variant="_wbBtnVariant"
+                                      Shape="_wbBtnShape"
+                                      PressEffect="_wbBtnPress"
+                                      HoldDurationMs="_wbBtnHoldMs"
+                                      AutoRepeat="_wbBtnAutoRepeat"
+                                      IsLoading="_wbBtnLoading"
+                                      IsDisabled="_wbBtnDisabled"
+                                      Modifier="@(UIModifier.New.Padding(14, 28).BaseColor(_wbBtnColor).TextColor(_wbBtnTextColor).Depth(_wbBtnDepth))"
+                                      Text="@GetWorkbenchButtonLabel()"
+                                      OnClick="HandleWorkbenchButtonClick" />
+                    </Box>
+                </Column>
+
+                <Column Gap="0.5rem" Modifier="@(UIModifier.New.FillMaxWidth().Weight(1))">
+                    <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Caption" Weight="FontWeight.Bold" Value="Generated Razor & C# Code:" />
+                        <ActionButton Size="ActionButton.ButtonSize.Small"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Modifier="@ShowcaseStyles.CopyButton"
+                                      Text="Copy Code"
+                                      OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, BuildWorkbenchButtonCode(), "ActionButton code"))" />
+                    </Row>
+                    <Window Modifier="@ShowcaseStyles.ExpandingCodeWindow">
+                        <Text Variant="TypographyVariant.Mono"
+                              Color="#93c5fd"
+                              Modifier="@ShowcaseStyles.PreText"
+                              Value="@BuildWorkbenchButtonCode()" />
+                    </Window>
+                </Column>
+            </Window>
+        </Grid>
+    </TitledWindow>
+
+    <TitledWindow Title="Pill Badges & SegmentedControl<TItem> (With Live Code)"
+                  Modifier="@ShowcaseStyles.SectionWindow">
+        <Grid MinColumnWidth="420px" Gap="1.5rem">
+
+            @* PILL CARD WITH FULL CODE *@
+            <Window Modifier="@ShowcaseStyles.FullHeightCardWindow">
+                <Column Gap="0.85rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="1. <Pill> Status Badges & Toggleable Filter Chips" />
+                    <Text Variant="TypographyVariant.Caption" Muted="true" Value="Omit OnClick for a static status badge, or pass OnClick + Active to render an interactive filter button:" />
+
+                    <Row Gap="0.5rem" Wrap="true">
+                        <Pill Variant="Pill.PillVariant.Neutral" Text="Neutral" />
+                        <Pill Variant="Pill.PillVariant.Accent" Text="Accent" />
+                        <Pill Variant="Pill.PillVariant.Success" Text="Success" />
+                        <Pill Variant="Pill.PillVariant.Warning" Text="Warning" />
+                        <Pill Variant="Pill.PillVariant.Danger" Text="Danger" />
+                    </Row>
+
+                    <Divider />
+
+                    <Row Gap="0.75rem" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
+                        <Text Variant="TypographyVariant.Caption" Weight="FontWeight.SemiBold" Value="Interactive Chip:" />
+                        <Pill Active="@_pillActive"
+                              Text="@(_pillActive ? "Filter Active (Tap to toggle)" : "Filter Inactive (Tap to toggle)")"
+                              OnClick="@(() => _pillActive = !_pillActive)" />
+                    </Row>
+                </Column>
+
+                <Column Gap="0.45rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="Pill Razor Markup:" />
+                        <ActionButton Size="ActionButton.ButtonSize.Small"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Modifier="@ShowcaseStyles.CopyButton"
+                                      Text="Copy Pill Code"
+                                      OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, PillCodeSnippet, "Pill code"))" />
+                    </Row>
+                    <Window Modifier="@ShowcaseStyles.CodeWindow">
+                        <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@PillCodeSnippet" />
+                    </Window>
+                </Column>
+            </Window>
+
+            @* SEGMENTED CONTROL CARD WITH FULL CODE *@
+            <Window Modifier="@ShowcaseStyles.FullHeightCardWindow">
+                <Column Gap="0.85rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="2. Generic <SegmentedControl<TItem>>" />
+                    <Text Variant="TypographyVariant.Caption" Muted="true" Value="Touch-first single-select bar for 2 to 6 options. Automatically wraps on narrow screens so it never overflows its container:" />
+
+                    <SegmentedControl TItem="string"
+                                      Items="@(new[] { "Dine In", "Takeaway", "Drive-Thru", "Delivery" })"
+                                      @bind-Value="_selectedOrderMode"
+                                      Modifier="@(UIModifier.New.FillMaxWidth())" />
+
+                    <Row Gap="0.5rem" VerticalAlignment="VerticalAlignment.Center">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="Bound Value:" />
+                        <Pill Variant="Pill.PillVariant.Accent" Text="@_selectedOrderMode" />
+                    </Row>
+                </Column>
+
+                <Column Gap="0.45rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="SegmentedControl Razor Markup:" />
+                        <ActionButton Size="ActionButton.ButtonSize.Small"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Modifier="@ShowcaseStyles.CopyButton"
+                                      Text="Copy Segmented Code"
+                                      OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, SegmentedCodeSnippet, "SegmentedControl code"))" />
+                    </Row>
+                    <Window Modifier="@ShowcaseStyles.CodeWindow">
+                        <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@SegmentedCodeSnippet" />
+                    </Window>
+                </Column>
+            </Window>
+
+        </Grid>
+    </TitledWindow>
+
+</Column>
+
+@code {
+    private sealed record ColorSwatch(string Name, string Hex, string TextHex);
+
+    private ActionButton.ButtonVariant _wbBtnVariant = ActionButton.ButtonVariant.Solid;
+    private ActionButton.ButtonShape _wbBtnShape = ActionButton.ButtonShape.Rounded;
+    private ButtonPressEffect _wbBtnPress = ButtonPressEffect.Auto;
+    private string _wbBtnColor = "#ffcc00";
+    private string _wbBtnTextColor = "#111111";
+    private int _wbBtnHoldMs = 0;
+    private int _wbBtnDepth = 3;
+    private bool _wbBtnAutoRepeat = false;
+    private bool _wbBtnLoading = false;
+    private bool _wbBtnDisabled = false;
+    private int _wbBtnClickCount = 0;
+
+    private bool _pillActive = true;
+    private string _selectedOrderMode = "Dine In";
+
+    private static readonly ColorSwatch[] _swatchColors =
+    [
+        new("Action Gold", "#ffcc00", "#111111"),
+        new("Accent Blue", "#3b82f6", "#ffffff"),
+        new("Emerald", "#22c55e", "#111111"),
+        new("Sunset", "#f97316", "#111111"),
+        new("Danger Red", "#ef4444", "#ffffff")
+    ];
+
+    private string GetWorkbenchButtonLabel()
+    {
+        if (_wbBtnHoldMs > 0)
+            return $"Hold {_wbBtnHoldMs}ms to Confirm";
+        if (_wbBtnAutoRepeat)
+            return "Hold to Auto-Repeat";
+        return "Tap or Click Me";
+    }
+
+    private void HandleWorkbenchButtonClick()
+    {
+        _wbBtnClickCount++;
+        if (!_wbBtnAutoRepeat)
+            Toast.ShowSuccess($"ActionButton triggered! (Total: {_wbBtnClickCount})");
+    }
+
+    private string BuildWorkbenchButtonCode()
+    {
+        var holdAttr = _wbBtnHoldMs > 0 ? $"\n              HoldDurationMs=\"{_wbBtnHoldMs}\"" : string.Empty;
+        var repeatAttr = _wbBtnAutoRepeat ? "\n              AutoRepeat=\"true\"" : string.Empty;
+        var loadAttr = _wbBtnLoading ? "\n              IsLoading=\"true\"" : string.Empty;
+        var disAttr = _wbBtnDisabled ? "\n              IsDisabled=\"true\"" : string.Empty;
+
+        return $@"<ActionButton Variant=""ActionButton.ButtonVariant.{_wbBtnVariant}""
+              Shape=""ActionButton.ButtonShape.{_wbBtnShape}""
+              PressEffect=""ButtonPressEffect.{_wbBtnPress}""{holdAttr}{repeatAttr}{loadAttr}{disAttr}
+              Modifier=""@(UIModifier.New
+                  .Padding(14, 28)
+                  .BaseColor(""{_wbBtnColor}"")
+                  .TextColor(""{_wbBtnTextColor}"")
+                  .Depth({_wbBtnDepth}))""
+              Text=""{GetWorkbenchButtonLabel()}""
+              OnClick=""HandleSaveAsync"" />
+
+@code {{
+    private async Task HandleSaveAsync()
+    {{
+        // Triggered on click (or after {_wbBtnHoldMs}ms hold if HoldDurationMs > 0)
+    }}
+}}";
+    }
+
+    private const string PillCodeSnippet = @"@* 1. Static Semantic Status Badge *@
+<Pill Variant=""Pill.PillVariant.Success"" Text=""In Stock"" />
+
+@* 2. Interactive Filter Chip (Upgrades to <button> when OnClick is set) *@
+<Pill Active=""@_isFilterActive""
+      Text=""Filter Active""
+      OnClick=""@(() => _isFilterActive = !_isFilterActive)"" />";
+
+    private const string SegmentedCodeSnippet = @"<SegmentedControl TItem=""string""
+                  Items=""@(new[] { ""Dine In"", ""Takeaway"", ""Drive-Thru"", ""Delivery"" })""
+                  @bind-Value=""_selectedOrderMode""
+                  Modifier=""@(UIModifier.New.FillMaxWidth())"" />";
+}

@@ -1,0 +1,172 @@
+﻿@page "/keyboard"
+@inject ToastService Toast
+@inject IJSRuntime JS
+
+<PageTitle>ALK's Personal UI - Virtual Keyboard & Numpad Studio</PageTitle>
+
+<Column Modifier="@(UIModifier.New.FillMaxWidth())" Gap="2rem">
+
+    <TitledWindow Title="Interactive <ScreenKeyboard> & Fluent KeyboardSetup Builder"
+                  Modifier="@ShowcaseStyles.SectionWindow">
+        <Text Variant="TypographyVariant.Body"
+              Muted="true"
+              Value="Use the fluent KeyboardSetup builder to enable or disable any zone on the keyboard individually. Designed for touch kiosks and macro tools—never includes a Windows/Meta key." />
+
+        <Window Modifier="@ShowcaseStyles.CardWindow">
+            <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Wrap="true" Gap="1rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                <Row Gap="0.5rem" Wrap="true" VerticalAlignment="VerticalAlignment.Center">
+                    <Text Variant="TypographyVariant.Caption" Weight="FontWeight.Bold" Value="1. Starter Presets:" />
+                    <Pill Variant="Pill.PillVariant.Accent" Text="LettersOnly" OnClick="@(() => _kbSetup = KeyboardSetup.LettersOnly)" />
+                    <Pill Variant="Pill.PillVariant.Accent" Text="TouchStandard" OnClick="@(() => _kbSetup = KeyboardSetup.TouchStandard)" />
+                    <Pill Variant="Pill.PillVariant.Accent" Text="Tenkeyless (80%)" OnClick="@(() => _kbSetup = KeyboardSetup.Tenkeyless)" />
+                    <Pill Variant="Pill.PillVariant.Accent" Text="FullMacro (100%)" OnClick="@(() => _kbSetup = KeyboardSetup.FullMacro)" />
+                </Row>
+
+                <Row Gap="0.5rem" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
+                    <Text Variant="TypographyVariant.Caption" Weight="FontWeight.Bold" Value="Layout:" />
+                    <SegmentedControl TItem="KeyboardLayout"
+                                      Items="@(Enum.GetValues<KeyboardLayout>())"
+                                      Value="@_kbSetup.LayoutValue"
+                                      ValueChanged="@(layout => _kbSetup.Layout(layout))" />
+                </Row>
+            </Row>
+
+            <Divider />
+
+            <Row Gap="0.5rem" Wrap="true" VerticalAlignment="VerticalAlignment.Center">
+                <Text Variant="TypographyVariant.Caption" Weight="FontWeight.Bold" Value="2. Toggle Individual Zones:" />
+                <Pill Active="@_kbSetup.IncludeLetters" Text=".WithLetters()" OnClick="@(() => _kbSetup.WithLetters(!_kbSetup.IncludeLetters))" />
+                <Pill Active="@_kbSetup.IncludeNumbers" Text=".WithNumbers()" OnClick="@(() => _kbSetup.WithNumbers(!_kbSetup.IncludeNumbers))" />
+                <Pill Active="@_kbSetup.IncludeSpecialCharacters" Text=".WithSpecialCharacters()" OnClick="@(() => _kbSetup.WithSpecialCharacters(!_kbSetup.IncludeSpecialCharacters))" />
+                <Pill Active="@_kbSetup.IncludeFunctionKeys" Text=".WithFunctionKeys() (F1-F12)" OnClick="@(() => _kbSetup.WithFunctionKeys(!_kbSetup.IncludeFunctionKeys))" />
+                <Pill Active="@_kbSetup.IncludePcModifiers" Text=".WithPcModifiers() (No Win Key)" OnClick="@(() => _kbSetup.WithPcModifiers(!_kbSetup.IncludePcModifiers))" />
+                <Pill Active="@_kbSetup.IncludeSystemKeys" Text=".WithSystemKeys() (PrtSc/ScrLk)" OnClick="@(() => _kbSetup.WithSystemKeys(!_kbSetup.IncludeSystemKeys))" />
+                <Pill Active="@_kbSetup.IncludeNavigationCluster" Text=".WithNavigationCluster() (Ins/Home/PgUp)" OnClick="@(() => _kbSetup.WithNavigationCluster(!_kbSetup.IncludeNavigationCluster))" />
+                <Pill Active="@_kbSetup.IncludeArrowKeys" Text=".WithArrowKeys()" OnClick="@(() => _kbSetup.WithArrowKeys(!_kbSetup.IncludeArrowKeys))" />
+                <Pill Active="@_kbSetup.IncludeNumpad" Text=".WithNumpad()" OnClick="@(() => _kbSetup.WithNumpad(!_kbSetup.IncludeNumpad))" />
+            </Row>
+
+            <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Wrap="true" Modifier="@(UIModifier.New.FillMaxWidth())">
+                <Text Variant="TypographyVariant.Caption" Weight="FontWeight.Bold" Value="Generated Razor & KeyboardSetup Builder Code:" />
+                <ActionButton Size="ActionButton.ButtonSize.Small"
+                              Variant="ActionButton.ButtonVariant.Outline"
+                              Modifier="@ShowcaseStyles.CopyButton"
+                              Text="Copy Keyboard Code"
+                              OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, BuildKeyboardMarkupSnippet(), "ScreenKeyboard code"))" />
+            </Row>
+
+            <Window Modifier="@ShowcaseStyles.CodeWindow">
+                <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@BuildKeyboardMarkupSnippet()" />
+            </Window>
+        </Window>
+
+        <ScreenKeyboard @bind-Value="_kioskText"
+                        Setup="@_kbSetup"
+                        Placeholder="Tap keys to type or test macro keys..."
+                        OnKeyPress="HandleVirtualKeyPress"
+                        OnSubmit="@(val => Toast.ShowSuccess($"Keyboard submitted: {val}"))" />
+
+        @if (_lastKeyEvent is not null)
+        {
+            <Window Modifier="@(UIModifier.New.FillMaxWidth().Padding(12, 18).Row().AlignItems(VerticalAlignment.Center).JustifyContent(Arrangement.SpaceBetween).Background("var(--ui-bg-header)"))">
+                <Text Variant="TypographyVariant.Caption" Muted="true" Value="Last OnKeyPress Event (VirtualKeyEventArgs):" />
+                <Text Variant="TypographyVariant.Mono"
+                      Color="#22c55e"
+                      Value="@($"Key=\"{_lastKeyEvent.Key}\" | Code=\"{_lastKeyEvent.Code}\" | Shift={_lastKeyEvent.Shift} | Ctrl={_lastKeyEvent.Ctrl} | Alt={_lastKeyEvent.Alt} | Printable={_lastKeyEvent.IsPrintable}")" />
+            </Window>
+        }
+    </TitledWindow>
+
+    <TitledWindow Title="Generic <TouchNumpad<TValue>> (Numeric Entry vs. Kiosk PIN Mode)"
+                  Modifier="@ShowcaseStyles.SectionWindow">
+        <Grid MinColumnWidth="420px" Gap="1.5rem">
+            <Window Modifier="@ShowcaseStyles.FullHeightCardWindow">
+                <Column Gap="0.75rem" HorizontalAlignment="HorizontalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="1. Payment / Quantity Numpad (INumber<decimal>)" />
+                    <TouchNumpad TValue="decimal"
+                                 @bind-Value="_touchPrice"
+                                 Label="Total Amount"
+                                 Suffix="kr."
+                                 Min="0m"
+                                 Max="99999m"
+                                 QuickSteps="@(new List<decimal> { 10m, 50m, 100m })"
+                                 OnConfirm="@(val => Toast.ShowSuccess($"Confirmed {val:0.00} kr.!"))" />
+                </Column>
+                <Column Gap="0.45rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="Decimal Numpad Markup:" />
+                        <ActionButton Size="ActionButton.ButtonSize.Small"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Modifier="@ShowcaseStyles.CopyButton"
+                                      Text="Copy Code"
+                                      OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, NumpadDecimalSnippet, "TouchNumpad decimal code"))" />
+                    </Row>
+                    <Window Modifier="@ShowcaseStyles.CodeWindow">
+                        <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@NumpadDecimalSnippet" />
+                    </Window>
+                </Column>
+            </Window>
+
+            <Window Modifier="@ShowcaseStyles.FullHeightCardWindow">
+                <Column Gap="0.75rem" HorizontalAlignment="HorizontalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="2. Security PIN Pad (IsPinMode = true)" />
+                    <TouchNumpad TValue="int"
+                                 @bind-Value="_touchPinCode"
+                                 IsPinMode="true"
+                                 MaxPinLength="4"
+                                 Label="Enter 4-Digit Staff PIN"
+                                 ConfirmText="Unlock"
+                                 OnConfirm="@(pin => Toast.ShowInfo($"PIN Entered: {pin}"))" />
+                </Column>
+                <Column Gap="0.45rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="PIN Numpad Markup:" />
+                        <ActionButton Size="ActionButton.ButtonSize.Small"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Modifier="@ShowcaseStyles.CopyButton"
+                                      Text="Copy Code"
+                                      OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, NumpadPinSnippet, "TouchNumpad PIN code"))" />
+                    </Row>
+                    <Window Modifier="@ShowcaseStyles.CodeWindow">
+                        <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@NumpadPinSnippet" />
+                    </Window>
+                </Column>
+            </Window>
+        </Grid>
+    </TitledWindow>
+
+</Column>
+
+@code {
+    private KeyboardSetup _kbSetup = KeyboardSetup.TouchStandard;
+    private string? _kioskText = "R\u00F8dgr\u00F8d med fl\u00F8de";
+    private VirtualKeyEventArgs? _lastKeyEvent;
+    private decimal _touchPrice = 49.95m;
+    private int _touchPinCode = 0;
+
+    private void HandleVirtualKeyPress(VirtualKeyEventArgs e) =>
+        _lastKeyEvent = e;
+
+    private string BuildKeyboardMarkupSnippet() =>
+        $@"<ScreenKeyboard @bind-Value=""_kioskText""
+                Setup=""@({_kbSetup.ToCodeSnippet()})""
+                Placeholder=""Tap keys to type...""
+                OnKeyPress=""HandleVirtualKeyPress""
+                OnSubmit=""HandleSubmit"" />";
+
+    private const string NumpadDecimalSnippet = @"<TouchNumpad TValue=""decimal""
+             @bind-Value=""_amount""
+             Label=""Total Amount""
+             Suffix=""kr.""
+             Min=""0m"" Max=""99999m""
+             QuickSteps=""@(new List<decimal> { 10m, 50m, 100m })""
+             OnConfirm=""HandleConfirm"" />";
+
+    private const string NumpadPinSnippet = @"<TouchNumpad TValue=""int""
+             @bind-Value=""_pinCode""
+             IsPinMode=""true""
+             MaxPinLength=""4""
+             Label=""Enter 4-Digit Staff PIN""
+             ConfirmText=""Unlock""
+             OnConfirm=""VerifyPin"" />";
+}

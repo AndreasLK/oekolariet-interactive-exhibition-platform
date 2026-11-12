@@ -1,0 +1,20 @@
+﻿<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+    </Found>
+    <NotFound>
+        <PageTitle>Not Found</PageTitle>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <Box ContentAlignment="BoxAlignment.Center"
+                 Modifier="@(UIModifier.New.FillMaxWidth().Padding(64))">
+                <TitledWindow Title="404 - Page Not Found"
+                              Modifier="@(UIModifier.New.Width(420).Padding(32).Gap(16).CenterContent())">
+                    <Text Variant="TypographyVariant.Body"
+                          Muted="true"
+                          Align="TextAlignment.Center"
+                          Value="The requested route does not exist." />
+                </TitledWindow>
+            </Box>
+        </LayoutView>
+    </NotFound>
+</Router>

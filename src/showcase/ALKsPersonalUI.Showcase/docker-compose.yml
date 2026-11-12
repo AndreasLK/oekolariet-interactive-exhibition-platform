@@ -1,0 +1,15 @@
+﻿services:
+  alks-ui-showcase:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: alks-ui-showcase
+    restart: unless-stopped
+    expose:
+      - "80"
+    networks:
+      - proxy_net
+
+networks:
+  proxy_net:
+    external: true

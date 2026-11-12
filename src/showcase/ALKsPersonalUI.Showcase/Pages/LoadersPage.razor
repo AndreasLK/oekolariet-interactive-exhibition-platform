@@ -1,0 +1,90 @@
+﻿@page "/loaders"
+@inject ToastService Toast
+@inject IJSRuntime JS
+
+<PageTitle>ALK's Personal UI - Planetary Loaders & Spinners</PageTitle>
+
+<Column Modifier="@(UIModifier.New.FillMaxWidth())" Gap="2rem">
+
+    <TitledWindow Title="SimpleSpinner & 3D OrbitalLoader Wrapping Procedural <Mars />"
+                  Modifier="@ShowcaseStyles.SectionWindow">
+        <Grid MinColumnWidth="400px" Gap="1.5rem">
+            <Window Modifier="@ShowcaseStyles.FullHeightCardWindow">
+                <Column Gap="1rem" HorizontalAlignment="HorizontalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="1. <SimpleSpinner> (Conic Velocity Ring)" />
+                    <Row Gap="2rem" Modifier="@(UIModifier.New.Padding(24))">
+                        <SimpleSpinner Modifier="@(UIModifier.New.Width(28).Thickness(3).BaseColor("#3b82f6"))" />
+                        <SimpleSpinner Modifier="@(UIModifier.New.Width(44).Thickness(5).BaseColor("#ffcc00").AnimationSpeed("1.2s"))" />
+                        <SimpleSpinner Modifier="@(UIModifier.New.Width(58).Thickness(6).BaseColor("#22c55e").AnimationSpeed("0.6s"))" />
+                    </Row>
+                </Column>
+
+                <Column Gap="0.45rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="SimpleSpinner Code:" />
+                        <ActionButton Size="ActionButton.ButtonSize.Small"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Modifier="@ShowcaseStyles.CopyButton"
+                                      Text="Copy Code"
+                                      OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, SpinnerSnippet, "SimpleSpinner code"))" />
+                    </Row>
+                    <Window Modifier="@ShowcaseStyles.CodeWindow">
+                        <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@SpinnerSnippet" />
+                    </Window>
+                </Column>
+            </Window>
+
+            <Window Modifier="@ShowcaseStyles.FullHeightCardWindow">
+                <Column Gap="0.85rem" HorizontalAlignment="HorizontalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="2. 3D <OrbitalLoader> + Procedural <Mars />" />
+                    <OrbitalLoader SystemSize="@_systemSize"
+                                   SatelliteCount="@_satCount"
+                                   OrbitTilt="@_orbitTilt"
+                                   LoadingText="Terraforming Mars...">
+                        <Mars PlanetSize="54" ColonyProbability="0.35" />
+                    </OrbitalLoader>
+
+                    <Row Gap="1rem" Wrap="true" HorizontalArrangement="Arrangement.Center">
+                        <NumberInput TValue="int" @bind-Value="_satCount" Min="1" Max="18" Suffix="sats" />
+                        <NumberInput TValue="int" @bind-Value="_systemSize" Step="10" Min="80" Max="180" Suffix="px" />
+                    </Row>
+                </Column>
+
+                <Column Gap="0.45rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="OrbitalLoader + Mars Code:" />
+                        <ActionButton Size="ActionButton.ButtonSize.Small"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Modifier="@ShowcaseStyles.CopyButton"
+                                      Text="Copy Code"
+                                      OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, BuildOrbitalSnippet(), "OrbitalLoader code"))" />
+                    </Row>
+                    <Window Modifier="@ShowcaseStyles.CodeWindow">
+                        <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@BuildOrbitalSnippet()" />
+                    </Window>
+                </Column>
+            </Window>
+        </Grid>
+    </TitledWindow>
+
+</Column>
+
+@code {
+    private int _satCount = 9;
+    private int _systemSize = 120;
+    private double _orbitTilt = 76;
+
+    private string BuildOrbitalSnippet() =>
+        $@"<OrbitalLoader SystemSize=""{_systemSize}""
+               SatelliteCount=""{_satCount}""
+               OrbitTilt=""{_orbitTilt}""
+               LoadingText=""Terraforming Mars..."">
+    <Mars PlanetSize=""54"" ColonyProbability=""0.35"" />
+</OrbitalLoader>";
+
+    private const string SpinnerSnippet = @"<SimpleSpinner Modifier=""@(UIModifier.New
+    .Width(44)
+    .Thickness(5)
+    .BaseColor(""#ffcc00"")
+    .AnimationSpeed(""1.2s""))"" />";
+}

@@ -1,1 +1,6 @@
-<Solution />
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/showcase/">
+    <Project Path="src/showcase/ALKsPersonalUI.Showcase/ALKsPersonalUI.Showcase.csproj" />
+  </Folder>
+</Solution>
