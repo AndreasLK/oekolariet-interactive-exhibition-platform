@@ -1,0 +1,304 @@
+﻿@page "/themes"
+@inject UIThemeService ThemeService
+@inject ToastService Toast
+@inject IJSRuntime JS
+
+<PageTitle>ALK's Personal UI - Live Theme Debugger & Color Picker Studio</PageTitle>
+
+<Column Modifier="@(UIModifier.New.FillMaxWidth())" Gap="2rem">
+
+    <TitledWindow Title="Live Theme Debugger, Hex Color Pickers & Code Generator"
+                  Modifier="@ShowcaseStyles.SectionWindow">
+        <Text Variant="TypographyVariant.Body"
+              Muted="true"
+              Value="Pick any Main (Accent), Secondary (Action), or Third (App Background) hex color using the native color pickers below. Every change updates the entire application live so you can debug contrast and export your exact C# or CSS theme." />
+
+        <Grid MinColumnWidth="440px" Gap="1.5rem">
+
+            @* LEFT COLUMN: LIVE COLOR PICKERS & TOKEN CONTROLS *@
+            <Window Modifier="@ShowcaseStyles.CardWindow">
+                <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="1. Live Hex Color Pickers" />
+                    <Checkbox @bind-Checked="_autoDeriveSurfaces"
+                              IsSwitch="true"
+                              Label="Auto-Derive Surfaces from AppBg" />
+                </Row>
+
+                <TextInput Label="Custom Theme Preset Name"
+                           @bind-Value="_themeName"
+                           Modifier="@(UIModifier.New.FillMaxWidth())" />
+
+                <Divider />
+
+                @* PRIMARY 3 SEED COLORS *@
+                <Text Variant="TypographyVariant.Caption" Weight="FontWeight.Bold" Color="var(--ui-accent)" Value="CORE PALETTE (MAIN / SECONDARY / BACKGROUND)" />
+
+                <Grid MinColumnWidth="190px" Gap="0.85rem">
+                    @RenderColorPickerRow("1. Main (AccentColor)", _accentHex, val => { _accentHex = val; PushLiveTheme(); })
+                    @RenderColorPickerRow("2. Secondary (ActionColor)", _actionHex, val => { _actionHex = val; PushLiveTheme(); })
+                    @RenderColorPickerRow("3. Third (AppBg)", _appBgHex, val => { _appBgHex = val; RecalculateIfAuto(); PushLiveTheme(); })
+                    @RenderColorPickerRow("4. Text Color", _textHex, val => { _textHex = val; PushLiveTheme(); })
+                </Grid>
+
+                <Divider />
+
+                @* SURFACE & BORDER COLORS *@
+                <Text Variant="TypographyVariant.Caption" Weight="FontWeight.Bold" Color="var(--ui-accent)" Value="SURFACES & BORDERS (AUTO-COMPUTED OR MANUAL HEX)" />
+
+                <Grid MinColumnWidth="190px" Gap="0.85rem">
+                    @RenderColorPickerRow("SurfaceBg (Cards)", _surfaceBgHex, val => { _autoDeriveSurfaces = false; _surfaceBgHex = val; PushLiveTheme(); })
+                    @RenderColorPickerRow("ElevatedBg (Inner)", _elevatedBgHex, val => { _autoDeriveSurfaces = false; _elevatedBgHex = val; PushLiveTheme(); })
+                    @RenderColorPickerRow("HeaderBg (TitleBar)", _headerBgHex, val => { _autoDeriveSurfaces = false; _headerBgHex = val; PushLiveTheme(); })
+                    @RenderColorPickerRow("BorderColor", _borderHex, val => { _autoDeriveSurfaces = false; _borderHex = val; PushLiveTheme(); })
+                </Grid>
+
+                <Divider />
+
+                @* SEMANTIC STATUS COLORS *@
+                <Text Variant="TypographyVariant.Caption" Weight="FontWeight.Bold" Color="var(--ui-accent)" Value="SEMANTIC STATUS COLORS & GEOMETRY" />
+
+                <Grid MinColumnWidth="150px" Gap="0.85rem">
+                    @RenderColorPickerRow("Success", _successHex, val => { _successHex = val; PushLiveTheme(); })
+                    @RenderColorPickerRow("Warning", _warningHex, val => { _warningHex = val; PushLiveTheme(); })
+                    @RenderColorPickerRow("Danger", _dangerHex, val => { _dangerHex = val; PushLiveTheme(); })
+                </Grid>
+
+                <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Wrap="true" Gap="1rem">
+                    <Checkbox Checked="_isDarkTheme"
+                              CheckedChanged="@(dark => { _isDarkTheme = dark; _textHex = dark ? "#ffffff" : "#0f172a"; RecalculateIfAuto(); PushLiveTheme(); })"
+                              IsSwitch="true"
+                              Label="Dark Mode Base" />
+
+                    <ActionButton Size="ActionButton.ButtonSize.Small"
+                                  Modifier="@(UIModifier.New.BaseColor("var(--ui-action)").TextColor("#111111"))"
+                                  Text="Save Preset to Top Bar"
+                                  OnClick="SavePresetToTopBar" />
+                </Row>
+            </Window>
+
+            @* RIGHT COLUMN: LIVE PALETTE SWATCHES + FULL-HEIGHT CODE GENERATOR *@
+            <Window Modifier="@ShowcaseStyles.FullHeightCardWindow">
+                <Column Gap="0.75rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Wrap="true" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="2. Live Component & Token Preview" />
+                        <SegmentedControl TItem="string"
+                                          Items="@(new[] { "FromSeed() C#", "Full UITheme C#", "CSS Variables" })"
+                                          @bind-Value="_exportFormat" />
+                    </Row>
+
+                    @* MINI COMPONENT PREVIEW STAGE *@
+                    <TitledWindow Title="Live Theme Preview Card"
+                                  Modifier="@(UIModifier.New.FillMaxWidth().Padding(16).Gap(12))">
+                        <HeaderActions>
+                            <Pill Variant="Pill.PillVariant.Accent" Text="Accent" />
+                            <Pill Variant="Pill.PillVariant.Success" Text="Success" />
+                        </HeaderActions>
+                        <ChildContent>
+                            <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Wrap="true" Gap="0.75rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                                <ActionButton Size="ActionButton.ButtonSize.Small" Text="Primary Action (--ui-action)" />
+                                <ActionButton Size="ActionButton.ButtonSize.Small"
+                                              Variant="ActionButton.ButtonVariant.Outline"
+                                              Modifier="@(UIModifier.New.BaseColor("var(--ui-accent)"))"
+                                              Text="Accent Outline (--ui-accent)" />
+                                <Pill Variant="Pill.PillVariant.Warning" Text="Warning" />
+                                <Pill Variant="Pill.PillVariant.Danger" Text="Danger" />
+                            </Row>
+                        </ChildContent>
+                    </TitledWindow>
+                </Column>
+
+                <Column Gap="0.5rem" Modifier="@(UIModifier.New.FillMaxWidth().Weight(1))">
+                    <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Caption" Weight="FontWeight.Bold" Value="@($"Generated {_exportFormat} Export:")" />
+                        <ActionButton Size="ActionButton.ButtonSize.Small"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Modifier="@ShowcaseStyles.CopyButton"
+                                      Text="Copy Theme Code"
+                                      OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, GetExportCode(), "Theme code"))" />
+                    </Row>
+                    <Window Modifier="@ShowcaseStyles.ExpandingCodeWindow">
+                        <Text Variant="TypographyVariant.Mono"
+                              Color="#93c5fd"
+                              Modifier="@ShowcaseStyles.PreText"
+                              Value="@GetExportCode()" />
+                    </Window>
+                </Column>
+            </Window>
+
+        </Grid>
+    </TitledWindow>
+
+</Column>
+
+@code {
+    private string? _themeName = "CustomKiosk";
+    private bool _autoDeriveSurfaces = true;
+    private bool _isDarkTheme = true;
+    private string _exportFormat = "Full UITheme C#";
+
+    private string _accentHex = "#38bdf8";
+    private string _actionHex = "#facc15";
+    private string _appBgHex = "#09131c";
+    private string _surfaceBgHex = "#152534";
+    private string _elevatedBgHex = "#101d29";
+    private string _headerBgHex = "#0c1721";
+    private string _borderHex = "#243b53";
+    private string _textHex = "#ffffff";
+    private string _successHex = "#22c55e";
+    private string _warningHex = "#f59e0b";
+    private string _dangerHex = "#ef4444";
+
+    private RenderFragment RenderColorPickerRow(string label, string currentHex, Action<string> onChanged) => __builder =>
+    {
+        <Window Modifier="@(UIModifier.New.FillMaxWidth().Padding(10, 12).Gap(6).Background("var(--ui-bg-header)"))">
+            <Text Variant="TypographyVariant.Caption" Muted="true" Value="@label" />
+            <Row Gap="0.5rem" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                <input type="color"
+                       value="@NormalizeHexForColorInput(currentHex)"
+                       @oninput="@(e => onChanged(e.Value?.ToString() ?? currentHex))"
+                       style="width: 36px; height: 32px; border: 1px solid var(--ui-border); border-radius: 6px; background: transparent; cursor: pointer; padding: 0; flex-shrink: 0;" />
+                <input type="text"
+                       value="@currentHex"
+                       @onchange="@(e => onChanged(e.Value?.ToString() ?? currentHex))"
+                       style="width: 100%; background: var(--ui-bg-surface); color: var(--ui-text); border: 1px solid var(--ui-border); border-radius: 6px; padding: 6px 8px; font-family: monospace; font-size: 0.85rem;" />
+            </Row>
+        </Window>
+    };
+
+    private static string NormalizeHexForColorInput(string raw)
+    {
+        if (!string.IsNullOrWhiteSpace(raw) && raw.StartsWith('#') && raw.Length == 7)
+            return raw;
+        return "#3b82f6";
+    }
+
+    private void RecalculateIfAuto()
+    {
+        if (!_autoDeriveSurfaces)
+            return;
+
+        // Compute hex approximations so the native <input type="color"> pickers also reflect the derived shades
+        _headerBgHex = BlendHex(_appBgHex, _isDarkTheme ? "#ffffff" : "#000000", 0.04);
+        _elevatedBgHex = BlendHex(_appBgHex, _isDarkTheme ? "#ffffff" : "#000000", 0.08);
+        _surfaceBgHex = BlendHex(_appBgHex, _isDarkTheme ? "#ffffff" : "#000000", 0.13);
+        _borderHex = BlendHex(_appBgHex, _isDarkTheme ? "#ffffff" : "#000000", 0.22);
+    }
+
+    private static string BlendHex(string hexA, string hexB, double ratioB)
+    {
+        try
+        {
+            int rA = Convert.ToInt32(hexA.Substring(1, 2), 16);
+            int gA = Convert.ToInt32(hexA.Substring(3, 2), 16);
+            int bA = Convert.ToInt32(hexA.Substring(5, 2), 16);
+
+            int rB = Convert.ToInt32(hexB.Substring(1, 2), 16);
+            int gB = Convert.ToInt32(hexB.Substring(3, 2), 16);
+            int bB = Convert.ToInt32(hexB.Substring(5, 2), 16);
+
+            int r = (int)Math.Round(rA * (1 - ratioB) + rB * ratioB);
+            int g = (int)Math.Round(gA * (1 - ratioB) + gB * ratioB);
+            int b = (int)Math.Round(bA * (1 - ratioB) + bB * ratioB);
+            return $"#{r:x2}{g:x2}{b:x2}";
+        }
+        catch
+        {
+            return hexA;
+        }
+    }
+
+    private UITheme BuildCurrentThemeObject()
+    {
+        var name = string.IsNullOrWhiteSpace(_themeName) ? "CustomTheme" : _themeName;
+        return new UITheme
+        {
+            Name = name,
+            AccentColor = _accentHex,
+            ActionColor = _actionHex,
+            AppBg = _appBgHex,
+            SurfaceBg = _surfaceBgHex,
+            ElevatedBg = _elevatedBgHex,
+            HeaderBg = _headerBgHex,
+            BorderColor = _borderHex,
+            TextColor = _textHex,
+            TextInverse = _isDarkTheme ? "#111111" : "#ffffff",
+            SuccessColor = _successHex,
+            WarningColor = _warningHex,
+            DangerColor = _dangerHex,
+            DefaultPressEffect = ThemeService.Current.DefaultPressEffect,
+            DefaultTouchInputMode = ThemeService.Current.DefaultTouchInputMode
+        };
+    }
+
+    private void PushLiveTheme() =>
+        ThemeService.SetTheme(BuildCurrentThemeObject());
+
+    private void SavePresetToTopBar()
+    {
+        var theme = BuildCurrentThemeObject();
+        ThemeService.RegisterPreset(theme.Name, theme);
+        ThemeService.SetTheme(theme);
+        Toast.ShowSuccess($"Registered '{theme.Name}' in the top preset bar!");
+    }
+
+    private string GetExportCode()
+    {
+        var name = string.IsNullOrWhiteSpace(_themeName) ? "CustomTheme" : _themeName;
+        if (_exportFormat == "FromSeed() C#")
+        {
+            return $@"// Program.cs (Quick 3-color seed registration):
+builder.Services.AddPersonalUILibrary(options =>
+{{
+    options.DefaultPressEffect = ButtonPressEffect.{ThemeService.Current.DefaultPressEffect};
+    options.DefaultTouchInputMode = TouchInputMode.{ThemeService.Current.DefaultTouchInputMode};
+    options.AddSeedTheme(
+        name: ""{name}"",
+        accentColor: ""{_accentHex}"",
+        appBackground: ""{_appBgHex}"",
+        actionColor: ""{_actionHex}"",
+        isDark: {(_isDarkTheme ? "true" : "false")});
+    options.InitialPresetName = ""{name}"";
+}});";
+        }
+
+        if (_exportFormat == "CSS Variables")
+        {
+            return $@":root {{
+    --ui-bg-app: {_appBgHex};
+    --ui-bg-surface: {_surfaceBgHex};
+    --ui-bg-elevated: {_elevatedBgHex};
+    --ui-bg-header: {_headerBgHex};
+    --ui-border: {_borderHex};
+    --ui-text: {_textHex};
+    --ui-accent: {_accentHex};
+    --ui-action: {_actionHex};
+    --ui-success: {_successHex};
+    --ui-warning: {_warningHex};
+    --ui-danger: {_dangerHex};
+}}";
+        }
+
+        return $@"// Program.cs (Full explicit UITheme registration):
+builder.Services.AddPersonalUILibrary(options =>
+{{
+    options.AddThemePreset(""{name}"", new UITheme
+    {{
+        Name = ""{name}"",
+        AccentColor = ""{_accentHex}"",
+        ActionColor = ""{_actionHex}"",
+        AppBg = ""{_appBgHex}"",
+        SurfaceBg = ""{_surfaceBgHex}"",
+        ElevatedBg = ""{_elevatedBgHex}"",
+        HeaderBg = ""{_headerBgHex}"",
+        BorderColor = ""{_borderHex}"",
+        TextColor = ""{_textHex}"",
+        SuccessColor = ""{_successHex}"",
+        WarningColor = ""{_warningHex}"",
+        DangerColor = ""{_dangerHex}"",
+        DefaultPressEffect = ButtonPressEffect.{ThemeService.Current.DefaultPressEffect},
+        DefaultTouchInputMode = TouchInputMode.{ThemeService.Current.DefaultTouchInputMode}
+    }});
+    options.InitialPresetName = ""{name}"";
+}});";
+    }
+}

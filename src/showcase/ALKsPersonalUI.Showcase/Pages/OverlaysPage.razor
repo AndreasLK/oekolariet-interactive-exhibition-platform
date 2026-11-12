@@ -1,0 +1,182 @@
+﻿@page "/overlays"
+@inject ToastService Toast
+@inject IJSRuntime JS
+
+<PageTitle>ALK's Personal UI - Overlays, BottomSheets & Navigation</PageTitle>
+
+<Column Modifier="@(UIModifier.New.FillMaxWidth())" Gap="2rem">
+
+    <TitledWindow Title="BottomSheet, Modal Dialog, ToastService & Tap-Aware Tooltips"
+                  Modifier="@ShowcaseStyles.SectionWindow">
+        <Grid MinColumnWidth="360px" Gap="1.5rem">
+            <Window Modifier="@ShowcaseStyles.CardWindow">
+                <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="1. Touch <BottomSheet> vs. <Modal>" />
+                <Text Variant="TypographyVariant.Caption" Muted="true" Value="BottomSheet slides up from the bottom edge for comfortable thumb reach on touch screens:" />
+                <Row Gap="0.75rem" Wrap="true">
+                    <ActionButton Modifier="@(UIModifier.New.Padding(12, 20).BaseColor("#3b82f6").TextColor("#ffffff"))"
+                                  Text="Open BottomSheet"
+                                  OnClick="@(() => _demoBottomSheetOpen = true)" />
+                    <ActionButton Modifier="@(UIModifier.New.Padding(12, 20).BaseColor("#a855f7").TextColor("#ffffff"))"
+                                  Text="Open Center Modal"
+                                  OnClick="@(() => _demoModalOpen = true)" />
+                </Row>
+            </Window>
+
+            <Window Modifier="@ShowcaseStyles.CardWindow">
+                <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="2. ToastService Notifications" />
+                <Text Variant="TypographyVariant.Caption" Muted="true" Value="Inject ToastService anywhere and trigger auto-dismissing notifications:" />
+                <Row Gap="0.6rem" Wrap="true">
+                    <ActionButton Size="ActionButton.ButtonSize.Small"
+                                  Modifier="@(UIModifier.New.BaseColor("#3b82f6").TextColor("#ffffff"))"
+                                  Text="Info"
+                                  OnClick="@(() => Toast.ShowInfo("Info: Syncing kiosk state..."))" />
+                    <ActionButton Size="ActionButton.ButtonSize.Small"
+                                  Modifier="@(UIModifier.New.BaseColor("#22c55e").TextColor("#111111"))"
+                                  Text="Success"
+                                  OnClick="@(() => Toast.ShowSuccess("Success: Order saved!"))" />
+                    <ActionButton Size="ActionButton.ButtonSize.Small"
+                                  Modifier="@(UIModifier.New.BaseColor("#f59e0b").TextColor("#111111"))"
+                                  Text="Warning"
+                                  OnClick="@(() => Toast.ShowWarning("Warning: Low paper roll!"))" />
+                    <ActionButton Size="ActionButton.ButtonSize.Small"
+                                  Modifier="@(UIModifier.New.BaseColor("#ef4444").TextColor("#ffffff"))"
+                                  Text="Danger"
+                                  OnClick="@(() => Toast.ShowDanger("Danger: Offline!"))" />
+                </Row>
+            </Window>
+
+            <Window Modifier="@ShowcaseStyles.CardWindow">
+                <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="3. Hover & Touch-Tap Tooltips" />
+                <Text Variant="TypographyVariant.Caption" Muted="true" Value="Hover with a mouse OR tap on a touch screen to toggle:" />
+                <Row Gap="1rem" Wrap="true" Modifier="@(UIModifier.New.Padding(6, 0))">
+                    <Tooltip Text="Top tooltip (Tap or Hover)" Position="Tooltip.TooltipPosition.Top">
+                        <Pill Variant="Pill.PillVariant.Accent" Text="Top" />
+                    </Tooltip>
+                    <Tooltip Text="Bottom tooltip (Tap or Hover)" Position="Tooltip.TooltipPosition.Bottom">
+                        <Pill Variant="Pill.PillVariant.Success" Text="Bottom" />
+                    </Tooltip>
+                    <Tooltip Text="Left tooltip" Position="Tooltip.TooltipPosition.Left">
+                        <Pill Variant="Pill.PillVariant.Warning" Text="Left" />
+                    </Tooltip>
+                    <Tooltip Text="Right tooltip" Position="Tooltip.TooltipPosition.Right">
+                        <Pill Variant="Pill.PillVariant.Danger" Text="Right" />
+                    </Tooltip>
+                </Row>
+            </Window>
+        </Grid>
+
+        <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+            <Text Variant="TypographyVariant.Caption" Weight="FontWeight.Bold" Value="BottomSheet, Modal & Toast Code:" />
+            <ActionButton Size="ActionButton.ButtonSize.Small"
+                          Variant="ActionButton.ButtonVariant.Outline"
+                          Modifier="@ShowcaseStyles.CopyButton"
+                          Text="Copy Overlay Code"
+                          OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, OverlayCodeSnippet, "Overlay code"))" />
+        </Row>
+        <Window Modifier="@ShowcaseStyles.CodeWindow">
+            <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@OverlayCodeSnippet" />
+        </Window>
+    </TitledWindow>
+
+    <TitledWindow Title="Tabs in Trail Mode (Breadcrumb Wizard)"
+                  Modifier="@ShowcaseStyles.SectionWindow">
+        <Tabs @ref="_trailDemoTabs"
+              IsTrailMode="true"
+              @bind-ActiveTabId="_trailStep"
+              Modifier="@(UIModifier.New.FillMaxWidth().Padding(10, 14).AccentColor("#22c55e"))">
+            <TabPanel Id="step1" Title="1. Select Items">
+                <Window Modifier="@ShowcaseStyles.CardWindow">
+                    <Text Variant="TypographyVariant.H3" Value="Step 1: Basket Review" />
+                    <ActionButton Modifier="@(UIModifier.New.Padding(10, 20).BaseColor("#3b82f6").TextColor("#ffffff"))"
+                                  Text="Continue to Payment"
+                                  OnClick="@(() => AdvanceTrailStepAsync("step2"))" />
+                </Window>
+            </TabPanel>
+            <TabPanel Id="step2" Title="2. Payment">
+                <Window Modifier="@ShowcaseStyles.CardWindow">
+                    <Text Variant="TypographyVariant.H3" Value="Step 2: Tap Card or MobilePay" />
+                    <ActionButton Modifier="@(UIModifier.New.Padding(10, 20).BaseColor("#22c55e").TextColor("#111111"))"
+                                  Text="Complete Order"
+                                  OnClick="@(() => AdvanceTrailStepAsync("step3"))" />
+                </Window>
+            </TabPanel>
+            <TabPanel Id="step3" Title="3. Receipt">
+                <Window Modifier="@ShowcaseStyles.CardWindow">
+                    <Text Variant="TypographyVariant.H3" Value="Step 3: Order Complete!" />
+                    <Text Variant="TypographyVariant.Body" Muted="true" Value="Tap '1. Select Items' in the breadcrumb bar above to jump back and trim future steps." />
+                </Window>
+            </TabPanel>
+        </Tabs>
+    </TitledWindow>
+
+</Column>
+
+<Modal @bind-IsOpen="_demoModalOpen"
+       Title="Example Modal Dialog"
+       Modifier="@(UIModifier.New.Width("min(460px, 92vw)").Padding(24).Gap(18))">
+    <ChildContent>
+        <Text Variant="TypographyVariant.Body"
+              Muted="true"
+              Value="This modal is composed from TitledWindow, Text, NumberInput (with AutoRepeat), and ActionButton." />
+        <NumberInput TValue="int" @bind-Value="_modalQty" Min="1" Max="20" Suffix="stk" />
+    </ChildContent>
+    <FooterContent>
+        <ActionButton Variant="ActionButton.ButtonVariant.Ghost"
+                      Modifier="@(UIModifier.New.Padding(10, 18).BaseColor("var(--ui-text)"))"
+                      Text="Cancel"
+                      OnClick="@(() => _demoModalOpen = false)" />
+        <ActionButton Modifier="@(UIModifier.New.Padding(10, 22).BaseColor("#22c55e").TextColor("#111111"))"
+                      Text="@($"Save ({_modalQty} stk)")"
+                      OnClick="@(() => { _demoModalOpen = false; Toast.ShowSuccess($"Saved {_modalQty} stk!"); })" />
+    </FooterContent>
+</Modal>
+
+<BottomSheet @bind-IsOpen="_demoBottomSheetOpen"
+             Title="Touch BottomSheet Drawer"
+             MaxWidth="560px">
+    <Column Gap="1rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+        <Text Variant="TypographyVariant.Body"
+              Muted="true"
+              Value="BottomSheet slides up from the bottom of the viewport so kiosk and tablet users can reach controls comfortably." />
+        <SegmentedControl TItem="string"
+                          Items="@(new[] { "Small", "Medium", "Large", "Extra Large" })"
+                          @bind-Value="_sheetSizeSelection"
+                          Modifier="@(UIModifier.New.FillMaxWidth())" />
+        <Row HorizontalArrangement="Arrangement.End" Gap="0.75rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+            <ActionButton Variant="ActionButton.ButtonVariant.Ghost" Text="Close" OnClick="@(() => _demoBottomSheetOpen = false)" />
+            <ActionButton Modifier="@(UIModifier.New.Padding(10, 22).BaseColor("var(--ui-success)").TextColor("#111111"))"
+                          Text="@($"Confirm ({_sheetSizeSelection})")"
+                          OnClick="@(() => { _demoBottomSheetOpen = false; Toast.ShowSuccess($"Selected {_sheetSizeSelection}!"); })" />
+        </Row>
+    </Column>
+</BottomSheet>
+
+@code {
+    private Tabs? _trailDemoTabs;
+    private string _trailStep = "step1";
+    private bool _demoModalOpen;
+    private bool _demoBottomSheetOpen;
+    private int _modalQty = 3;
+    private string _sheetSizeSelection = "Large";
+
+    private async Task AdvanceTrailStepAsync(string stepId)
+    {
+        if (_trailDemoTabs is not null)
+            await _trailDemoTabs.SelectTabAsync(stepId);
+    }
+
+    private const string OverlayCodeSnippet = @"@inject ToastService Toast
+
+<BottomSheet @bind-IsOpen=""_sheetOpen"" Title=""Select Size"" MaxWidth=""560px"">
+    <SegmentedControl TItem=""string"" Items=""_sizes"" @bind-Value=""_selectedSize"" />
+</BottomSheet>
+
+<Modal @bind-IsOpen=""_modalOpen"" Title=""Confirm Action"">
+    <ChildContent>
+        <Text Value=""Are you sure?"" />
+    </ChildContent>
+    <FooterContent>
+        <ActionButton Text=""Confirm"" OnClick=""@(() => Toast.ShowSuccess(""Confirmed!""))"" />
+    </FooterContent>
+</Modal>";
+}
