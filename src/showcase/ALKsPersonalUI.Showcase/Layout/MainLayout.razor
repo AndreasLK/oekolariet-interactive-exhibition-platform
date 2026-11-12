@@ -1,0 +1,175 @@
+﻿@inherits LayoutComponentBase
+@inject UIThemeService ThemeService
+@inject ToastService Toast
+@inject NavigationManager Nav
+@implements IDisposable
+
+<Scaffold Modifier="@(UIModifier.New.AlignItems(HorizontalAlignment.Center).Padding(20, 20, 64, 20))">
+    <TopBar>
+        <Box ContentAlignment="BoxAlignment.Center"
+             Modifier="@(UIModifier.New.FillMaxWidth().Padding(16, 20, 8, 20))">
+            <Window Modifier="@(UIModifier.New.FillMaxWidth().MaxWidth(1340).Padding(16, 22).Gap(14).Background("var(--ui-bg-elevated)").BorderRadius("var(--ui-radius-lg)"))">
+                <Row HorizontalArrangement="Arrangement.SpaceBetween"
+                     VerticalAlignment="VerticalAlignment.Center"
+                     Wrap="true"
+                     Gap="1rem"
+                     Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row Gap="0.75rem" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
+                        <Text Variant="TypographyVariant.H2" Value="ALK's Personal UI" />
+                        <Pill Variant="Pill.PillVariant.Accent" Text="v2.0.0 Studio & Docs" />
+                    </Row>
+
+                    <Row Gap="0.5rem" Wrap="true" VerticalAlignment="VerticalAlignment.Center">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="Theme Preset:" />
+                        @foreach (var preset in ThemeService.RegisteredPresets)
+                        {
+                            <Pill Text="@preset"
+                                  Active="@(string.Equals(ThemeService.Current.Name, preset, StringComparison.OrdinalIgnoreCase))"
+                                  Modifier="@(UIModifier.New.Padding(6, 14))"
+                                  OnClick="@(() => SelectThemePreset(preset))" />
+                        }
+                    </Row>
+                </Row>
+
+                <Divider />
+
+                <Row HorizontalArrangement="Arrangement.SpaceBetween"
+                     VerticalAlignment="VerticalAlignment.Center"
+                     Wrap="true"
+                     Gap="1rem"
+                     Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row Gap="0.6rem" Wrap="true" VerticalAlignment="VerticalAlignment.Center">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="Global Button Physics:" />
+                        <SegmentedControl TItem="ButtonPressEffect"
+                                          Items="_pressEffects"
+                                          Value="@ThemeService.Current.DefaultPressEffect"
+                                          ValueChanged="OnGlobalPressEffectChanged"
+                                          TextSelector="FormatPressEffect" />
+                    </Row>
+
+                    <Row Gap="0.6rem" Wrap="true" VerticalAlignment="VerticalAlignment.Center">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="Global Touch Popups:" />
+                        <SegmentedControl TItem="TouchInputMode"
+                                          Items="_touchModes"
+                                          Value="@ThemeService.Current.DefaultTouchInputMode"
+                                          ValueChanged="OnGlobalTouchModeChanged"
+                                          TextSelector="FormatTouchMode" />
+                    </Row>
+                </Row>
+
+                <Divider />
+
+                @* PAGE NAVIGATION BAR *@
+                <Row Gap="0.45rem" Wrap="true" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    @foreach (var navItem in _navPages)
+                    {
+                        var isActive = IsRouteActive(navItem.Href);
+                        <ActionButton Variant="@(isActive ? ActionButton.ButtonVariant.Solid : ActionButton.ButtonVariant.Ghost)"
+                                      Size="ActionButton.ButtonSize.Small"
+                                      Modifier="@(UIModifier.New.BaseColor(isActive ? "var(--ui-accent)" : "var(--ui-text)").TextColor("var(--ui-text)").Padding(7, 14))"
+                                      Text="@navItem.Title"
+                                      OnClick="@(() => Nav.NavigateTo(navItem.Href))" />
+                    }
+                </Row>
+            </Window>
+        </Box>
+    </TopBar>
+
+    <ChildContent>
+        <Column Modifier="@(UIModifier.New.FillMaxWidth().MaxWidth(1340))" Gap="2rem">
+            @Body
+        </Column>
+    </ChildContent>
+</Scaffold>
+
+@code {
+    private sealed record NavPageItem(string Title, string Href);
+
+    private static readonly NavPageItem[] _navPages =
+    [
+        new("1. Quickstart & Guide", "/"),
+        new("2. Buttons & Builder", "/buttons"),
+        new("3. Keyboard & Numpad", "/keyboard"),
+        new("4. Form Inputs", "/inputs"),
+        new("5. Layout & Windows", "/layout"),
+        new("6. Sliders & Dials", "/sliders"),
+        new("7. Overlays & Sheets", "/overlays"),
+        new("8. Theme Debugger", "/themes"),
+        new("9. Loaders & Mars", "/loaders"),
+        new("10. UIModifier API", "/api")
+    ];
+
+    private static readonly ButtonPressEffect[] _pressEffects =
+    [
+        ButtonPressEffect.Auto,
+        ButtonPressEffect.Down3D,
+        ButtonPressEffect.InwardScale,
+        ButtonPressEffect.ConcaveInset
+    ];
+
+    private static readonly TouchInputMode[] _touchModes =
+    [
+        TouchInputMode.None,
+        TouchInputMode.Auto,
+        TouchInputMode.Always
+    ];
+
+    protected override void OnInitialized()
+    {
+        ThemeService.OnChange += HandleStateChanged;
+        Nav.LocationChanged += HandleLocationChanged;
+    }
+
+    private void HandleStateChanged() => InvokeAsync(StateHasChanged);
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e) => InvokeAsync(StateHasChanged);
+
+    private bool IsRouteActive(string href)
+    {
+        var relative = "/" + Nav.ToBaseRelativePath(Nav.Uri).Split('?')[0].Trim('/');
+        if (href == "/" && (relative == "/" || relative.Equals("/cheatsheet", StringComparison.OrdinalIgnoreCase)))
+            return true;
+
+        return string.Equals(relative, href, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void SelectThemePreset(string presetName)
+    {
+        ThemeService.ApplyPreset(presetName);
+        Toast.ShowInfo($"Theme switched to {presetName}");
+    }
+
+    private void OnGlobalPressEffectChanged(ButtonPressEffect effect)
+    {
+        ThemeService.Update(t => t.DefaultPressEffect = effect);
+        Toast.ShowInfo($"Global ButtonPressEffect set to {effect}");
+    }
+
+    private void OnGlobalTouchModeChanged(TouchInputMode mode)
+    {
+        ThemeService.Update(t => t.DefaultTouchInputMode = mode);
+        Toast.ShowInfo($"Global TouchInputMode set to {mode}");
+    }
+
+    private static string FormatPressEffect(ButtonPressEffect effect) => effect switch
+    {
+        ButtonPressEffect.Auto => "Auto (Smart)",
+        ButtonPressEffect.Down3D => "Down3D (PC)",
+        ButtonPressEffect.InwardScale => "Inward (Touch)",
+        ButtonPressEffect.ConcaveInset => "Concave",
+        _ => effect.ToString()
+    };
+
+    private static string FormatTouchMode(TouchInputMode mode) => mode switch
+    {
+        TouchInputMode.None => "Off",
+        TouchInputMode.Auto => "Auto (Finger)",
+        TouchInputMode.Always => "Always (Test PC)",
+        _ => mode.ToString()
+    };
+
+    public void Dispose()
+    {
+        ThemeService.OnChange -= HandleStateChanged;
+        Nav.LocationChanged -= HandleLocationChanged;
+    }
+}

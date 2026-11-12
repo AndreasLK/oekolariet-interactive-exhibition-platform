@@ -1,0 +1,102 @@
+﻿@page "/sliders"
+@inject ToastService Toast
+@inject IJSRuntime JS
+
+<PageTitle>ALK's Personal UI - Rotary & Linear Sliders</PageTitle>
+
+<Column Modifier="@(UIModifier.New.FillMaxWidth())" Gap="2rem">
+
+    <TitledWindow Title="RadioSlider & RangeSlider (Pointer-Captured Dragging, Wheel & Arrow Keys)"
+                  Modifier="@ShowcaseStyles.SectionWindow">
+        <Text Variant="TypographyVariant.Body"
+              Muted="true"
+              Value="Both sliders inherit SliderBase and use hardware pointer capture on the hit area so dragging remains 100% centered and responsive even if your mouse or finger moves far outside the dial." />
+
+        <Grid MinColumnWidth="420px" Gap="1.5rem">
+            <Window Modifier="@(ShowcaseStyles.CardWindow.Clone().AlignItems(HorizontalAlignment.Center))">
+                <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="@($"Rotary <RadioSlider> ({_dialMaxAngle} deg)")" />
+                <RadioSlider DialPixelSize="220"
+                             MinValue="0"
+                             MaxValue="100"
+                             Step="@_sliderStep"
+                             MaxAngle="@_dialMaxAngle"
+                             SnapToTicks="@_snapSliders"
+                             SelectionUnit="%"
+                             @bind-SelectedValue="_sharedSliderValue"
+                             Modifier="@(UIModifier.New.Width(220))" />
+
+                <Row Gap="0.5rem" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
+                    <Text Variant="TypographyVariant.Caption" Muted="true" Value="Dial Sweep Angle:" />
+                    <SegmentedControl TItem="int"
+                                      Items="@(new[] { 180, 240, 270, 300 })"
+                                      @bind-Value="_dialMaxAngle"
+                                      TextSelector="@(deg => $"{deg}°")" />
+                </Row>
+            </Window>
+
+            <Window Modifier="@ShowcaseStyles.FullHeightCardWindow">
+                <Column Gap="1rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="Linear <RangeSlider> & Shared Settings" />
+                    <RangeSlider TrackPixelWidth="320"
+                                 MinValue="0"
+                                 MaxValue="100"
+                                 Step="@_sliderStep"
+                                 SnapToTicks="@_snapSliders"
+                                 SelectionUnit="%"
+                                 @bind-SelectedValue="_sharedSliderValue"
+                                 Modifier="@(UIModifier.New.Width(320))" />
+
+                    <Divider />
+
+                    <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
+                        <Checkbox @bind-Checked="_snapSliders"
+                                  IsSwitch="true"
+                                  Label="@($"SnapToTicks (Step = {_sliderStep})")" />
+                        <NumberInput TValue="double"
+                                     @bind-Value="_sliderStep"
+                                     Step="5"
+                                     Min="1"
+                                     Max="25"
+                                     Suffix="step" />
+                    </Row>
+                </Column>
+
+                <Column Gap="0.45rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="Synchronized Sliders Code:" />
+                        <ActionButton Size="ActionButton.ButtonSize.Small"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Modifier="@ShowcaseStyles.CopyButton"
+                                      Text="Copy Slider Code"
+                                      OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, BuildSliderSnippet(), "Slider code"))" />
+                    </Row>
+                    <Window Modifier="@ShowcaseStyles.CodeWindow">
+                        <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@BuildSliderSnippet()" />
+                    </Window>
+                </Column>
+            </Window>
+        </Grid>
+    </TitledWindow>
+
+</Column>
+
+@code {
+    private double _sharedSliderValue = 40;
+    private double _sliderStep = 10;
+    private int _dialMaxAngle = 240;
+    private bool _snapSliders = true;
+
+    private string BuildSliderSnippet() =>
+        $@"<RadioSlider DialPixelSize=""220""
+             MinValue=""0"" MaxValue=""100"" Step=""{_sliderStep}""
+             MaxAngle=""{_dialMaxAngle}""
+             SnapToTicks=""{(_snapSliders ? "true" : "false")}""
+             SelectionUnit=""%""
+             @bind-SelectedValue=""_volume"" />
+
+<RangeSlider TrackPixelWidth=""320""
+             MinValue=""0"" MaxValue=""100"" Step=""{_sliderStep}""
+             SnapToTicks=""{(_snapSliders ? "true" : "false")}""
+             SelectionUnit=""%""
+             @bind-SelectedValue=""_volume"" />";
+}

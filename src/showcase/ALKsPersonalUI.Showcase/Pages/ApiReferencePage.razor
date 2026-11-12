@@ -1,0 +1,144 @@
+﻿@page "/api"
+@inject ToastService Toast
+@inject IJSRuntime JS
+
+<PageTitle>ALK's Personal UI - UIModifier Architecture & Complete API Reference</PageTitle>
+
+<Column Modifier="@(UIModifier.New.FillMaxWidth())" Gap="2rem">
+
+    <TitledWindow Title="How UIModifier Works Under the Hood (Frame vs. Body Styles & Reusable Presets)"
+                  Modifier="@ShowcaseStyles.SectionWindow">
+        <Text Variant="TypographyVariant.Body"
+              Muted="true"
+              Value="UIModifier is inspired by Jetpack Compose's Modifier system. Instead of fighting global CSS specificity, you chain strongly-typed C# methods that compile into scoped inline CSS variables." />
+
+        <Grid MinColumnWidth="420px" Gap="1.5rem">
+            <Window Modifier="@ShowcaseStyles.CardWindow">
+                <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="1. Reusable Modifier Presets & .Clone()" />
+                <Text Variant="TypographyVariant.Body"
+                      Muted="true"
+                      Value="Define static UIModifier properties in a shared C# class to keep your Razor markup clean. When you want to tweak a shared preset for one specific component, call .Clone() first so you never mutate the shared instance:" />
+                <Window Modifier="@ShowcaseStyles.CodeWindow">
+                    <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@ClonePatternSnippet" />
+                </Window>
+                <ActionButton Size="ActionButton.ButtonSize.Small"
+                              Variant="ActionButton.ButtonVariant.Outline"
+                              Modifier="@ShowcaseStyles.CopyButton"
+                              Text="Copy Preset Pattern"
+                              OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, ClonePatternSnippet, "Preset pattern"))" />
+            </Window>
+
+            <Window Modifier="@ShowcaseStyles.CardWindow">
+                <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="2. Frame vs. Body Routing in <TitledWindow>" />
+                <Text Variant="TypographyVariant.Body"
+                      Muted="true"
+                      Value="When you pass a UIModifier to <TitledWindow>, outer sizing and borders (.Width(), .Height(), .BorderRadius(), .BorderColor()) apply to the outer window frame, while layout properties (.Padding(), .Gap(), .Row(), .Column()) automatically route to the inner body container below the title bar!" />
+                <Window Modifier="@ShowcaseStyles.CodeWindow">
+                    <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@FrameVsBodySnippet" />
+                </Window>
+                <ActionButton Size="ActionButton.ButtonSize.Small"
+                              Variant="ActionButton.ButtonVariant.Outline"
+                              Modifier="@ShowcaseStyles.CopyButton"
+                              Text="Copy TitledWindow Routing Example"
+                              OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, FrameVsBodySnippet, "TitledWindow routing"))" />
+            </Window>
+        </Grid>
+    </TitledWindow>
+
+    <TitledWindow Title="Complete UIModifier Method Reference (Filter by Category or Search)"
+                  Modifier="@ShowcaseStyles.SectionWindow">
+        <Text Variant="TypographyVariant.Body"
+              Muted="true"
+              Value="Every fluent method available on UIModifier.New, organized by category with its generated CSS output and usage example:" />
+
+        <DataTable TItem="ModifierApiItem"
+                   Items="_modifierApiItems"
+                   Columns="_modifierApiColumns"
+                   Modifier="@(UIModifier.New.FillMaxWidth())" />
+    </TitledWindow>
+
+</Column>
+
+@code {
+    public sealed record ModifierApiItem(
+        string Category,
+        string MethodSignature,
+        string GeneratedCss,
+        string ExampleUsage);
+
+    private readonly List<ModifierApiItem> _modifierApiItems =
+    [
+        new("Sizing", ".Width(double px) / .Width(string css)", "width: {val}", "UIModifier.New.Width(320)"),
+        new("Sizing", ".Height(double px) / .Height(string css)", "height: {val}", "UIModifier.New.Height(\"100vh\")"),
+        new("Sizing", ".Size(double px) / .Size(w, h)", "width + height", "UIModifier.New.Size(48)"),
+        new("Sizing", ".MinWidth(px) / .MinHeight(px)", "min-width / min-height", "UIModifier.New.MinHeight(180)"),
+        new("Sizing", ".MaxWidth(px) / .MaxHeight(px)", "max-width / max-height", "UIModifier.New.MaxWidth(1280)"),
+        new("Sizing", ".FillMaxWidth() / .FillMaxHeight() / .FillMaxSize()", "width: 100% / height: 100%", "UIModifier.New.FillMaxWidth()"),
+        new("Sizing", ".WrapContentWidth() / .WrapContentSize()", "width: fit-content", "UIModifier.New.WrapContentSize()"),
+        new("Sizing", ".Weight(double flexWeight = 1.0)", "flex-grow: {w}; flex-shrink: 1; flex-basis: 0%", "UIModifier.New.Weight(2)"),
+        new("Sizing", ".AspectRatio(w, h)", "aspect-ratio: w / h", "UIModifier.New.AspectRatio(16, 9)"),
+
+        new("Spacing", ".Padding(double px) / .Padding(v, h)", "padding: {v} {h}", "UIModifier.New.Padding(16, 24)"),
+        new("Spacing", ".Padding(top, right, bottom, left)", "padding: {t} {r} {b} {l}", "UIModifier.New.Padding(8, 16, 24, 16)"),
+        new("Spacing", ".Margin(double px) / .Margin(v, h)", "margin: {v} {h}", "UIModifier.New.Margin(0, 12)"),
+        new("Spacing", ".Gap(double px) / .Gap(string css)", "gap: {val}", "UIModifier.New.Gap(16)"),
+
+        new("Layout", ".Row() / .Column()", "display: flex; flex-direction: row/column", "UIModifier.New.Row().Gap(12)"),
+        new("Layout", ".AlignItems(HorizontalAlignment / VerticalAlignment)", "align-items: flex-start/center/flex-end", "UIModifier.New.AlignItems(VerticalAlignment.Center)"),
+        new("Layout", ".JustifyContent(Arrangement)", "justify-content: space-between/center/...", "UIModifier.New.JustifyContent(Arrangement.SpaceBetween)"),
+        new("Layout", ".CenterContent()", "align-items: center; justify-content: center", "UIModifier.New.CenterContent()"),
+        new("Layout", ".Wrap()", "flex-wrap: wrap", "UIModifier.New.Row().Wrap()"),
+
+        new("Surface", ".Background(string cssColor)", "--_w-bg / background-color", "UIModifier.New.Background(\"var(--ui-bg-elevated)\")"),
+        new("Surface", ".HeaderBackground(string cssColor)", "--_tw-header-bg", "UIModifier.New.HeaderBackground(\"#090d16\")"),
+        new("Surface", ".BorderColor(string cssColor)", "--_w-border / border-color", "UIModifier.New.BorderColor(\"var(--ui-accent)\")"),
+        new("Surface", ".Border(double px, string color)", "border: {px}px solid {color}", "UIModifier.New.Border(2, \"#3b82f6\")"),
+        new("Surface", ".BorderRadius(double px)", "--_w-radius / border-radius", "UIModifier.New.BorderRadius(16)"),
+        new("Surface", ".ClipRounded(px) / .ClipCircle()", "border-radius + overflow: hidden", "UIModifier.New.ClipCircle()"),
+        new("Surface", ".BoxShadow(string shadow) / .Opacity(double)", "box-shadow / opacity", "UIModifier.New.Opacity(0.85)"),
+
+        new("Buttons", ".BaseColor(string cssColor)", "--_btn-base (button face/border color)", "UIModifier.New.BaseColor(\"#22c55e\")"),
+        new("Buttons", ".TextColor(string cssColor)", "--_btn-text / color", "UIModifier.New.TextColor(\"#111111\")"),
+        new("Buttons", ".AccentColor(string cssColor)", "--_cb-accent / --_dd-accent", "UIModifier.New.AccentColor(\"#f97316\")"),
+        new("Buttons", ".Depth(double px)", "--_btn-depth (3D press shadow height)", "UIModifier.New.Depth(4)"),
+        new("Buttons", ".PressScale(double ratio)", "--_btn-scale (inward touch squish ratio)", "UIModifier.New.PressScale(0.90)"),
+        new("Buttons", ".AnimationSpeed(string cssTime)", "--_btn-speed / --loader-speed", "UIModifier.New.AnimationSpeed(\"0.08s\")"),
+
+        new("Typography", ".FontSize(double px) / .FontWeight(FontWeight)", "font-size / font-weight", "UIModifier.New.FontSize(18).FontWeight(FontWeight.Bold)"),
+        new("Scroll & CSS", ".VerticalScroll() / .HorizontalScroll()", "overflow-y: auto / overflow-x: auto", "UIModifier.New.VerticalScroll()"),
+        new("Scroll & CSS", ".Style(prop, val) / .RawStyle(css) / .Class(cls)", "Custom CSS property or class escape hatch", "UIModifier.New.Style(\"white-space\", \"pre\")")
+    ];
+
+    private readonly List<DataTable<ModifierApiItem>.Column> _modifierApiColumns =
+    [
+        new("Category", item => item.Category, ShowQuickFilters: true),
+        new("Method Signature", item => item.MethodSignature),
+        new("Generated CSS / Token", item => item.GeneratedCss),
+        new("Example Usage", item => item.ExampleUsage)
+    ];
+
+    private const string ClonePatternSnippet = @"public static class AppModifiers
+{
+    public static readonly UIModifier BaseCard = UIModifier.New
+        .FillMaxWidth()
+        .Padding(20)
+        .Gap(14)
+        .Background(""var(--ui-bg-elevated)"");
+}
+
+@* Clone and customize for one specific card without mutating BaseCard: *@
+<Window Modifier=""@(AppModifiers.BaseCard.Clone().BorderColor(""var(--ui-accent)""))"">
+    ...
+</Window>";
+
+    private const string FrameVsBodySnippet = @"<TitledWindow Title=""Order Summary""
+              Modifier=""@(UIModifier.New
+                  .Width(420)                       // -> Outer Window Frame
+                  .BorderColor(""var(--ui-accent)"")  // -> Outer Window Frame
+                  .HeaderBackground(""#111827"")      // -> Top Title Bar
+                  .Padding(24)                      // -> Inner Body Content
+                  .Gap(16))"">                       // -> Inner Body Content
+    <Text Value=""Item 1"" />
+    <Text Value=""Item 2"" />
+</TitledWindow>";
+}

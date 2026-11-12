@@ -1,0 +1,264 @@
+﻿@page "/inputs"
+@inject ToastService Toast
+@inject IJSRuntime JS
+
+<PageTitle>ALK's Personal UI - Form Inputs & Validation</PageTitle>
+
+<Column Modifier="@(UIModifier.New.FillMaxWidth())" Gap="2rem">
+
+    <TitledWindow Title="TextInput & Password Input (Live Validation, SecretString & Auto-Touch Keyboard)"
+                  Modifier="@ShowcaseStyles.SectionWindow">
+        <Text Variant="TypographyVariant.Body"
+              Muted="true"
+              Value="Every TextInput supports live ValidationRule lists, a clear button, and TouchMode (Auto opens the virtual ScreenKeyboard BottomSheet on finger tap; Always opens it on mouse click too)." />
+
+        <Grid MinColumnWidth="440px" Gap="1.5rem">
+            @* TEXT INPUT CARD *@
+            <Window Modifier="@ShowcaseStyles.FullHeightCardWindow">
+                <Column Gap="0.75rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="1. Standard TextInput + ValidationRules + TouchPopup" />
+                    <TextInput Label="Kiosk Customer Name (TouchMode = Always)"
+                               @bind-Value="_sampleUsername"
+                               TouchMode="TouchInputMode.Always"
+                               KeyboardSetup="@KeyboardSetup.TouchStandard"
+                               Placeholder="Click or tap to open ScreenKeyboard..."
+                               Rules="_usernameRules"
+                               Modifier="@(UIModifier.New.FillMaxWidth().Padding(10, 14))" />
+                    <Row Gap="0.5rem" VerticalAlignment="VerticalAlignment.Center">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="Live Bound Value:" />
+                        <Pill Variant="Pill.PillVariant.Accent" Text="@(_sampleUsername ?? "(empty)")" />
+                    </Row>
+                </Column>
+
+                <Column Gap="0.45rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="TextInput & ValidationRule Code:" />
+                        <ActionButton Size="ActionButton.ButtonSize.Small"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Modifier="@ShowcaseStyles.CopyButton"
+                                      Text="Copy Code"
+                                      OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, TextInputSnippet, "TextInput code"))" />
+                    </Row>
+                    <Window Modifier="@ShowcaseStyles.CodeWindow">
+                        <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@TextInputSnippet" />
+                    </Window>
+                </Column>
+            </Window>
+
+            @* PASSWORD / SECRETSTRING CARD *@
+            <Window Modifier="@ShowcaseStyles.FullHeightCardWindow">
+                <Column Gap="0.75rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="2. Password Mode (SecretString + HMAC-SHA256)" />
+                    <TextInput Label="Secret Password"
+                               IsPassword="true"
+                               @bind-SecretValue="_sampleSecret"
+                               Placeholder="Enter password (min 8 chars + digit)..."
+                               Rules="_passwordRules"
+                               Modifier="@(UIModifier.New.FillMaxWidth().Padding(10, 14))" />
+                    <Row Gap="0.5rem" VerticalAlignment="VerticalAlignment.Center">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="SecretValue.ToString():" />
+                        <Text Variant="TypographyVariant.Mono" Color="#f59e0b" Value="@_sampleSecret.ToString()" />
+                    </Row>
+                    <Row Gap="0.5rem" VerticalAlignment="VerticalAlignment.Center">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="HMAC-SHA256 Hash:" />
+                        <Text Variant="TypographyVariant.Mono" Color="#22c55e" Value="@GetShortHash()" />
+                    </Row>
+                </Column>
+
+                <Column Gap="0.45rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="SecretString Password Code:" />
+                        <ActionButton Size="ActionButton.ButtonSize.Small"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Modifier="@ShowcaseStyles.CopyButton"
+                                      Text="Copy Code"
+                                      OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, PasswordInputSnippet, "Password code"))" />
+                    </Row>
+                    <Window Modifier="@ShowcaseStyles.CodeWindow">
+                        <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@PasswordInputSnippet" />
+                    </Window>
+                </Column>
+            </Window>
+        </Grid>
+    </TitledWindow>
+
+    <TitledWindow Title="NumberInput<TValue>, Checkbox, Switch & Dropdown<TItem>"
+                  Modifier="@ShowcaseStyles.SectionWindow">
+        <Grid MinColumnWidth="360px" Gap="1.5rem">
+
+            @* NUMBER INPUT CARD *@
+            <Window Modifier="@ShowcaseStyles.FullHeightCardWindow">
+                <Column Gap="0.75rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="1. Generic <NumberInput<TValue>>" />
+                    <Text Variant="TypographyVariant.Caption" Muted="true" Value="Supports any INumber<T> (int, decimal, double). Hold +/- to auto-repeat, or tap the number to open TouchNumpad:" />
+                    <NumberInput TValue="decimal"
+                                 @bind-Value="_demoPrice"
+                                 TouchMode="TouchInputMode.Always"
+                                 Step="0.50m"
+                                 Min="0m"
+                                 Max="500m"
+                                 AriaLabel="Unit Price"
+                                 Suffix="kr." />
+                    <Row Gap="0.5rem" VerticalAlignment="VerticalAlignment.Center">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="Bound Value:" />
+                        <Pill Variant="Pill.PillVariant.Success" Text="@($"{_demoPrice:0.00} kr.")" />
+                    </Row>
+                </Column>
+                <Column Gap="0.45rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="NumberInput Markup:" />
+                        <ActionButton Size="ActionButton.ButtonSize.Small"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Modifier="@ShowcaseStyles.CopyButton"
+                                      Text="Copy"
+                                      OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, NumberInputSnippet, "NumberInput code"))" />
+                    </Row>
+                    <Window Modifier="@ShowcaseStyles.CodeWindow">
+                        <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@NumberInputSnippet" />
+                    </Window>
+                </Column>
+            </Window>
+
+            @* CHECKBOX & SWITCH CARD *@
+            <Window Modifier="@ShowcaseStyles.FullHeightCardWindow">
+                <Column Gap="0.75rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="2. <Checkbox> & Toggle Switch" />
+                    <Text Variant="TypographyVariant.Caption" Muted="true" Value="Set IsSwitch='true' to render a sliding pill toggle instead of a checkmark box:" />
+                    <Checkbox @bind-Checked="_demoCheck" Label="Standard SVG Checkbox" />
+                    <Checkbox @bind-Checked="_demoSwitch"
+                              IsSwitch="true"
+                              Label="Pill Switch Mode (IsSwitch = true)"
+                              Modifier="@(UIModifier.New.AccentColor("#22c55e"))" />
+                </Column>
+                <Column Gap="0.45rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="Checkbox & Switch Markup:" />
+                        <ActionButton Size="ActionButton.ButtonSize.Small"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Modifier="@ShowcaseStyles.CopyButton"
+                                      Text="Copy"
+                                      OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, CheckboxSnippet, "Checkbox code"))" />
+                    </Row>
+                    <Window Modifier="@ShowcaseStyles.CodeWindow">
+                        <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@CheckboxSnippet" />
+                    </Window>
+                </Column>
+            </Window>
+
+            @* DROPDOWN CARD *@
+            <Window Modifier="@ShowcaseStyles.FullHeightCardWindow">
+                <Column Gap="0.75rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Text Variant="TypographyVariant.Subtitle" Weight="FontWeight.Bold" Value="3. Generic <Dropdown<TItem>>" />
+                    <Text Variant="TypographyVariant.Caption" Muted="true" Value="Supports custom objects via TextSelector, keyboard arrow navigation, and enlarged touch options:" />
+                    <Dropdown TItem="string"
+                              Items="_danishStores"
+                              @bind-Value="_selectedStore"
+                              Modifier="@(UIModifier.New.FillMaxWidth())" />
+                    <Row Gap="0.5rem" VerticalAlignment="VerticalAlignment.Center">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="Selected Store:" />
+                        <Pill Variant="Pill.PillVariant.Accent" Text="@_selectedStore" />
+                    </Row>
+                </Column>
+                <Column Gap="0.45rem" Modifier="@(UIModifier.New.FillMaxWidth())">
+                    <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Modifier="@(UIModifier.New.FillMaxWidth())">
+                        <Text Variant="TypographyVariant.Caption" Muted="true" Value="Dropdown Markup:" />
+                        <ActionButton Size="ActionButton.ButtonSize.Small"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Modifier="@ShowcaseStyles.CopyButton"
+                                      Text="Copy"
+                                      OnClick="@(() => ShowcaseStyles.CopyAsync(JS, Toast, DropdownSnippet, "Dropdown code"))" />
+                    </Row>
+                    <Window Modifier="@ShowcaseStyles.CodeWindow">
+                        <Text Variant="TypographyVariant.Mono" Color="#93c5fd" Modifier="@ShowcaseStyles.PreText" Value="@DropdownSnippet" />
+                    </Window>
+                </Column>
+            </Window>
+
+        </Grid>
+    </TitledWindow>
+
+</Column>
+
+@code {
+    private string? _sampleUsername = "Viktor";
+    private SecretString _sampleSecret = new("SuperSecret123");
+    private decimal _demoPrice = 14.95m;
+    private bool _demoCheck = true;
+    private bool _demoSwitch = true;
+    private string _selectedStore = "Rema 1000";
+
+    private readonly List<string> _danishStores =
+    [
+        "Rema 1000", "Netto", "Lidl", "Foetex", "365discount",
+        "Bilka", "Meny", "Kvickly", "SuperBrugsen", "Spar"
+    ];
+
+    private readonly List<ValidationRule> _usernameRules =
+    [
+        new(val => val.Length >= 4, "Must be at least 4 characters long."),
+        new(val => !val.Contains(' '), "Username cannot contain spaces.")
+    ];
+
+    private readonly List<ValidationRule> _passwordRules =
+    [
+        new(val => val.Length >= 8, "Password must be at least 8 characters."),
+        new(val => val.Any(char.IsDigit), "Must contain at least one number.")
+    ];
+
+    private string GetShortHash()
+    {
+        if (_sampleSecret.IsEmpty)
+            return "(empty or invalid)";
+
+        var fullHash = _sampleSecret.Hash("my-app-salt");
+        return fullHash[..20] + "...";
+    }
+
+    private const string TextInputSnippet = @"<TextInput Label=""Customer Name""
+           @bind-Value=""_username""
+           TouchMode=""TouchInputMode.Auto""
+           KeyboardSetup=""@KeyboardSetup.TouchStandard""
+           Rules=""_usernameRules""
+           Modifier=""@(UIModifier.New.FillMaxWidth())"" />
+
+@code {
+    private string? _username;
+    private List<ValidationRule> _usernameRules =
+    [
+        new(v => v.Length >= 4, ""Min 4 chars""),
+        new(v => !v.Contains(' '), ""No spaces"")
+    ];
+}";
+
+    private const string PasswordInputSnippet = @"@* Never exposes raw plaintext via ToString() *@
+<TextInput Label=""Password""
+           IsPassword=""true""
+           @bind-SecretValue=""_secret""
+           Rules=""_passwordRules""
+           Modifier=""@(UIModifier.New.FillMaxWidth())"" />
+
+@code {
+    private SecretString _secret;
+    private string ComputeHash() => _secret.Hash(""my-salt"");
+}";
+
+    private const string NumberInputSnippet = @"<NumberInput TValue=""decimal""
+             @bind-Value=""_price""
+             TouchMode=""TouchInputMode.Auto""
+             Step=""0.50m""
+             Min=""0m""
+             Max=""500m""
+             Suffix=""kr."" />";
+
+    private const string CheckboxSnippet = @"<Checkbox @bind-Checked=""_agreed"" Label=""Accept terms"" />
+
+<Checkbox @bind-Checked=""_enabled""
+          IsSwitch=""true""
+          Label=""Enable Kiosk Mode""
+          Modifier=""@(UIModifier.New.AccentColor(""#22c55e""))"" />";
+
+    private const string DropdownSnippet = @"<Dropdown TItem=""string""
+          Items=""_stores""
+          @bind-Value=""_selectedStore""
+          Modifier=""@(UIModifier.New.FillMaxWidth())"" />";
+}
