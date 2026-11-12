@@ -361,3 +361,27 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# ==========================================================
+# Custom Exam Project Rules (Secrets, Archives & Local DBs)
+# ==========================================================
+
+# Ignore all .env secret files in the root and any subfolder
+**/.env
+**/.env.*
+!**/.env.example
+
+# Ignore compressed archives anywhere in the repository
+**/*.zip
+**/*.tar
+**/*.tar.gz
+**/*.tgz
+**/*.7z
+**/*.rar
+
+# Ignore local SQLite databases and WAL/SHM journal files
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/*.sqlite
+**/*.sqlite3
