@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/" />
-  <Folder Name="/src/showcase/">
+  <Folder Name="/src/Services/" />
+  <Folder Name="/src/Services/showcase/">
     <Project Path="src/showcase/ALKsPersonalUI.Showcase/ALKsPersonalUI.Showcase.csproj" />
   </Folder>
 </Solution>
