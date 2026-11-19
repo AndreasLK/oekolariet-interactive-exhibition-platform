@@ -63,7 +63,7 @@ jobs:
       - name: Run automated unit tests
         run: dotnet test --no-build --configuration Release
 
- cd-publish-docker:
+  cd-publish-docker:
     name: 2. Build and Push Docker Images
     needs: ci-build-and-test
     runs-on: ubuntu-latest
