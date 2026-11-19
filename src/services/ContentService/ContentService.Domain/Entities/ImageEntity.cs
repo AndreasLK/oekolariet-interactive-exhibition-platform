@@ -1,58 +1,35 @@
 ﻿using ContentService.Domain.Common;
 using ContentService.Domain.Exceptions;
+using ContentService.Domain.ValueObjects;
 
 namespace ContentService.Domain.Entities;
 
-/// <summary>
-/// Represents an uploaded image asset and its metadata in the Content Service.
-/// </summary>
 public sealed class ImageEntity : BaseEntity
 {
         private ImageEntity()
         {
         }
 
-        /// <summary>
-        /// Gets the original file name of the image.
-        /// </summary>
+        public string NodeId { get; private set; } = string.Empty;
+
         public string FileName { get; private set; } = string.Empty;
 
-        /// <summary>
-        /// Gets the MIME content type of the image.
-        /// </summary>
         public string ContentType { get; private set; } = string.Empty;
 
-        /// <summary>
-        /// Gets the size of the image binary in bytes.
-        /// </summary>
         public long FileSizeBytes { get; private set; }
 
-        /// <summary>
-        /// Gets the lowercase hexadecimal SHA-256 hash of the image binary.
-        /// </summary>
         public string Sha256Hash { get; private set; } = string.Empty;
 
-        /// <summary>
-        /// Gets the optional accessibility alternative text for the image.
-        /// </summary>
         public string? AltText { get; private set; }
 
-        /// <summary>
-        /// Gets a value indicating whether the image has been soft-deleted.
-        /// </summary>
         public bool IsDeleted { get; private set; }
 
-        /// <summary>
-        /// Creates a new <see cref="ImageEntity"/> with validated metadata.
-        /// </summary>
-        /// <param name="fileName">The original file name of the image.</param>
-        /// <param name="contentType">The MIME content type of the image.</param>
-        /// <param name="fileSizeBytes">The size of the image in bytes.</param>
-        /// <param name="sha256Hash">The SHA-256 hash of the image binary.</param>
-        /// <param name="actorId">The identifier of the actor uploading the image.</param>
-        /// <param name="altText">Optional accessibility alternative text.</param>
-        /// <returns>A newly initialized <see cref="ImageEntity"/>.</returns>
+        public string ExternalId => $"{this.NodeId}{DomainConstants.ASSET_ID_SEPARATOR}{this.Id.ToString(format: DomainConstants.GUID_FORMAT_HYPHENATED)}";
+
+        public PictureHandle Handle => new(nodeId: this.NodeId, imageId: this.Id);
+
         public static ImageEntity Create(
+                string nodeId,
                 string fileName,
                 string contentType,
                 long fileSizeBytes,
@@ -60,6 +37,7 @@ public sealed class ImageEntity : BaseEntity
                 string actorId,
                 string? altText = null)
         {
+                string validatedNodeId = PictureHandle.ValidateNodeId(nodeId: nodeId);
                 string validatedFileName = ValidateFileName(fileName: fileName);
                 string validatedContentType = ValidateContentType(contentType: contentType);
                 ValidateFileSize(fileSizeBytes: fileSizeBytes);
@@ -68,6 +46,7 @@ public sealed class ImageEntity : BaseEntity
 
                 ImageEntity entity = new()
                 {
+                        NodeId = validatedNodeId,
                         FileName = validatedFileName,
                         ContentType = validatedContentType,
                         FileSizeBytes = fileSizeBytes,
@@ -80,11 +59,6 @@ public sealed class ImageEntity : BaseEntity
                 return entity;
         }
 
-        /// <summary>
-        /// Updates the accessibility alternative text for the image.
-        /// </summary>
-        /// <param name="altText">The new alternative text, or <see langword="null"/> to clear it.</param>
-        /// <param name="actorId">The identifier of the actor performing the update.</param>
         public void UpdateAltText(string? altText, string actorId)
         {
                 if (this.IsDeleted)
@@ -96,10 +70,7 @@ public sealed class ImageEntity : BaseEntity
                 this.MarkModified(actorId: actorId);
         }
 
-        /// <summary>
-        /// Marks the image as soft-deleted.
-        /// </summary>
-        /// <param name="actorId">The identifier of the actor deleting the image.</param>
+        // Soft-delete is used instead of physical deletion because Drafts live in UI Editor's separate database, so hard-deleting could break active drafts across service boundaries.
         public void MarkDeleted(string actorId)
         {
                 if (this.IsDeleted)
@@ -125,7 +96,35 @@ public sealed class ImageEntity : BaseEntity
                                 message: $"File name cannot exceed {DomainConstants.MAX_FILE_NAME_LENGTH} characters.");
                 }
 
+                // OWASP path-traversal protection for downstream consumers and offline kiosk caches that derive local file paths from image metadata.
+                if (ContainsForbiddenPathCharacters(fileName: trimmed))
+                {
+                        throw new DomainValidationException(
+                                message: "File name cannot contain path separators, parent-directory traversal segments, or control characters.");
+                }
+
                 return trimmed;
+        }
+
+        private static bool ContainsForbiddenPathCharacters(string fileName)
+        {
+                foreach (string forbiddenSegment in DomainConstants.FORBIDDEN_FILE_NAME_SEGMENTS)
+                {
+                        if (fileName.Contains(value: forbiddenSegment, comparisonType: StringComparison.Ordinal))
+                        {
+                                return true;
+                        }
+                }
+
+                foreach (char character in fileName)
+                {
+                        if (char.IsControl(c: character))
+                        {
+                                return true;
+                        }
+                }
+
+                return false;
         }
 
         private static string ValidateContentType(string contentType)
@@ -162,13 +161,27 @@ public sealed class ImageEntity : BaseEntity
                 }
 
                 string trimmed = sha256Hash.Trim();
-                if (trimmed.Length != DomainConstants.SHA256_HEX_LENGTH)
+                // Sha256Hash is emitted verbatim in HTTP ETag headers and used for offline kiosk cache deduplication, so non-hex characters risk header injection or broken cache matching.
+                if (trimmed.Length != DomainConstants.SHA256_HEX_LENGTH || !IsAsciiHexString(value: trimmed))
                 {
                         throw new DomainValidationException(
                                 message: $"SHA-256 hash must be exactly {DomainConstants.SHA256_HEX_LENGTH} hexadecimal characters.");
                 }
 
                 return trimmed.ToLowerInvariant();
+        }
+
+        private static bool IsAsciiHexString(string value)
+        {
+                foreach (char character in value)
+                {
+                        if (!char.IsAsciiHexDigit(c: character))
+                        {
+                                return false;
+                        }
+                }
+
+                return true;
         }
 
         private static string? ValidateAltText(string? altText)
