@@ -1,7 +1,10 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+  </Folder>
   <Folder Name="/src/" />
   <Folder Name="/src/Services/" />
-  <Folder Name="/src/Services/showcase/">
-    <Project Path="src/showcase/ALKsPersonalUI.Showcase/ALKsPersonalUI.Showcase.csproj" />
+  <Folder Name="/src/Services/ContentService/">
+    <Project Path="src/services/ContentService/ContentService.Domain/ContentService.Domain.csproj" />
   </Folder>
 </Solution>
