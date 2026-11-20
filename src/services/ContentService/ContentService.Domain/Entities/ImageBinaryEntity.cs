@@ -3,31 +3,18 @@ using ContentService.Domain.Exceptions;
 
 namespace ContentService.Domain.Entities;
 
-/// <summary>
-/// Represents the binary payload associated with an <see cref="ImageEntity"/>.
-/// </summary>
+// Separated from ImageEntity (SRP) so metadata queries never load multi-megabyte byte[] payloads into memory; EF Core maps this to a dedicated table/columns.
 public sealed class ImageBinaryEntity
 {
         private ImageBinaryEntity()
         {
         }
 
-        /// <summary>
-        /// Gets the identifier of the owning <see cref="ImageEntity"/>.
-        /// </summary>
         public Guid ImageId { get; private set; }
 
-        /// <summary>
-        /// Gets the raw binary bytes of the image.
-        /// </summary>
         public byte[] Data { get; private set; } = [];
 
-        /// <summary>
-        /// Creates a new <see cref="ImageBinaryEntity"/> for the specified image identifier and binary payload.
-        /// </summary>
-        /// <param name="imageId">The identifier of the owning <see cref="ImageEntity"/>.</param>
-        /// <param name="data">The raw binary bytes of the image.</param>
-        /// <returns>A newly initialized <see cref="ImageBinaryEntity"/>.</returns>
+        // Factory method enforces size and identity invariants before construction so an invalid binary entity can never exist in memory.
         public static ImageBinaryEntity Create(Guid imageId, byte[] data)
         {
                 if (imageId == Guid.Empty)
@@ -44,6 +31,7 @@ public sealed class ImageBinaryEntity
                 return new ImageBinaryEntity
                 {
                         ImageId = imageId,
+                        // Defensive copy via collection expression prevents callers from mutating the entity's internal buffer after creation.
                         Data = [.. data]
                 };
         }

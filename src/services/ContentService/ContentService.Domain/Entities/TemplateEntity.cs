@@ -1,62 +1,51 @@
-﻿using ContentService.Domain.Common;
+using ContentService.Domain.Common;
 using ContentService.Domain.Enums;
 using ContentService.Domain.Exceptions;
+using ContentService.Domain.ValueObjects;
 
 namespace ContentService.Domain.Entities;
 
-/// <summary>
-/// Represents a reusable exhibition content template with a versioned JSON schema.
-/// </summary>
 public sealed class TemplateEntity : BaseEntity
 {
+        private readonly List<TemplateImageReference> _referencedImages = [];
+
         private TemplateEntity()
         {
         }
 
-        /// <summary>
-        /// Gets the display name of the template.
-        /// </summary>
+        public string StorageNodeId { get; private set; } = string.Empty;
+
         public string Name { get; private set; } = string.Empty;
 
-        /// <summary>
-        /// Gets the UI component type rendered for this template.
-        /// </summary>
         public TemplateComponentType ComponentType { get; private set; }
 
-        /// <summary>
-        /// Gets the JSON schema defining the template configuration structure.
-        /// </summary>
         public string SchemaJson { get; private set; } = string.Empty;
 
-        /// <summary>
-        /// Gets the monotonically increasing version number of the template schema.
-        /// </summary>
+        // Monotonic schema versioning lets UI Editor detect when a template's structure changed relative to an authored draft without redeploying UI code.
         public int SchemaVersion { get; private set; }
 
-        /// <summary>
-        /// Gets a value indicating whether the template has been archived.
-        /// </summary>
         public bool IsArchived { get; private set; }
 
-        /// <summary>
-        /// Creates a new <see cref="TemplateEntity"/> with an initial schema version.
-        /// </summary>
-        /// <param name="name">The display name of the template.</param>
-        /// <param name="componentType">The UI component type of the template.</param>
-        /// <param name="schemaJson">The JSON schema definition.</param>
-        /// <param name="actorId">The identifier of the actor creating the template.</param>
-        /// <returns>A newly initialized <see cref="TemplateEntity"/>.</returns>
+        public string ExternalId => $"{this.StorageNodeId}{DomainConstants.EXTERNAL_IMAGE_ID_SEPARATOR}{this.Id.ToString(format: DomainConstants.GUID_FORMAT_HYPHENATED)}";
+
+        public IReadOnlyCollection<TemplateImageReference> ReferencedImages => this._referencedImages.AsReadOnly();
+
+        // Factory method validates all invariants and extracts picture references upfront so a template can never be created in an invalid state.
         public static TemplateEntity Create(
+                string storageNodeId,
                 string name,
                 TemplateComponentType componentType,
                 string schemaJson,
                 string actorId)
         {
+                string validatedStorageNodeId = PictureReference.ValidateStorageNodeId(storageNodeId: storageNodeId);
                 string validatedName = ValidateName(name: name);
                 string validatedSchemaJson = ValidateSchemaJson(schemaJson: schemaJson);
+                List<PictureReference> referencedPictures = PictureReference.ExtractReferences(jsonPayload: validatedSchemaJson);
 
                 TemplateEntity entity = new()
                 {
+                        StorageNodeId = validatedStorageNodeId,
                         Name = validatedName,
                         ComponentType = componentType,
                         SchemaJson = validatedSchemaJson,
@@ -65,15 +54,11 @@ public sealed class TemplateEntity : BaseEntity
                 };
 
                 entity.InitializeAudit(actorId: actorId);
+                entity.SyncReferencedImages(references: referencedPictures);
                 return entity;
         }
 
-        /// <summary>
-        /// Updates the template name and schema JSON, incrementing <see cref="SchemaVersion"/>.
-        /// </summary>
-        /// <param name="name">The updated display name.</param>
-        /// <param name="schemaJson">The updated JSON schema definition.</param>
-        /// <param name="actorId">The identifier of the actor updating the template.</param>
+        // Increments SchemaVersion and re-syncs image references atomically whenever the template schema changes.
         public void UpdateSchema(string name, string schemaJson, string actorId)
         {
                 if (this.IsArchived)
@@ -81,16 +66,18 @@ public sealed class TemplateEntity : BaseEntity
                         throw new DomainValidationException(message: "Cannot update an archived template.");
                 }
 
-                this.Name = ValidateName(name: name);
-                this.SchemaJson = ValidateSchemaJson(schemaJson: schemaJson);
+                string validatedName = ValidateName(name: name);
+                string validatedSchemaJson = ValidateSchemaJson(schemaJson: schemaJson);
+                List<PictureReference> referencedPictures = PictureReference.ExtractReferences(jsonPayload: validatedSchemaJson);
+
+                this.Name = validatedName;
+                this.SchemaJson = validatedSchemaJson;
                 this.SchemaVersion++;
+                this.SyncReferencedImages(references: referencedPictures);
                 this.MarkModified(actorId: actorId);
         }
 
-        /// <summary>
-        /// Archives the template so it can no longer be modified or used for new drafts.
-        /// </summary>
-        /// <param name="actorId">The identifier of the actor archiving the template.</param>
+        // Soft-archives instead of deleting so existing exhibition drafts referencing this template do not break.
         public void Archive(string actorId)
         {
                 if (this.IsArchived)
@@ -102,6 +89,20 @@ public sealed class TemplateEntity : BaseEntity
                 this.MarkModified(actorId: actorId);
         }
 
+        private void SyncReferencedImages(List<PictureReference> references)
+        {
+                this._referencedImages.Clear();
+
+                foreach (PictureReference reference in references)
+                {
+                        this._referencedImages.Add(
+                                item: TemplateImageReference.Create(
+                                        templateId: this.Id,
+                                        pictureReference: reference));
+                }
+        }
+
+        // Trims and bounds-checks the template name at the domain boundary so persistence and UI layers can rely on clean strings.
         private static string ValidateName(string name)
         {
                 if (string.IsNullOrWhiteSpace(value: name))
@@ -119,6 +120,7 @@ public sealed class TemplateEntity : BaseEntity
                 return trimmed;
         }
 
+        // Guards against empty or oversized JSON payloads before regex scanning in PictureReference.ExtractReferences.
         private static string ValidateSchemaJson(string schemaJson)
         {
                 if (string.IsNullOrWhiteSpace(value: schemaJson))
