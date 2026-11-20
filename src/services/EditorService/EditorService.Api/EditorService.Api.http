@@ -1,0 +1,6 @@
+@EditorService.Api_HostAddress = http://localhost:5187
+
+GET {{EditorService.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
