@@ -15,8 +15,4 @@
     <Project Path="src/services/EditorService/EditorService.Infrastructure/EditorService.Infrastructure.csproj" />
     <Project Path="src/services/EditorService/EditorService.Tests/EditorService.Tests.csproj" />
   </Folder>
-  <Folder Name="/tests/" />
-  <Folder Name="/tests/AuthService/">
-    <Project Path="tests/AuthService/AuthService.Domain.Tests/AuthService.Domain.Tests.csproj" />
-  </Folder>
 </Solution>
