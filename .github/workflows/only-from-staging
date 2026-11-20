@@ -1,0 +1,14 @@
+name: Verify Source Branch
+on:
+  pull_request:
+    branches: [master]
+
+jobs:
+  verify-source-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if PR is from staging
+        if: github.head_ref != 'staging'
+        run: |
+          echo "PRs to master must come from staging."
+          exit 1

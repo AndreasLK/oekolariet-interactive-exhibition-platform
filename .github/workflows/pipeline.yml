@@ -3,17 +3,17 @@ name: CI-CD Pipeline
 on:
   push:
     branches:
-      - main
-      - master
-      - staging
-      - 'feature/**'
-      - 'fix/**'
-      - 'hotfix/**'
+      - '[Mm][Aa][Ii][Nn]'
+      - '[Mm][Aa][Ss][Tt][Ee][Rr]'
+      - '[Ss][Tt][Aa][Gg][Ii][Nn][Gg]'
+      - '[Ff][Ee][Aa][Tt][Uu][Rr][Ee]/**'
+      - '[Ff][Ii][Xx]/**'
+      - '[Hh][Oo][Tt][Ff][Ii][Xx]/**'
   pull_request:
     branches:
-      - main
-      - master
-      - staging
+      - '[Mm][Aa][Ii][Nn]'
+      - '[Mm][Aa][Ss][Tt][Ee][Rr]'
+      - '[Ss][Tt][Aa][Gg][Ii][Nn][Gg]'
 
 env:
   REGISTRY: ghcr.io
