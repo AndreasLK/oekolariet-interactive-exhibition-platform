@@ -1,27 +1,11 @@
 namespace ContentService.Domain.Enums;
 
-/// <summary>
-/// Represents the UI component type associated with a content template.
-/// </summary>
+// Maps each template to the Blazor UI component that renders it; explicit integer values keep persisted DB rows stable if members are reordered.
 public enum TemplateComponentType
 {
-        /// <summary>
-        /// An interactive quiz template.
-        /// </summary>
         QuizTemplate = 0,
-
-        /// <summary>
-        /// An interactive game template.
-        /// </summary>
         GameTemplate = 1,
-
-        /// <summary>
-        /// A static or lightly interactive information screen template.
-        /// </summary>
         InfoScreen = 2,
-
-        /// <summary>
-        /// A custom exhibition component template.
-        /// </summary>
+        // Bespoke one-off exhibition components outside the standard quiz, game, and info-screen presets.
         Custom = 3
 }
