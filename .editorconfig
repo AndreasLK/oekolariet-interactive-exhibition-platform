@@ -110,11 +110,12 @@ dotnet_style_prefer_is_null_check_over_reference_equality_method = true:error
 
 #### DOCUMENTATION ####
 
+# Disabled because XML doc diagnostics are buggy in the current Visual Studio build and intention-revealing names are preferred.
 # CS1591: Missing XML comment for public members
-dotnet_diagnostic.CS1591.severity = error
+dotnet_diagnostic.CS1591.severity = none
 
 # CS1573: Parameter has no matching param tag
-dotnet_diagnostic.CS1573.severity = error
+dotnet_diagnostic.CS1573.severity = none
 
 # Accessibility modifier enforcement
 dotnet_style_require_accessibility_modifiers = always:error
