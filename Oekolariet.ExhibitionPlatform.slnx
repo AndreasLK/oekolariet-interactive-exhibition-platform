@@ -14,6 +14,7 @@
     <Project Path="src/services/EditorService/EditorService.Domain/EditorService.Domain.csproj" />
     <Project Path="src/services/EditorService/EditorService.Facade/EditorService.Facade.csproj" />
     <Project Path="src/services/EditorService/EditorService.Infrastructure/EditorService.Infrastructure.csproj" />
+    <Project Path="src/services/EditorService/EditorService.Presentation/EditorService.Presentation.csproj" />
     <Project Path="src/services/EditorService/EditorService.Tests/EditorService.Tests.csproj" />
   </Folder>
 </Solution>
