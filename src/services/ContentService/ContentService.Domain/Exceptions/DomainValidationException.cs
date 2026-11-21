@@ -1,24 +1,27 @@
 namespace ContentService.Domain.Exceptions;
 
 /// <summary>
-/// Represents an error thrown when domain invariants or input validation rules are violated.
+/// Represents a domain invariant or input validation failure detected inside entities or value objects.
 /// </summary>
+// Mapped by API middleware to HTTP 400 Bad Request or 422 Unprocessable Entity independently of transport validation frameworks.
 public sealed class DomainValidationException : DomainException
 {
         /// <summary>
-        /// Initializes a new instance of the <see cref="DomainValidationException"/> class with a specified error message.
+        /// Initializes a new instance of the <see cref="DomainValidationException"/> class with a descriptive error message.
         /// </summary>
-        /// <param name="message">The message that describes the validation error.</param>
-        public DomainValidationException(string message) : base(message: message)
+        /// <param name="message">The description of the failed validation rule or invariant.</param>
+        public DomainValidationException(string message)
+                : base(message)
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="DomainValidationException"/> class with a specified error message and inner exception.
+        /// Initializes a new instance of the <see cref="DomainValidationException"/> class with a descriptive error message and inner exception.
         /// </summary>
-        /// <param name="message">The message that describes the validation error.</param>
-        /// <param name="innerException">The exception that is the cause of the current exception.</param>
-        public DomainValidationException(string message, Exception innerException) : base(message: message, innerException: innerException)
+        /// <param name="message">The description of the failed validation rule or invariant.</param>
+        /// <param name="innerException">The underlying exception that triggered the validation failure.</param>
+        public DomainValidationException(string message, Exception innerException)
+                : base(message, innerException)
         {
         }
 }

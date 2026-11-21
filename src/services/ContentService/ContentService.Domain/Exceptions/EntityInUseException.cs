@@ -1,24 +1,27 @@
 namespace ContentService.Domain.Exceptions;
 
 /// <summary>
-/// Represents an error thrown when an operation cannot proceed because the target entity is currently in use.
+/// Represents a referential integrity conflict when an entity cannot be deleted or modified because active dependents still reference it.
 /// </summary>
+// Mapped by API middleware to HTTP 409 Conflict without coupling the domain to SQL foreign-key error numbers.
 public sealed class EntityInUseException : DomainException
 {
         /// <summary>
-        /// Initializes a new instance of the <see cref="EntityInUseException"/> class with a specified error message.
+        /// Initializes a new instance of the <see cref="EntityInUseException"/> class with a descriptive error message.
         /// </summary>
-        /// <param name="message">The message that describes the conflict.</param>
-        public EntityInUseException(string message) : base(message: message)
+        /// <param name="message">The description of the entity and blocking references.</param>
+        public EntityInUseException(string message)
+                : base(message)
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="EntityInUseException"/> class with a specified error message and inner exception.
+        /// Initializes a new instance of the <see cref="EntityInUseException"/> class with a descriptive error message and inner exception.
         /// </summary>
-        /// <param name="message">The message that describes the conflict.</param>
-        /// <param name="innerException">The exception that is the cause of the current exception.</param>
-        public EntityInUseException(string message, Exception innerException) : base(message: message, innerException: innerException)
+        /// <param name="message">The description of the entity and blocking references.</param>
+        /// <param name="innerException">The underlying exception associated with the dependency check.</param>
+        public EntityInUseException(string message, Exception innerException)
+                : base(message, innerException)
         {
         }
 }
