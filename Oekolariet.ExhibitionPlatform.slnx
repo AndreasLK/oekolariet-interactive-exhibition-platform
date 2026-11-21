@@ -9,6 +9,7 @@
     <Project Path="src/services/ContentService/ContentService.Tests/ContentService.Tests.csproj" />
   </Folder>
   <Folder Name="/src/Services/EditorService/">
+    <Project Path="EditorService.Sdk/EditorService.Sdk.csproj" Id="e8ba4f21-d2bc-4a54-939b-91c33d5b9d8d" />
     <Project Path="src/services/EditorService/EditorService.Api/EditorService.Api.csproj" />
     <Project Path="src/services/EditorService/EditorService.Application/EditorService.Application.csproj" />
     <Project Path="src/services/EditorService/EditorService.Domain/EditorService.Domain.csproj" />
