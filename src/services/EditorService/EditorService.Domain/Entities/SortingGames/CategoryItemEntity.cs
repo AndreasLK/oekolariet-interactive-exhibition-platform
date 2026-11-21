@@ -2,7 +2,7 @@ using EditorService.Domain.Common;
 using EditorService.Domain.Exceptions;
 
 
-namespace EditorService.Domain.Entities
+namespace EditorService.Domain.Entities.SortingGames
 {
         /// <summary>
         /// Represents an item in a sorting game, e.g. a piece of waste, that the player must drag into the correct category receiver.
