@@ -1,6 +1,10 @@
 using ContentService.Application.Interfaces;
 using ContentService.Application.Common;
 using ContentService.Application.Options;
+using ContentService.Application.UseCases.Health;
+using ContentService.Application.UseCases.Images;
+using ContentService.Application.UseCases.Publishing;
+using ContentService.Application.UseCases.Templates;
 using ContentService.Application.Validation;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,12 +13,12 @@ using Microsoft.Extensions.Options;
 namespace ContentService.Application;
 
 /// <summary>
-/// Registers ContentService application options and validation services with the dependency injection container.
+/// Registers ContentService application options, validators, and use cases with the dependency injection container.
 /// </summary>
 public static class DependencyInjection
 {
         /// <summary>
-        /// Configures <see cref="ContentStorageOptions"/> with startup validation and registers stateless ContentService application validation services.
+        /// Configures <see cref="ContentStorageOptions"/> with startup validation and registers all ContentService application services and use cases.
         /// </summary>
         /// <param name="services">The target service collection.</param>
         /// <param name="configuration">The application configuration containing the <c>ContentStorage</c> section.</param>
@@ -36,6 +40,22 @@ public static class DependencyInjection
 
                 // Magic-byte validation is stateless and thread-safe, so a single shared instance suffices across requests.
                 services.AddSingleton<IImageSignatureValidator, MagicByteImageSignatureValidator>();
+
+                // Register use cases as scoped so each request shares one scoped repository/DbContext unit of work.
+                services.AddScoped<UploadImageUseCase>();
+                services.AddScoped<GetImageMetadataUseCase>();
+                services.AddScoped<ListImagesUseCase>();
+                services.AddScoped<GetImageStreamUseCase>();
+                services.AddScoped<DeleteImageUseCase>();
+
+                services.AddScoped<CreateTemplateUseCase>();
+                services.AddScoped<UpdateTemplateUseCase>();
+                services.AddScoped<GetTemplateUseCase>();
+                services.AddScoped<ListTemplatesUseCase>();
+                services.AddScoped<DeleteTemplateUseCase>();
+
+                services.AddScoped<ResolvePublishBundleUseCase>();
+                services.AddScoped<GetStorageHealthUseCase>();
 
                 return services;
         }
