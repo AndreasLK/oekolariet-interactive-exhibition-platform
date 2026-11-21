@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace EditorService.Domain.Entities
+namespace EditorService.Domain.Entities.SortingGames
 {
         /// <summary>
         /// A drag-and-drop game where the player sorts items into category receivers.

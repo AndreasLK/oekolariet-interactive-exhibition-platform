@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace EditorService.Domain.Entities
+namespace EditorService.Domain.Entities.SortingGames
 {
         /// <summary>
         /// Represents a target in a sorting game that items are sorted into, e.g. a bin.
