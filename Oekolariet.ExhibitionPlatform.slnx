@@ -6,6 +6,7 @@
   <Folder Name="/src/Services/" />
   <Folder Name="/src/Services/ContentService/">
     <Project Path="src/services/ContentService/ContentService.Domain/ContentService.Domain.csproj" />
+    <Project Path="src/services/ContentService/ContentService.Tests/ContentService.Tests.csproj" />
   </Folder>
   <Folder Name="/src/Services/EditorService/">
     <Project Path="src/services/EditorService/EditorService.Api/EditorService.Api.csproj" />
