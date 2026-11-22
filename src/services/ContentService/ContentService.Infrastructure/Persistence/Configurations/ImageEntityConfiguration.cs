@@ -38,6 +38,12 @@ internal sealed class ImageEntityConfiguration : IEntityTypeConfiguration<ImageE
                 builder.Property(image => image.AltText)
                         .HasMaxLength(DomainConstants.MAX_ALT_TEXT_LENGTH)
                         .IsRequired(false);
+                builder.Property(image => image.AlbumPath)
+                        .HasMaxLength(DomainConstants.MAX_ALBUM_PATH_LENGTH)
+                        .IsRequired(false);
+                builder.Property(image => image.Tags)
+                        .HasMaxLength(DomainConstants.MAX_IMAGE_TAGS_LENGTH)
+                        .IsRequired(false);
                 builder.Property(image => image.IsDeleted).IsRequired();
 
                 builder.Property(image => image.CreatedAt).IsRequired();
@@ -54,11 +60,13 @@ internal sealed class ImageEntityConfiguration : IEntityTypeConfiguration<ImageE
                         .IsConcurrencyToken()
                         .IsRequired();
 
-                // Exclude derived properties computed in C# from StorageNodeId and Id so SQL does not store duplicate columns.
+                // Exclude derived properties computed in C# from StorageNodeId/Id/Tags so SQL does not store duplicate columns.
                 builder.Ignore(image => image.ExternalId);
                 builder.Ignore(image => image.Reference);
+                builder.Ignore(image => image.TagList);
 
                 // Keep the Sha256Hash index non-unique because soft-deleted rows (IsDeleted = true) stay in the table even if identical bytes are uploaded again.
                 builder.HasIndex(image => image.Sha256Hash);
+                builder.HasIndex(image => image.AlbumPath);
         }
 }
