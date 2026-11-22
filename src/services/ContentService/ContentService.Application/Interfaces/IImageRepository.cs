@@ -36,14 +36,44 @@ public interface IImageRepository
         public Task<ImageEntity?> GetBySha256Async(string sha256Hash, CancellationToken cancellationToken);
 
         /// <summary>
-        /// Lists a single page of active (non-deleted) images optionally filtered by file name search text.
+        /// Lists a single page of active (non-deleted) images optionally filtered by file name/description/tag search text and album path.
         /// </summary>
         /// <param name="page">The clamped 1-based page index.</param>
         /// <param name="pageSize">The clamped page size.</param>
-        /// <param name="searchTerm">Optional case-insensitive file name search filter.</param>
+        /// <param name="searchTerm">Optional case-insensitive search filter across file name, alt text, and tags.</param>
+        /// <param name="albumPath">Optional normalized album path filter.</param>
+        /// <param name="includeSubalbums">When <see langword="true"/>, matches images inside nested sub-albums of <paramref name="albumPath"/> as well.</param>
         /// <param name="cancellationToken">A token to observe while awaiting the query.</param>
         /// <returns>A <see cref="PagedResult{T}"/> containing active matching images.</returns>
-        public Task<PagedResult<ImageEntity>> ListAsync(int page, int pageSize, string? searchTerm, CancellationToken cancellationToken);
+        public Task<PagedResult<ImageEntity>> ListAsync(
+                int page,
+                int pageSize,
+                string? searchTerm,
+                string? albumPath,
+                bool includeSubalbums,
+                CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Lists distinct immediate child album paths directly beneath <paramref name="parentAlbumPath"/> from active images.
+        /// </summary>
+        /// <param name="parentAlbumPath">The normalized parent album path, or <see langword="null"/> for root-level albums.</param>
+        /// <param name="cancellationToken">A token to observe while awaiting the query.</param>
+        /// <returns>A sorted read-only list of immediate child album paths.</returns>
+        public Task<IReadOnlyList<string>> ListChildAlbumPathsAsync(
+                string? parentAlbumPath,
+                CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Persists metadata edits (<c>AltText</c>, <c>Tags</c>, <c>AlbumPath</c>) while enforcing optimistic concurrency.
+        /// </summary>
+        /// <param name="image">The updated image entity with rotated concurrency stamp.</param>
+        /// <param name="expectedConcurrencyStamp">The concurrency stamp observed before <see cref="ImageEntity.UpdateMetadata"/> rotated it.</param>
+        /// <param name="cancellationToken">A token to observe while persisting the update.</param>
+        /// <returns>A task representing the asynchronous update operation.</returns>
+        public Task UpdateMetadataAsync(
+                ImageEntity image,
+                Guid expectedConcurrencyStamp,
+                CancellationToken cancellationToken);
 
         /// <summary>
         /// Determines whether any template—including archived templates—currently references the specified image.

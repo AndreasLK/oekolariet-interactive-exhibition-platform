@@ -2,6 +2,7 @@ using ContentService.Application.Interfaces;
 using ContentService.Application.Common;
 using ContentService.Application.Models;
 using ContentService.Domain.Entities;
+using ContentService.Domain.ValueObjects;
 
 namespace ContentService.Application.UseCases.Images;
 
@@ -52,10 +53,14 @@ public sealed class ListImagesUseCase
                         min: ApplicationConstants.DEFAULT_PAGE,
                         max: maxValidPage);
 
+                string? normalizedAlbumPath = AlbumPath.NormalizeOptional(rawAlbumPath: query.AlbumPath);
+
                 PagedResult<ImageEntity> pagedEntities = await this._imageRepository.ListAsync(
                         page: clampedPage,
                         pageSize: clampedPageSize,
                         searchTerm: query.SearchTerm,
+                        albumPath: normalizedAlbumPath,
+                        includeSubalbums: query.IncludeSubalbums,
                         cancellationToken: cancellationToken);
 
                 IReadOnlyList<ImageMetadataResult> projectedItems = pagedEntities.Items
