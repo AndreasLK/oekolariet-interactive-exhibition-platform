@@ -1,0 +1,15 @@
+<Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+                <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+                <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+                <LayoutView Layout="@typeof(MainLayout)">
+                        <Column Gap="0.75rem" Modifier="@UIModifier.New.Padding(uniformPx: 24)">
+                                <Text Value="Page not found" Variant="TypographyVariant.H2" />
+                                <Text Value="The requested route does not exist in ContentService Gallery." Variant="TypographyVariant.Body" Muted="true" />
+                        </Column>
+                </LayoutView>
+        </NotFound>
+</Router>
+
