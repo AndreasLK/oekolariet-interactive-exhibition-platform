@@ -45,17 +45,17 @@ public sealed class ResolvePublishBundleUseCaseTests : IAsyncLifetime
         private const string EMPTY_JSON_OBJECT = "{}";
 
         /// <summary>
-        /// Distinct PNG-prefixed test payload for the first seeded image asset.
+        /// Distinct test payload using the 8-byte PNG magic header (<c>0x89 "PNG" CRLF Ctrl+Z LF</c>) + trailing <c>0x01</c> for unique SHA-256 hashing.
         /// </summary>
         private static readonly byte[] FIRST_IMAGE_BYTES = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x01];
 
         /// <summary>
-        /// Distinct PNG-prefixed test payload for the second seeded image asset.
+        /// Distinct test payload using the 8-byte PNG magic header + trailing <c>0x02</c> so the second image produces a different SHA-256 hash.
         /// </summary>
         private static readonly byte[] SECOND_IMAGE_BYTES = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x02];
 
         /// <summary>
-        /// Distinct PNG-prefixed test payload used to verify bundle checksum sensitivity to asset content changes.
+        /// Distinct test payload using the 8-byte PNG magic header + trailing <c>0x99</c> to verify publish bundle checksum sensitivity.
         /// </summary>
         private static readonly byte[] MODIFIED_IMAGE_BYTES = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x99];
 
