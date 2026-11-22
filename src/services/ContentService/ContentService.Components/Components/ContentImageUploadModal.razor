@@ -1,0 +1,106 @@
+@* Controlled upload modal using ALKsPersonalUI 3.1.3 ImageUpload (folder relative paths + bounded previews) and metadata inputs. *@
+<Modal IsOpen="@this.IsOpen"
+       IsOpenChanged="@this.HandleModalVisibilityChangedAsync"
+       Title="Upload Images or Folders"
+       CloseOnBackdropClick="@(!this._isUploading)"
+       Modifier="@this.BuildModalModifier()">
+        <ChildContent>
+                @if (this.IsOpen)
+                {
+                        <Column Gap="1rem" Modifier="@UIModifier.New.FillMaxWidth()">
+                                @* ALKsPersonalUI 3.1.3 captures webkitRelativePath into SelectedImageFile.RelativePath and bounds WASM preview memory. *@
+                                <ImageUpload AllowMultiple="true"
+                                             AllowFolderUpload="true"
+                                             AcceptedExtensions="@ACCEPTED_IMAGE_EXTENSIONS"
+                                             MaxFileSizeBytes="@MAX_IMAGE_SIZE_BYTES"
+                                             MaxAllowedFiles="@MAX_FILES_PER_BATCH"
+                                             ShowPreview="true"
+                                             MaxPreviewItems="@MAX_PREVIEW_ITEMS"
+                                             MaxPreviewDimensionPixels="@MAX_PREVIEW_DIMENSION_PX"
+                                             MaxPreviewBytesTotal="@MAX_PREVIEW_BYTES_TOTAL"
+                                             IsDisabled="@this._isUploading"
+                                             PromptText="Select images or a folder (PNG, JPEG, WebP � max 10 MB each)"
+                                             OnImagesWithPathsSelected="@this.HandleImagesWithPathsSelected" />
+
+                                @if (this._pendingFiles.Count > 0)
+                                {
+                                        <Column Gap="0.5rem" Modifier="@UIModifier.New.FillMaxWidth()">
+                                                <Row HorizontalArrangement="Arrangement.SpaceBetween"
+                                                     VerticalAlignment="VerticalAlignment.Center"
+                                                     Modifier="@UIModifier.New.FillMaxWidth()">
+                                                        <Text Value="Ready to upload" Variant="TypographyVariant.Subtitle" />
+                                                        <Pill Text="@($"{this._pendingFiles.Count} file(s)")" Variant="Pill.PillVariant.Accent" />
+                                                </Row>
+
+                                                @foreach (SelectedImageFile item in this._pendingFiles)
+                                                {
+                                                        <Row HorizontalArrangement="Arrangement.SpaceBetween"
+                                                             VerticalAlignment="VerticalAlignment.Center"
+                                                             Gap="0.5rem"
+                                                             Modifier="@this.BuildPendingFileRowModifier()">
+                                                                <Text Value="@item.File.Name" Variant="TypographyVariant.Body" MaxLines="@SINGLE_LINE_MAX_LINES" />
+                                                                <Row Gap="0.4rem" VerticalAlignment="VerticalAlignment.Center">
+                                                                        @if (this.ResolveTargetAlbumPath(selectedFile: item) is string targetAlbum)
+                                                                        {
+                                                                                <Pill Text="@targetAlbum" Variant="Pill.PillVariant.Neutral" />
+                                                                        }
+                                                                        <Text Value="@ContentImageDisplayFormatter.FormatByteSize(sizeBytes: item.File.Size)"
+                                                                              Variant="TypographyVariant.Caption"
+                                                                              Muted="true" />
+                                                                </Row>
+                                                        </Row>
+                                                }
+                                        </Column>
+                                }
+
+                                @if (this.LockAlbumPath && !string.IsNullOrWhiteSpace(value: this._albumPath))
+                                {
+                                        <Row Gap="0.5rem" VerticalAlignment="VerticalAlignment.Center">
+                                                <Text Value="Target Album:" Variant="TypographyVariant.Caption" Muted="true" />
+                                                <Pill Text="@this._albumPath" Variant="Pill.PillVariant.Accent" />
+                                        </Row>
+                                }
+                                else
+                                {
+                                        <TextInput Label="Album Path (optional)"
+                                                   Placeholder="e.g., Madaffald or Madaffald/Frugt"
+                                                   MaxLength="@MAX_ALBUM_PATH_LENGTH"
+                                                   ShowClearButton="true"
+                                                   Value="@this._albumPath"
+                                                   ValueChanged="@this.HandleAlbumPathChanged" />
+                                }
+
+                                <TextInput Label="Description / Alt Text (optional)"
+                                           Placeholder="Describe what is in the photo (e.g., Yellow banana)..."
+                                           MaxLength="@MAX_ALT_TEXT_LENGTH"
+                                           ShowClearButton="true"
+                                           Value="@this._altText"
+                                           ValueChanged="@this.HandleAltTextChanged" />
+
+                                <TextInput Label="Tags (comma-separated, optional)"
+                                           Placeholder="banana, fruit, organic..."
+                                           MaxLength="@MAX_TAGS_LENGTH"
+                                           ShowClearButton="true"
+                                           Value="@this._tags"
+                                           ValueChanged="@this.HandleTagsChanged" />
+                        </Column>
+                }
+        </ChildContent>
+        <FooterContent>
+                <Row HorizontalArrangement="Arrangement.End"
+                     VerticalAlignment="VerticalAlignment.Center"
+                     Gap="0.75rem"
+                     Modifier="@UIModifier.New.FillMaxWidth()">
+                        <ActionButton Text="Cancel"
+                                      Variant="ActionButton.ButtonVariant.Ghost"
+                                      IsDisabled="@this._isUploading"
+                                      OnClick="@this.HandleCancelClickedAsync" />
+
+                        <ActionButton Text="@this.ResolveUploadButtonText()"
+                                      Variant="ActionButton.ButtonVariant.Solid"
+                                      IsLoading="@this._isUploading"
+                                      IsDisabled="@(this._isUploading || this._pendingFiles.Count == 0)"
+                                      OnClick="@this.HandleUploadClickedAsync" />
+                </Row>
+        </FooterContent>
+</Modal>
