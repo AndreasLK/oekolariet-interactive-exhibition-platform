@@ -8,6 +8,7 @@ using ContentService.Infrastructure;
 using ContentService.Infrastructure.Persistence;
 using ContentService.Infrastructure.Repositories;
 using ContentService.Tests.Application.Persistence;
+using ContentService.Tests.Common;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -19,6 +20,7 @@ namespace ContentService.Tests.Infrastructure;
 /// Integration tests verifying <c>ContentService.Infrastructure</c> EF Core migrations, constraints, binary reads, and DI wiring against real SQL Server.
 /// </summary>
 [Collection(MsSqlContentDatabaseCollection.COLLECTION_NAME)]
+[Trait(TestTraits.CATEGORY_KEY, TestTraits.INTEGRATION)]
 public sealed class ContentInfrastructureTests : IAsyncLifetime
 {
         /// <summary>
