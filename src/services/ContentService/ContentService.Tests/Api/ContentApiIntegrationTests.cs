@@ -17,7 +17,7 @@ using Microsoft.Net.Http.Headers;
 namespace ContentService.Tests.Api;
 
 /// <summary>
-/// End-to-end HTTP integration tests verifying <c>ContentService.Api</c> routes, streaming, ETag caching, ProblemDetails, and SQL Server persistence.
+/// End-to-end HTTP integration tests verifying <c>ContentService.Api</c> routes, streaming, immutable <c>Cache-Control</c> headers, ProblemDetails, and SQL Server persistence.
 /// </summary>
 [Collection(MsSqlContentDatabaseCollection.COLLECTION_NAME)]
 public sealed class ContentApiIntegrationTests : IAsyncLifetime
@@ -93,6 +93,11 @@ public sealed class ContentApiIntegrationTests : IAsyncLifetime
         private const string EXPECTED_ACCEPT_RANGES_HEADER = "none";
 
         /// <summary>
+        /// Expected <c>Cache-Control</c> header emitted on immutable image stream responses.
+        /// </summary>
+        private const string EXPECTED_CACHE_CONTROL_HEADER = "public, max-age=31536000, immutable";
+
+        /// <summary>
         /// Expected inline <c>Content-Disposition</c> disposition type.
         /// </summary>
         private const string EXPECTED_INLINE_DISPOSITION = "inline";
@@ -155,7 +160,7 @@ public sealed class ContentApiIntegrationTests : IAsyncLifetime
         public Task DisposeAsync() => Task.CompletedTask;
 
         /// <summary>
-        /// Verifies the full HTTP image lifecycle: upload (201), metadata (200), list (200), content stream + ETag (200), conditional <c>If-None-Match</c> (304), and delete (204 -> 404).
+        /// Verifies the full HTTP image lifecycle: upload (201), metadata (200), list (200), content stream + immutable <c>Cache-Control</c> (200), and delete (204 -> 404).
         /// </summary>
         /// <returns>A task representing the asynchronous test execution.</returns>
         [Fact]
@@ -202,33 +207,22 @@ public sealed class ContentApiIntegrationTests : IAsyncLifetime
 
                 // Assert 3
                 Assert.Equal(HttpStatusCode.OK, contentResponse.StatusCode);
-                string expectedETag = $"\"{uploaded.Sha256Hash}\"";
-                Assert.Equal(expectedETag, contentResponse.Headers.ETag?.ToString());
-                Assert.True(contentResponse.Headers.CacheControl?.NoCache);
-                Assert.True(contentResponse.Headers.CacheControl?.Private);
+                Assert.True(contentResponse.Headers.CacheControl?.Public);
+                Assert.Equal(
+                        EXPECTED_CACHE_CONTROL_HEADER,
+                        contentResponse.Headers.GetValues(HeaderNames.CacheControl).Single());
                 Assert.Equal(EXPECTED_NOSNIFF_HEADER, contentResponse.Headers.GetValues(HeaderNames.XContentTypeOptions).Single());
                 Assert.Equal(EXPECTED_ACCEPT_RANGES_HEADER, contentResponse.Headers.AcceptRanges.Single());
                 Assert.Equal(EXPECTED_INLINE_DISPOSITION, contentResponse.Content.Headers.ContentDisposition?.DispositionType);
                 Assert.Equal(VALID_PNG_PAYLOAD.Length, contentResponse.Content.Headers.ContentLength);
                 Assert.Equal(VALID_PNG_PAYLOAD, downloadedBytes);
 
-                // Act 4: Conditional ETag hit
-                using HttpRequestMessage conditionalRequest = new(HttpMethod.Get, $"{IMAGES_ROUTE}/{uploaded.Id}/content");
-                conditionalRequest.Headers.TryAddWithoutValidation(HeaderNames.IfNoneMatch, expectedETag);
-                using HttpResponseMessage notModifiedResponse = await client.SendAsync(conditionalRequest);
-                byte[] emptyBody = await notModifiedResponse.Content.ReadAsByteArrayAsync();
-
-                // Assert 4
-                Assert.Equal(HttpStatusCode.NotModified, notModifiedResponse.StatusCode);
-                Assert.Equal(expectedETag, notModifiedResponse.Headers.ETag?.ToString());
-                Assert.Empty(emptyBody);
-
-                // Act 5: Delete unreferenced image -> 204 -> 404
+                // Act 4: Delete unreferenced image -> 204 -> 404
                 using HttpResponseMessage deleteResponse = await client.DeleteAsync($"{IMAGES_ROUTE}/{uploaded.Id}");
                 using HttpResponseMessage afterDeleteMetadata = await client.GetAsync($"{IMAGES_ROUTE}/{uploaded.Id}");
                 using HttpResponseMessage afterDeleteContent = await client.GetAsync($"{IMAGES_ROUTE}/{uploaded.Id}/content");
 
-                // Assert 5
+                // Assert 4
                 Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
                 Assert.Equal(HttpStatusCode.NotFound, afterDeleteMetadata.StatusCode);
                 Assert.Equal(HttpStatusCode.NotFound, afterDeleteContent.StatusCode);
