@@ -5,17 +5,17 @@ using ContentService.Domain.Common;
 namespace ContentService.Tests.Application;
 
 /// <summary>
-/// Unit tests for <see cref="MagicByteImageSignatureValidator"/> verifying binary header allowlists and spoofing rejection.
+/// Unit tests for <see cref="ImageHeaderSignatureValidator"/> verifying leading file-header checks and spoofing rejection.
 /// </summary>
-public sealed class MagicByteImageSignatureValidatorTests
+public sealed class ImageHeaderSignatureValidatorTests
 {
         /// <summary>
-        /// Valid 8-byte PNG signature followed by padding bytes.
+        /// Valid 8-byte PNG header followed by padding bytes.
         /// </summary>
         private static readonly byte[] VALID_PNG_BYTES = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00];
 
         /// <summary>
-        /// Valid JPEG SOI + marker header bytes.
+        /// Valid JPEG header bytes.
         /// </summary>
         private static readonly byte[] VALID_JPEG_BYTES = [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10];
 
@@ -25,7 +25,7 @@ public sealed class MagicByteImageSignatureValidatorTests
         private static readonly byte[] VALID_WEBP_BYTES = [0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50];
 
         /// <summary>
-        /// Incomplete PNG magic header missing its final signature byte.
+        /// Incomplete PNG header missing its final signature byte.
         /// </summary>
         private static readonly byte[] TRUNCATED_PNG_BYTES = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A];
 
@@ -40,17 +40,18 @@ public sealed class MagicByteImageSignatureValidatorTests
         private static readonly byte[] TRUNCATED_WEBP_BYTES = [0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42];
 
         /// <summary>
-        /// System under test validating binary signatures against declared raster MIME types.
+        /// System under test validating binary headers against declared raster MIME types.
         /// </summary>
-        private readonly MagicByteImageSignatureValidator _validator = new();
+        private readonly ImageHeaderSignatureValidator _validator = new();
 
         /// <summary>
-        /// Verifies that valid PNG, JPEG, and WebP magic headers return <see langword="true"/> for their canonical MIME types.
+        /// Verifies that valid PNG, JPEG, and WebP file headers return <see langword="true"/> for their canonical MIME types.
         /// </summary>
         [Fact]
         public void IsValidSignature_WhenHeadersMatchDeclaredRasterTypes_ReturnsTrue()
         {
                 // Act & Assert
+                Assert.Equal(12, this._validator.RequiredHeaderByteCount);
                 Assert.True(this._validator.IsValidSignature(headerBytes: VALID_PNG_BYTES, declaredContentType: DomainConstants.CONTENT_TYPE_PNG));
                 Assert.True(this._validator.IsValidSignature(headerBytes: VALID_JPEG_BYTES, declaredContentType: DomainConstants.CONTENT_TYPE_JPEG));
                 Assert.True(this._validator.IsValidSignature(headerBytes: VALID_WEBP_BYTES, declaredContentType: DomainConstants.CONTENT_TYPE_WEBP));
@@ -59,7 +60,7 @@ public sealed class MagicByteImageSignatureValidatorTests
         }
 
         /// <summary>
-        /// Verifies that mismatched magic bytes and MIME declarations return <see langword="false"/>.
+        /// Verifies that mismatched file headers and MIME declarations return <see langword="false"/>.
         /// </summary>
         [Fact]
         public void IsValidSignature_WhenHeaderDoesNotMatchDeclaredMimeType_ReturnsFalse()
