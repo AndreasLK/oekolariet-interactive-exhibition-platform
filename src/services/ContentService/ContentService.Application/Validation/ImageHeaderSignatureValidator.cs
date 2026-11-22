@@ -12,22 +12,38 @@ namespace ContentService.Application.Validation;
 public sealed class ImageHeaderSignatureValidator : IImageSignatureValidator
 {
         /// <summary>
-        /// Every valid PNG file starts with these exact 8 bytes (<c>89 50 4E 47 0D 0A 1A 0A</c>).
+        /// Fixed 8-byte PNG magic header defined by ISO/IEC 15948 (<c>89 50 4E 47 0D 0A 1A 0A</c>).
         /// </summary>
+        /// <remarks>
+        /// Breakdown of why these exact bytes exist in every PNG file:
+        /// <list type="bullet">
+        /// <item><c>0x89</c>: high bit set (non-ASCII) to detect 7-bit text-only corruption.</item>
+        /// <item><c>0x50 0x4E 0x47</c>: ASCII <c>"PNG"</c> so humans/parsers recognize the format.</item>
+        /// <item><c>0x0D 0x0A</c>: DOS CRLF newline to catch accidental newline stripping.</item>
+        /// <item><c>0x1A</c>: DOS EOF (Ctrl+Z) to halt text viewers cleanly.</item>
+        /// <item><c>0x0A</c>: Unix LF newline to catch LF-to-CRLF line-ending mangling.</item>
+        /// </list>
+        /// </remarks>
         private static readonly byte[] PNG_HEADER_SIGNATURE = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 
         /// <summary>
-        /// Every valid JPEG file starts with these exact 3 bytes (<c>FF D8 FF</c>).
+        /// Fixed 3-byte JPEG magic prefix defined by ITU-T T.81 (<c>FF D8 FF</c>).
         /// </summary>
+        /// <remarks>
+        /// <c>0xFF 0xD8</c> is the JPEG Start of Image (SOI) marker, and the third <c>0xFF</c> begins the mandatory next segment marker
+        /// (such as <c>0xE0</c> for JFIF/APP0 or <c>0xE1</c> for Exif/APP1).
+        /// </remarks>
         private static readonly byte[] JPEG_HEADER_SIGNATURE = [0xFF, 0xD8, 0xFF];
 
         /// <summary>
-        /// Every WebP file starts with the 4 ASCII letters <c>RIFF</c> at byte offset 0 (<c>52 49 46 46</c>).
+        /// Every WebP file starts with the 4 ASCII letters <c>RIFF</c> at byte offset 0 (<c>52 49 46 46</c>),
+        /// identifying Google's WebP container as a Resource Interchange File Format (RIFF) file.
         /// </summary>
         private static readonly byte[] WEBP_RIFF_SIGNATURE = [0x52, 0x49, 0x46, 0x46];
 
         /// <summary>
-        /// WebP files also contain the 4 ASCII letters <c>WEBP</c> at byte offset 8 (<c>57 45 42 50</c>).
+        /// WebP files also contain the 4 ASCII letters <c>WEBP</c> at byte offset 8 (<c>57 45 42 50</c>) right after the 4-byte RIFF file-size field,
+        /// distinguishing WebP from other RIFF formats such as <c>.wav</c> (<c>WAVE</c>) or <c>.avi</c> (<c>AVI </c>).
         /// </summary>
         private static readonly byte[] WEBP_FORMAT_SIGNATURE = [0x57, 0x45, 0x42, 0x50];
 

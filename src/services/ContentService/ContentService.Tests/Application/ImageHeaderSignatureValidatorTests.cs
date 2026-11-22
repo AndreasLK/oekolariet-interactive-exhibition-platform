@@ -10,32 +10,34 @@ namespace ContentService.Tests.Application;
 public sealed class ImageHeaderSignatureValidatorTests
 {
         /// <summary>
-        /// Valid 8-byte PNG header followed by padding bytes.
+        /// Official 8-byte PNG magic header (<c>0x89</c> + ASCII <c>"PNG"</c> + CRLF + EOF + LF) followed by 2 dummy payload bytes
+        /// so the validator recognizes it as a valid non-empty PNG stream.
         /// </summary>
         private static readonly byte[] VALID_PNG_BYTES = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00];
 
         /// <summary>
-        /// Valid JPEG header bytes.
+        /// Official JPEG Start-of-Image marker (<c>0xFF 0xD8</c>) + APP0/JFIF marker (<c>0xFF 0xE0</c>) + 16-byte segment length (<c>0x00 0x10</c>).
         /// </summary>
         private static readonly byte[] VALID_JPEG_BYTES = [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10];
 
         /// <summary>
-        /// Valid RIFF/WEBP container header bytes.
+        /// Official WebP RIFF container header: ASCII <c>"RIFF"</c> (<c>52 49 46 46</c>), 4-byte little-endian size (<c>0x24 = 36</c>),
+        /// ASCII <c>"WEBP"</c> at offset 8 (<c>57 45 42 50</c>), and <c>"VP"</c> (<c>56 50</c>) starting a VP8 chunk.
         /// </summary>
         private static readonly byte[] VALID_WEBP_BYTES = [0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50];
 
         /// <summary>
-        /// Incomplete PNG header missing its final signature byte.
+        /// Incomplete 7-byte PNG header missing the final <c>0x0A</c> (Unix LF) byte, verifying partial headers fail.
         /// </summary>
         private static readonly byte[] TRUNCATED_PNG_BYTES = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A];
 
         /// <summary>
-        /// Incomplete JPEG header lacking the third marker byte.
+        /// Incomplete 2-byte JPEG header containing only SOI (<c>0xFF 0xD8</c>) without the third <c>0xFF</c> marker byte.
         /// </summary>
         private static readonly byte[] TRUNCATED_JPEG_BYTES = [0xFF, 0xD8];
 
         /// <summary>
-        /// Incomplete WebP header missing the final 'P' in the WEBP chunk tag.
+        /// Incomplete 11-byte WebP header missing the final <c>'P'</c> (<c>0x50</c>) of the <c>"WEBP"</c> FourCC at offset 8..11.
         /// </summary>
         private static readonly byte[] TRUNCATED_WEBP_BYTES = [0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42];
 
