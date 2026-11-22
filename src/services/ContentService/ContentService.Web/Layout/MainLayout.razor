@@ -1,0 +1,14 @@
+@inherits LayoutComponentBase
+
+@* Wrap the standalone test host inside ALKsPersonalUI Scaffold so seed theme CSS variables and ToastService overlays render cleanly. *@
+<Scaffold EnableToasts="true"
+          Modifier="@this.BuildScaffoldModifier()">
+        <TopBar>
+                <Navbar Title="ContentService Gallery" BrandHref="/" />
+        </TopBar>
+        <ChildContent>
+                <Column Modifier="@this.BuildContentColumnModifier()" Gap="1.5rem">
+                        @this.Body
+                </Column>
+        </ChildContent>
+</Scaffold>
