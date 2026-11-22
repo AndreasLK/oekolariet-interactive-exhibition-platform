@@ -30,6 +30,7 @@ internal static class ImageEndpoints
                         .Produces<ImageMetadataResult>(StatusCodes.Status201Created)
                         .ProducesProblem(StatusCodes.Status400BadRequest)
                         .ProducesProblem(StatusCodes.Status413PayloadTooLarge)
+                        .ProducesProblem(StatusCodes.Status415UnsupportedMediaType)
                         .ProducesProblem(StatusCodes.Status507InsufficientStorage);
 
                 group.MapGet(pattern: ApiConstants.GROUP_ROOT_ROUTE, handler: HandleListImagesAsync)
