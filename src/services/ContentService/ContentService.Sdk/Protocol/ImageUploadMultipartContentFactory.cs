@@ -35,7 +35,9 @@ internal static class ImageUploadMultipartContentFactory
                         // Clear local ownership once MultipartFormDataContent owns fileContent disposal.
                         fileContent = null;
 
-                        AddAltTextPartIfPresent(multipart: multipart, altText: request.AltText);
+                        AddOptionalFormField(multipart: multipart, fieldName: SdkConstants.MULTIPART_ALT_TEXT_FIELD_NAME, value: request.AltText);
+                        AddOptionalFormField(multipart: multipart, fieldName: SdkConstants.MULTIPART_ALBUM_PATH_FIELD_NAME, value: request.AlbumPath);
+                        AddOptionalFormField(multipart: multipart, fieldName: SdkConstants.MULTIPART_TAGS_FIELD_NAME, value: request.Tags);
                         return multipart;
                 }
                 catch
@@ -92,24 +94,28 @@ internal static class ImageUploadMultipartContentFactory
         }
 
         /// <summary>
-        /// Appends the optional <c>altText</c> form field only when non-null so omitted values stay <see langword="null"/> server-side.
+        /// Appends an optional text form field only when non-null so omitted values stay <see langword="null"/> server-side.
         /// </summary>
         /// <param name="multipart">The target multipart container.</param>
-        /// <param name="altText">The optional accessibility description.</param>
-        private static void AddAltTextPartIfPresent(MultipartFormDataContent multipart, string? altText)
+        /// <param name="fieldName">The form field name expected by <c>ContentService.Api</c>.</param>
+        /// <param name="value">The optional field value.</param>
+        private static void AddOptionalFormField(
+                MultipartFormDataContent multipart,
+                string fieldName,
+                string? value)
         {
-                if (altText is null)
+                if (value is null)
                 {
                         return;
                 }
 
-                StringContent altTextContent = new(content: altText);
-                altTextContent.Headers.ContentDisposition = new ContentDispositionHeaderValue(
+                StringContent fieldContent = new(content: value);
+                fieldContent.Headers.ContentDisposition = new ContentDispositionHeaderValue(
                         dispositionType: SdkConstants.FORM_DATA_DISPOSITION_TYPE)
                 {
-                        Name = QuoteHeaderToken(value: SdkConstants.MULTIPART_ALT_TEXT_FIELD_NAME)
+                        Name = QuoteHeaderToken(value: fieldName)
                 };
-                multipart.Add(content: altTextContent);
+                multipart.Add(content: fieldContent);
         }
 
         /// <summary>

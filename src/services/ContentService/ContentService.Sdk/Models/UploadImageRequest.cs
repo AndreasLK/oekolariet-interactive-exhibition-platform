@@ -21,9 +21,19 @@ public sealed record class UploadImageRequest
         public required string ContentType { get; init; }
 
         /// <summary>
-        /// Gets optional accessibility alternative text persisted alongside the image metadata.
+        /// Gets optional accessibility alternative text / description persisted alongside the image metadata.
         /// </summary>
         public string? AltText { get; init; }
+
+        /// <summary>
+        /// Gets an optional recursive album path (e.g., <c>Madaffald/Frugt</c>) where the image will be filed.
+        /// </summary>
+        public string? AlbumPath { get; init; }
+
+        /// <summary>
+        /// Gets optional comma-separated search tags persisted alongside the image metadata.
+        /// </summary>
+        public string? Tags { get; init; }
 
         /// <summary>
         /// Gets an optional audit actor identifier overriding <see cref="Options.ContentServiceClientOptions.DefaultActorId"/> for this upload.
