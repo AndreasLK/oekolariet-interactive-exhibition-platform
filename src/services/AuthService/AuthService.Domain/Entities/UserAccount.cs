@@ -109,4 +109,34 @@ public sealed class UserAccount
                 this._permissionOverrides.RemoveAll(
                         match: item => item.Permission == permission);
         }
+
+
+        public static UserAccount Restore(
+                UserId id,
+                Username username,
+                RoleProfile role,
+                bool isActive,
+                IEnumerable<PermissionOverride> permissionOverrides)
+        {
+                ArgumentNullException.ThrowIfNull(argument: permissionOverrides);
+
+                UserAccount account = new(
+                        id: id,
+                        username: username,
+                        role: role);
+
+                // Reconstitution restores persisted state without performing a new business operation.
+                account.IsActive = isActive;
+
+                foreach (PermissionOverride permissionOverride in permissionOverrides)
+                {
+                        account.SetPermissionOverride(
+                                permission: permissionOverride.Permission,
+                                isAllowed: permissionOverride.IsAllowed);
+                }
+
+                return account;
+        }
+
+
 }
