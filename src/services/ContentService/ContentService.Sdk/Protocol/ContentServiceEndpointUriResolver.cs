@@ -1,4 +1,5 @@
 using ContentService.Sdk.Common;
+using ContentService.Sdk.Models;
 using ContentService.Sdk.Options;
 
 namespace ContentService.Sdk.Protocol;
@@ -20,6 +21,82 @@ internal static class ContentServiceEndpointUriResolver
         {
                 Uri normalizedBase = ResolveNormalizedBaseUri(httpClient: httpClient, options: options);
                 return new Uri(baseUri: normalizedBase, relativeUri: SdkConstants.IMAGES_ROUTE_PREFIX);
+        }
+
+        /// <summary>
+        /// Builds the paginated image listing URI with optional search, album path, and recursion filters.
+        /// </summary>
+        /// <param name="httpClient">The configured <see cref="HttpClient"/> instance.</param>
+        /// <param name="options">Fallback client options supplying <see cref="ContentServiceClientOptions.BaseAddress"/>.</param>
+        /// <param name="query">The image catalog query parameters.</param>
+        /// <returns>The resolved absolute catalog query <see cref="Uri"/>.</returns>
+        public static Uri BuildImagesListUri(
+                HttpClient httpClient,
+                ContentServiceClientOptions options,
+                ContentImageQuery query)
+        {
+                ArgumentNullException.ThrowIfNull(argument: query);
+
+                Uri normalizedBase = ResolveNormalizedBaseUri(httpClient: httpClient, options: options);
+                string queryString = $"{SdkConstants.PAGE_QUERY_PARAM}={query.Page}&{SdkConstants.PAGE_SIZE_QUERY_PARAM}={query.PageSize}";
+
+                // Escape optional query parameters cleanly without adding ASP.NET Core query-builder package dependencies to the SDK.
+                if (!string.IsNullOrWhiteSpace(value: query.SearchTerm))
+                {
+                        string trimmedSearch = query.SearchTerm.Trim();
+                        queryString = $"{queryString}&{SdkConstants.SEARCH_TERM_QUERY_PARAM}={Uri.EscapeDataString(stringToEscape: trimmedSearch)}";
+                }
+
+                if (!string.IsNullOrWhiteSpace(value: query.AlbumPath))
+                {
+                        string trimmedAlbum = query.AlbumPath.Trim();
+                        queryString = $"{queryString}&{SdkConstants.ALBUM_PATH_QUERY_PARAM}={Uri.EscapeDataString(stringToEscape: trimmedAlbum)}";
+                        queryString = $"{queryString}&{SdkConstants.INCLUDE_SUBALBUMS_QUERY_PARAM}={(query.IncludeSubalbums ? "true" : "false")}";
+                }
+
+                return new Uri(baseUri: normalizedBase, relativeUri: $"{SdkConstants.IMAGES_ROUTE_PREFIX}?{queryString}");
+        }
+
+        /// <summary>
+        /// Builds the child album listing URI (<c>api/images/albums?parentPath=...</c>).
+        /// </summary>
+        /// <param name="httpClient">The configured <see cref="HttpClient"/> instance.</param>
+        /// <param name="options">Fallback client options supplying <see cref="ContentServiceClientOptions.BaseAddress"/>.</param>
+        /// <param name="parentPath">Optional parent album path.</param>
+        /// <returns>The resolved absolute albums endpoint <see cref="Uri"/>.</returns>
+        public static Uri BuildImageAlbumsUri(
+                HttpClient httpClient,
+                ContentServiceClientOptions options,
+                string? parentPath)
+        {
+                Uri normalizedBase = ResolveNormalizedBaseUri(httpClient: httpClient, options: options);
+                string route = $"{SdkConstants.IMAGES_ROUTE_PREFIX}/{SdkConstants.IMAGE_ALBUMS_SUFFIX}";
+
+                if (!string.IsNullOrWhiteSpace(value: parentPath))
+                {
+                        route = $"{route}?{SdkConstants.PARENT_PATH_QUERY_PARAM}={Uri.EscapeDataString(stringToEscape: parentPath.Trim())}";
+                }
+
+                return new Uri(baseUri: normalizedBase, relativeUri: route);
+        }
+
+        /// <summary>
+        /// Builds the metadata update URI (<c>api/images/{imageId}/metadata</c>) after validating <paramref name="imageId"/>.
+        /// </summary>
+        /// <param name="httpClient">The configured <see cref="HttpClient"/> instance.</param>
+        /// <param name="options">Fallback client options supplying <see cref="ContentServiceClientOptions.BaseAddress"/>.</param>
+        /// <param name="imageId">The non-empty image identifier.</param>
+        /// <returns>The resolved absolute metadata update <see cref="Uri"/>.</returns>
+        public static Uri BuildImageMetadataUpdateUri(
+                HttpClient httpClient,
+                ContentServiceClientOptions options,
+                Guid imageId)
+        {
+                ValidateImageId(imageId: imageId);
+                Uri normalizedBase = ResolveNormalizedBaseUri(httpClient: httpClient, options: options);
+                return new Uri(
+                        baseUri: normalizedBase,
+                        relativeUri: $"{SdkConstants.IMAGES_ROUTE_PREFIX}/{imageId:D}/{SdkConstants.IMAGE_METADATA_SUFFIX}");
         }
 
         /// <summary>
