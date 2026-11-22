@@ -1,5 +1,6 @@
 using ContentService.Application.Common;
 using ContentService.Application.Interfaces;
+using ContentService.Domain.Common;
 using ContentService.Domain.Entities;
 using ContentService.Domain.Exceptions;
 using ContentService.Infrastructure.Persistence;
@@ -68,6 +69,8 @@ public sealed class SqlServerImageRepository : IImageRepository
                 int page,
                 int pageSize,
                 string? searchTerm,
+                string? albumPath,
+                bool includeSubalbums,
                 CancellationToken cancellationToken)
         {
                 // Exclude soft-deleted images before counting so TotalCount reflects only active catalog entries.
@@ -75,12 +78,14 @@ public sealed class SqlServerImageRepository : IImageRepository
                         .AsNoTracking()
                         .Where(image => !image.IsDeleted);
 
-                if (!string.IsNullOrWhiteSpace(searchTerm))
-                {
-                        // EF Core cannot translate StringComparison.OrdinalIgnoreCase or ToLowerInvariant() to SQL, so we normalize the input in C# and call .ToLower() in LINQ.
-                        string normalizedSearch = searchTerm.Trim().ToLowerInvariant();
-                        query = query.Where(image => image.FileName.ToLower().Contains(normalizedSearch));
-                }
+                query = ImageCatalogQueryFilter.ApplyAlbumFilter(
+                        query: query,
+                        albumPath: albumPath,
+                        includeSubalbums: includeSubalbums);
+
+                query = ImageCatalogQueryFilter.ApplySearchFilter(
+                        query: query,
+                        searchTerm: searchTerm);
 
                 int totalCount = await query.CountAsync(cancellationToken: cancellationToken);
                 (int safePage, int safePageSize, int skipCount) = PaginationNormalizer.Normalize(
@@ -102,6 +107,31 @@ public sealed class SqlServerImageRepository : IImageRepository
                         PageSize = safePageSize,
                         TotalCount = totalCount
                 };
+        }
+
+        /// <inheritdoc />
+        public async Task<IReadOnlyList<string>> ListChildAlbumPathsAsync(
+                string? parentAlbumPath,
+                CancellationToken cancellationToken)
+        {
+                IQueryable<string> albumQuery = this._dbContext.Images
+                        .AsNoTracking()
+                        .Where(image => !image.IsDeleted && image.AlbumPath != null)
+                        .Select(image => image.AlbumPath!);
+
+                if (parentAlbumPath is not null)
+                {
+                        string prefix = $"{parentAlbumPath}{DomainConstants.ALBUM_PATH_SEPARATOR}";
+                        albumQuery = albumQuery.Where(path => path.StartsWith(prefix));
+                }
+
+                List<string> distinctDescendantPaths = await albumQuery
+                        .Distinct()
+                        .ToListAsync(cancellationToken: cancellationToken);
+
+                return ImageCatalogQueryFilter.ExtractImmediateChildAlbums(
+                        parentAlbumPath: parentAlbumPath,
+                        descendantPaths: distinctDescendantPaths);
         }
 
         /// <inheritdoc />
@@ -155,5 +185,49 @@ public sealed class SqlServerImageRepository : IImageRepository
                 {
                         throw new ConcurrencyConflictException($"Image '{image.Id}' was modified concurrently.");
                 }
+        }
+
+        /// <inheritdoc />
+        public async Task UpdateMetadataAsync(
+                ImageEntity image,
+                Guid expectedConcurrencyStamp,
+                CancellationToken cancellationToken)
+        {
+                ArgumentNullException.ThrowIfNull(argument: image);
+
+                // Update in a single SQL UPDATE ... WHERE ConcurrencyStamp = @expected statement (no prior SELECT+SaveChanges round-trip).
+                // Rotating ConcurrencyStamp here ensures any second editor holding the old stamp will see rowsAffected == 0.
+                int rowsAffected = await this._dbContext.Images
+                        .Where(existing => existing.Id == image.Id
+                                && !existing.IsDeleted
+                                && existing.ConcurrencyStamp == expectedConcurrencyStamp)
+                        .ExecuteUpdateAsync(
+                                setPropertyCalls: setters => setters
+                                        .SetProperty(propertyExpression: existing => existing.AltText, valueExpression: image.AltText)
+                                        .SetProperty(propertyExpression: existing => existing.Tags, valueExpression: image.Tags)
+                                        .SetProperty(propertyExpression: existing => existing.AlbumPath, valueExpression: image.AlbumPath)
+                                        .SetProperty(propertyExpression: existing => existing.UpdatedAt, valueExpression: image.UpdatedAt)
+                                        .SetProperty(propertyExpression: existing => existing.UpdatedBy, valueExpression: image.UpdatedBy)
+                                        .SetProperty(propertyExpression: existing => existing.ConcurrencyStamp, valueExpression: image.ConcurrencyStamp),
+                                cancellationToken: cancellationToken);
+
+                if (rowsAffected > 0)
+                {
+                        return;
+                }
+
+                // Distinguish deleted/missing images (404) from stale concurrency stamps (409) when zero rows matched.
+                bool stillExists = await this._dbContext.Images
+                        .AsNoTracking()
+                        .AnyAsync(
+                                predicate: existing => existing.Id == image.Id && !existing.IsDeleted,
+                                cancellationToken: cancellationToken);
+
+                if (!stillExists)
+                {
+                        throw new KeyNotFoundException($"Image '{image.Id}' was not found.");
+                }
+
+                throw new ConcurrencyConflictException($"Image '{image.Id}' was modified concurrently.");
         }
 }
