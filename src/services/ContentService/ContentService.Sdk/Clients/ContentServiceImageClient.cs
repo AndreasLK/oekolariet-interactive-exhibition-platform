@@ -33,6 +33,92 @@ public sealed class ContentServiceImageClient : IContentServiceImageClient
         }
 
         /// <inheritdoc />
+        public Task<ContentPagedResult<ContentImageMetadata>> ListImagesAsync(
+                int page = SdkConstants.DEFAULT_PAGE,
+                int pageSize = SdkConstants.DEFAULT_PAGE_SIZE,
+                string? searchTerm = null,
+                CancellationToken cancellationToken = default) =>
+                this.ListImagesAsync(
+                        query: new ContentImageQuery
+                        {
+                                Page = page,
+                                PageSize = pageSize,
+                                SearchTerm = searchTerm
+                        },
+                        cancellationToken: cancellationToken);
+
+        /// <inheritdoc />
+        public async Task<ContentPagedResult<ContentImageMetadata>> ListImagesAsync(
+                ContentImageQuery query,
+                CancellationToken cancellationToken = default)
+        {
+                ArgumentNullException.ThrowIfNull(argument: query);
+
+                Uri requestUri = ContentServiceEndpointUriResolver.BuildImagesListUri(
+                        httpClient: this._httpClient,
+                        options: this._options,
+                        query: query);
+
+                ContentPagedResult<ContentImageMetadata>? pagedResult = await this.SendAndReadJsonAsync<ContentPagedResult<ContentImageMetadata>>(
+                        method: HttpMethod.Get,
+                        requestUri: requestUri,
+                        content: null,
+                        actorId: null,
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                return pagedResult ?? throw new InvalidOperationException("ContentService returned an empty image list payload.");
+        }
+
+        /// <inheritdoc />
+        public async Task<IReadOnlyList<string>> ListAlbumsAsync(
+                string? parentPath = null,
+                CancellationToken cancellationToken = default)
+        {
+                Uri requestUri = ContentServiceEndpointUriResolver.BuildImageAlbumsUri(
+                        httpClient: this._httpClient,
+                        options: this._options,
+                        parentPath: parentPath);
+
+                IReadOnlyList<string>? albums = await this.SendAndReadJsonAsync<IReadOnlyList<string>>(
+                        method: HttpMethod.Get,
+                        requestUri: requestUri,
+                        content: null,
+                        actorId: null,
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                return albums ?? [];
+        }
+
+        /// <inheritdoc />
+        public async Task<ContentImageMetadata> UpdateImageMetadataAsync(
+                Guid imageId,
+                UpdateImageMetadataRequest request,
+                CancellationToken cancellationToken = default)
+        {
+                ArgumentNullException.ThrowIfNull(argument: request);
+
+                // Validate actor header before issuing the PATCH so non-ASCII characters fail fast on the client instead of throwing inside HttpHeaders.
+                string? validActorId = ActorHeaderResolver.ResolveValidActorId(
+                        explicitActorId: request.ActorId,
+                        defaultActorId: this._options.DefaultActorId);
+                Uri requestUri = ContentServiceEndpointUriResolver.BuildImageMetadataUpdateUri(
+                        httpClient: this._httpClient,
+                        options: this._options,
+                        imageId: imageId);
+
+                // Serializes ExpectedConcurrencyStamp alongside metadata so ContentService can reject stale edits with 409 Conflict.
+                using JsonContent jsonContent = JsonContent.Create(inputValue: request, options: SdkConstants.JSON_SERIALIZER_OPTIONS);
+                ContentImageMetadata? metadata = await this.SendAndReadJsonAsync<ContentImageMetadata>(
+                        method: HttpMethod.Patch,
+                        requestUri: requestUri,
+                        content: jsonContent,
+                        actorId: validActorId,
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                return metadata ?? throw new InvalidOperationException("ContentService returned an empty metadata payload.");
+        }
+
+        /// <inheritdoc />
         public async Task<ContentImageMetadata> UploadImageAsync(
                 UploadImageRequest request,
                 CancellationToken cancellationToken = default)
@@ -40,34 +126,22 @@ public sealed class ContentServiceImageClient : IContentServiceImageClient
                 ArgumentNullException.ThrowIfNull(request);
 
                 // Validate actor header before wrapping the stream so invalid headers fail without touching request.Content.
-                string? actorId = this.ResolveValidActorId(explicitActorId: request.ActorId);
+                string? validActorId = ActorHeaderResolver.ResolveValidActorId(
+                        explicitActorId: request.ActorId,
+                        defaultActorId: this._options.DefaultActorId);
                 Uri requestUri = ContentServiceEndpointUriResolver.BuildImagesRootUri(
                         httpClient: this._httpClient,
                         options: this._options);
 
                 using MultipartFormDataContent multipartContent = ImageUploadMultipartContentFactory.Create(request: request);
-                using HttpRequestMessage httpRequest = new(method: HttpMethod.Post, requestUri: requestUri)
-                {
-                        Content = multipartContent
-                };
-
-                if (actorId is not null)
-                {
-                        httpRequest.Headers.Add(name: SdkConstants.ACTOR_HEADER_NAME, value: actorId);
-                }
-
-                using HttpResponseMessage response = await this._httpClient.SendAsync(
-                        request: httpRequest,
-                        completionOption: HttpCompletionOption.ResponseHeadersRead,
+                ContentImageMetadata? metadata = await this.SendAndReadJsonAsync<ContentImageMetadata>(
+                        method: HttpMethod.Post,
+                        requestUri: requestUri,
+                        content: multipartContent,
+                        actorId: validActorId,
                         cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                await HttpResponseErrorMapper.EnsureSuccessOrThrowAsync(
-                        response: response,
-                        cancellationToken: cancellationToken).ConfigureAwait(false);
-
-                return await ReadMetadataPayloadAsync(
-                        response: response,
-                        cancellationToken: cancellationToken).ConfigureAwait(false);
+                return metadata ?? throw new InvalidOperationException("ContentService returned an empty metadata payload.");
         }
 
         /// <inheritdoc />
@@ -78,12 +152,16 @@ public sealed class ContentServiceImageClient : IContentServiceImageClient
                 Uri requestUri = this.GetImageContentUri(imageId: imageId);
                 using HttpRequestMessage httpRequest = new(method: HttpMethod.Get, requestUri: requestUri);
 
+                // IMPORTANT: Do NOT wrap 'response' in a 'using' block here!
+                // With ResponseHeadersRead, ReadAsStreamAsync returns a network stream backed by the HttpResponseMessage.
+                // Disposing 'response' before returning would immediately close the stream before the caller can read the image bytes.
+                // Instead, ContentImageDownload takes ownership and disposes both stream and response when the caller disposes it;
+                // the catch block below cleans them up only if an error happens before ownership is handed over.
                 HttpResponseMessage response = await this._httpClient.SendAsync(
                         request: httpRequest,
                         completionOption: HttpCompletionOption.ResponseHeadersRead,
                         cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                // Do not wrap response in a using block on success because ContentImageDownload owns its disposal.
                 Stream? contentStream = null;
                 try
                 {
@@ -120,18 +198,35 @@ public sealed class ContentServiceImageClient : IContentServiceImageClient
                         options: this._options,
                         imageId: imageId);
 
-                using HttpRequestMessage httpRequest = new(method: HttpMethod.Get, requestUri: requestUri);
-                using HttpResponseMessage response = await this._httpClient.SendAsync(
-                        request: httpRequest,
-                        completionOption: HttpCompletionOption.ResponseHeadersRead,
+                ContentImageMetadata? metadata = await this.SendAndReadJsonAsync<ContentImageMetadata>(
+                        method: HttpMethod.Get,
+                        requestUri: requestUri,
+                        content: null,
+                        actorId: null,
                         cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                await HttpResponseErrorMapper.EnsureSuccessOrThrowAsync(
-                        response: response,
-                        cancellationToken: cancellationToken).ConfigureAwait(false);
+                return metadata ?? throw new InvalidOperationException("ContentService returned an empty metadata payload.");
+        }
 
-                return await ReadMetadataPayloadAsync(
-                        response: response,
+        /// <inheritdoc />
+        public async Task DeleteImageAsync(
+                Guid imageId,
+                string? actorId = null,
+                CancellationToken cancellationToken = default)
+        {
+                string? validActorId = ActorHeaderResolver.ResolveValidActorId(
+                        explicitActorId: actorId,
+                        defaultActorId: this._options.DefaultActorId);
+                Uri requestUri = ContentServiceEndpointUriResolver.BuildImageMetadataUri(
+                        httpClient: this._httpClient,
+                        options: this._options,
+                        imageId: imageId);
+
+                using HttpResponseMessage response = await this.SendAndEnsureSuccessAsync(
+                        method: HttpMethod.Delete,
+                        requestUri: requestUri,
+                        content: null,
+                        actorId: validActorId,
                         cancellationToken: cancellationToken).ConfigureAwait(false);
         }
 
@@ -143,44 +238,64 @@ public sealed class ContentServiceImageClient : IContentServiceImageClient
                         imageId: imageId);
 
         /// <summary>
-        /// Reads and validates a <see cref="ContentImageMetadata"/> JSON payload from a successful HTTP response.
+        /// Sends an HTTP request, maps non-success status codes to <see cref="Exceptions.ContentServiceApiException"/>, and deserializes the JSON payload.
         /// </summary>
-        /// <param name="response">The successful HTTP response.</param>
-        /// <param name="cancellationToken">A token to cancel reading.</param>
-        /// <returns>The deserialized <see cref="ContentImageMetadata"/> instance.</returns>
-        private static async Task<ContentImageMetadata> ReadMetadataPayloadAsync(
-                HttpResponseMessage response,
+        private async Task<TResponse?> SendAndReadJsonAsync<TResponse>(
+                HttpMethod method,
+                Uri requestUri,
+                HttpContent? content,
+                string? actorId,
                 CancellationToken cancellationToken)
         {
-                ContentImageMetadata? metadata = await response.Content.ReadFromJsonAsync<ContentImageMetadata>(
-                        options: SdkConstants.JSON_SERIALIZER_OPTIONS,
+                using HttpResponseMessage response = await this.SendAndEnsureSuccessAsync(
+                        method: method,
+                        requestUri: requestUri,
+                        content: content,
+                        actorId: actorId,
                         cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                return metadata ?? throw new InvalidOperationException("ContentService returned an empty metadata payload.");
+                return await response.Content.ReadFromJsonAsync<TResponse>(
+                        options: SdkConstants.JSON_SERIALIZER_OPTIONS,
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
-        /// Resolves the effective <c>X-Actor-Id</c> header value, omitting null/whitespace values and rejecting non-ASCII/control characters.
+        /// Sends an HTTP request with optional <c>X-Actor-Id</c> attribution and throws a mapped API exception when non-successful.
         /// </summary>
-        /// <param name="explicitActorId">The per-request actor identifier, if provided.</param>
-        /// <returns>The validated ASCII actor identifier, or <see langword="null"/> when omitted.</returns>
-        private string? ResolveValidActorId(string? explicitActorId)
+        private async Task<HttpResponseMessage> SendAndEnsureSuccessAsync(
+                HttpMethod method,
+                Uri requestUri,
+                HttpContent? content,
+                string? actorId,
+                CancellationToken cancellationToken)
         {
-                string? candidate = explicitActorId ?? this._options.DefaultActorId;
-
-                // Omit blank values so ContentService's RequestActorResolver falls back cleanly instead of rejecting whitespace.
-                if (string.IsNullOrWhiteSpace(candidate))
+                using HttpRequestMessage httpRequest = new(method: method, requestUri: requestUri)
                 {
-                        return null;
+                        Content = content
+                };
+
+                if (actorId is not null)
+                {
+                        httpRequest.Headers.Add(name: SdkConstants.ACTOR_HEADER_NAME, value: actorId);
                 }
 
-                if (!SdkConstants.IsPrintableAsciiHeaderValue(value: candidate))
-                {
-                        throw new ArgumentException(
-                                message: "ActorId must contain only printable ASCII characters.",
-                                paramName: nameof(explicitActorId));
-                }
+                // ResponseHeadersRead lets EnsureSuccessOrThrowAsync inspect error status codes without pre-buffering large payloads.
+                HttpResponseMessage response = await this._httpClient.SendAsync(
+                        request: httpRequest,
+                        completionOption: HttpCompletionOption.ResponseHeadersRead,
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                return candidate;
+                try
+                {
+                        await HttpResponseErrorMapper.EnsureSuccessOrThrowAsync(
+                                response: response,
+                                cancellationToken: cancellationToken).ConfigureAwait(false);
+                        return response;
+                }
+                catch
+                {
+                        response.Dispose();
+                        throw;
+                }
         }
 }
