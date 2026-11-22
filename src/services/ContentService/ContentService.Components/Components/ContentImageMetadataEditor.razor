@@ -1,0 +1,39 @@
+@* Controlled metadata editor allowing users to update searchable description (AltText), tags, and album path. *@
+<Column Gap="0.75rem" Modifier="@UIModifier.New.FillMaxWidth()">
+        <TextInput Label="Description / Alt Text"
+                   Placeholder="Describe the image (e.g., Yellow banana on white background)..."
+                   MaxLength="@MAX_ALT_TEXT_LENGTH"
+                   ShowClearButton="true"
+                   Value="@this._altText"
+                   ValueChanged="@this.HandleAltTextChanged" />
+
+        <TextInput Label="Tags (comma-separated)"
+                   Placeholder="banana, fruit, organic..."
+                   MaxLength="@MAX_TAGS_LENGTH"
+                   ShowClearButton="true"
+                   Value="@this._tags"
+                   ValueChanged="@this.HandleTagsChanged" />
+
+        <TextInput Label="Album Path"
+                   Placeholder="e.g., Madaffald or Madaffald/Frugt"
+                   MaxLength="@MAX_ALBUM_PATH_LENGTH"
+                   ShowClearButton="true"
+                   Value="@this._albumPath"
+                   ValueChanged="@this.HandleAlbumPathChanged" />
+
+        <Row HorizontalArrangement="Arrangement.End" Gap="0.5rem" Modifier="@UIModifier.New.FillMaxWidth()">
+                <ActionButton Text="Cancel Edit"
+                              Variant="ActionButton.ButtonVariant.Ghost"
+                              Size="ActionButton.ButtonSize.Small"
+                              IsDisabled="@this.IsSaving"
+                              OnClick="@this.HandleCancelClickedAsync" />
+
+                <ActionButton Text="Save Metadata"
+                              Variant="ActionButton.ButtonVariant.Solid"
+                              Size="ActionButton.ButtonSize.Small"
+                              IsLoading="@this.IsSaving"
+                              IsDisabled="@this.IsSaving"
+                              OnClick="@this.HandleSaveClickedAsync" />
+        </Row>
+</Column>
+
