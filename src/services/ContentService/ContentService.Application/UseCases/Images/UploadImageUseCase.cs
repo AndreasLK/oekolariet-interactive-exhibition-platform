@@ -6,6 +6,7 @@ using ContentService.Application.Options;
 using ContentService.Domain.Common;
 using ContentService.Domain.Entities;
 using ContentService.Domain.Exceptions;
+using ContentService.Domain.ValueObjects;
 using Microsoft.Extensions.Options;
 
 namespace ContentService.Application.UseCases.Images;
@@ -84,7 +85,7 @@ public sealed class UploadImageUseCase
                 this.EnsureWithinQuota(currentUsedBytes: currentUsedBytes, incomingBytes: command.DeclaredLengthBytes);
 
                 // Enforce a hard read ceiling during streaming so spoofed Content-Length headers cannot trigger unbounded memory allocation.
-                byte[] payload = await ReadPayloadWithLimitAsync(
+                byte[] payload = await BoundedImageStreamReader.ReadPayloadWithLimitAsync(
                         content: command.Content,
                         maxAllowedBytes: effectiveMaxSizeBytes,
                         cancellationToken: cancellationToken);
@@ -110,7 +111,9 @@ public sealed class UploadImageUseCase
                         fileSizeBytes: payload.Length,
                         sha256Hash: sha256Hash,
                         actorId: command.ActorId,
-                        altText: command.AltText);
+                        altText: command.AltText,
+                        albumPath: command.AlbumPath,
+                        tags: command.Tags);
                 ImageBinaryEntity binary = ImageBinaryEntity.Create(imageId: image.Id, data: payload);
 
                 await this._imageRepository.AddAsync(
@@ -194,6 +197,10 @@ public sealed class UploadImageUseCase
                         throw new DomainValidationException(
                                 $"Alternative text cannot exceed {DomainConstants.MAX_ALT_TEXT_LENGTH} characters.");
                 }
+
+                // Validate optional album hierarchy and tags up front so invalid strings fail before quota or stream buffering.
+                _ = AlbumPath.NormalizeOptional(rawAlbumPath: command.AlbumPath);
+                _ = ImageTags.NormalizeOptional(rawTags: command.Tags);
         }
 
         /// <summary>
@@ -230,57 +237,5 @@ public sealed class UploadImageUseCase
                         storageNodeId: storageNodeId,
                         usedBytes: projectedUsedBytes,
                         quotaBytes: safeQuotaBytes);
-        }
-
-        /// <summary>
-        /// Buffers the stream in bounded memory chunks so misdeclared or maliciously oversized streams fail mid-read without exhausting server memory.
-        /// </summary>
-        /// <param name="content">The readable input stream.</param>
-        /// <param name="maxAllowedBytes">The maximum permitted actual byte length.</param>
-        /// <param name="cancellationToken">Propagates caller cancellation while reading stream chunks.</param>
-        /// <returns>The buffered payload byte array.</returns>
-        /// <exception cref="DomainValidationException">Thrown when the actual byte count is zero or exceeds <paramref name="maxAllowedBytes"/>.</exception>
-        private static async Task<byte[]> ReadPayloadWithLimitAsync(
-                Stream content,
-                long maxAllowedBytes,
-                CancellationToken cancellationToken)
-        {
-                using MemoryStream payloadStream = new();
-                byte[] buffer = new byte[ApplicationConstants.STREAM_BUFFER_SIZE_BYTES];
-                long totalBytesRead = 0;
-
-                while (true)
-                {
-                        int bytesRead = await content.ReadAsync(
-                                buffer: buffer,
-                                cancellationToken: cancellationToken);
-                        if (bytesRead == 0)
-                        {
-                                break;
-                        }
-
-                        // Abort immediately on overflow so streams lying about Content-Length cannot force gigabyte allocations.
-                        totalBytesRead += bytesRead;
-                        if (totalBytesRead > maxAllowedBytes)
-                        {
-                                throw new DomainValidationException(
-                                        $"Image upload exceeds the maximum allowed size of {maxAllowedBytes} bytes.");
-                        }
-
-                        await payloadStream.WriteAsync(
-                                buffer: buffer,
-                                offset: 0,
-                                count: bytesRead,
-                                cancellationToken: cancellationToken);
-                }
-
-                // Re-check actual bytes read because empty streams with spoofed non-zero Content-Length would otherwise pass precondition checks.
-                if (totalBytesRead < DomainConstants.MIN_IMAGE_SIZE_BYTES)
-                {
-                        throw new DomainValidationException(
-                                $"Image payload cannot be smaller than {DomainConstants.MIN_IMAGE_SIZE_BYTES} byte(s).");
-                }
-
-                return payloadStream.ToArray();
         }
 }
