@@ -45,9 +45,24 @@ public sealed class ImageEntity : BaseEntity
         public string Sha256Hash { get; private set; } = string.Empty;
 
         /// <summary>
-        /// Gets the optional accessibility alternative text for the image, or <see langword="null"/> if not provided.
+        /// Gets the optional accessibility alternative text / description for the image, or <see langword="null"/> if not provided.
         /// </summary>
         public string? AltText { get; private set; }
+
+        /// <summary>
+        /// Gets the optional normalized recursive album path (e.g., <c>Madaffald/Frugt</c>), or <see langword="null"/> for root-level images.
+        /// </summary>
+        public string? AlbumPath { get; private set; }
+
+        /// <summary>
+        /// Gets the optional normalized comma-separated search tags, or <see langword="null"/> when untagged.
+        /// </summary>
+        public string? Tags { get; private set; }
+
+        /// <summary>
+        /// Gets the parsed read-only list of search tags associated with this image.
+        /// </summary>
+        public IReadOnlyList<string> TagList => ImageTags.Parse(normalizedTags: this.Tags);
 
         /// <summary>
         /// Gets a value indicating whether this image has been soft-deleted.
@@ -75,7 +90,9 @@ public sealed class ImageEntity : BaseEntity
         /// <param name="fileSizeBytes">The byte size of the image binary payload.</param>
         /// <param name="sha256Hash">The 64-character hexadecimal SHA-256 digest of the image payload.</param>
         /// <param name="actorId">The identifier of the actor creating the image.</param>
-        /// <param name="altText">Optional accessibility alternative text.</param>
+        /// <param name="altText">Optional accessibility alternative text / description.</param>
+        /// <param name="albumPath">Optional normalized recursive album path.</param>
+        /// <param name="tags">Optional comma-separated search tags.</param>
         /// <returns>A newly created and validated <see cref="ImageEntity"/>.</returns>
         /// <exception cref="DomainValidationException">Thrown when any metadata field or <paramref name="actorId"/> violates domain invariants.</exception>
         public static ImageEntity Create(
@@ -85,15 +102,19 @@ public sealed class ImageEntity : BaseEntity
                 long fileSizeBytes,
                 string sha256Hash,
                 string actorId,
-                string? altText = null)
+                string? altText = null,
+                string? albumPath = null,
+                string? tags = null)
         {
                 // Validate every field before creating the entity so an invalid ImageEntity can never exist in memory.
                 string validatedStorageNodeId = PictureReference.ValidateStorageNodeId(storageNodeId);
-                string validatedFileName = ValidateFileName(fileName);
-                string validatedContentType = ValidateContentType(contentType);
-                ValidateFileSize(fileSizeBytes);
-                string validatedHash = ValidateSha256Hash(sha256Hash);
-                string? validatedAltText = ValidateAltText(altText);
+                string validatedFileName = ImageMetadataValidator.ValidateFileName(fileName: fileName);
+                string validatedContentType = ImageMetadataValidator.ValidateContentType(contentType: contentType);
+                ImageMetadataValidator.ValidateFileSize(fileSizeBytes: fileSizeBytes);
+                string validatedHash = ImageMetadataValidator.ValidateSha256Hash(sha256Hash: sha256Hash);
+                string? validatedAltText = ImageMetadataValidator.ValidateAltText(altText: altText);
+                string? validatedAlbumPath = ValueObjects.AlbumPath.NormalizeOptional(rawAlbumPath: albumPath);
+                string? validatedTags = ImageTags.NormalizeOptional(rawTags: tags);
 
                 ImageEntity entity = new()
                 {
@@ -103,11 +124,43 @@ public sealed class ImageEntity : BaseEntity
                         FileSizeBytes = fileSizeBytes,
                         Sha256Hash = validatedHash,
                         AltText = validatedAltText,
+                        AlbumPath = validatedAlbumPath,
+                        Tags = validatedTags,
                         IsDeleted = false
                 };
 
                 entity.InitializeAudit(actorId);
                 return entity;
+        }
+
+        /// <summary>
+        /// Updates the image's description (<see cref="AltText"/>), search tags, and album location atomically with modification audit metadata.
+        /// </summary>
+        /// <param name="altText">The new alternative text / description, or blank/<see langword="null"/> to clear it.</param>
+        /// <param name="tags">The new comma-separated tags, or blank/<see langword="null"/> to clear them.</param>
+        /// <param name="albumPath">The new recursive album path, or blank/<see langword="null"/> for root.</param>
+        /// <param name="actorId">The identifier of the actor performing the update.</param>
+        /// <exception cref="DomainValidationException">Thrown when the image is deleted or any field violates domain invariants.</exception>
+        public void UpdateMetadata(
+                string? altText,
+                string? tags,
+                string? albumPath,
+                string actorId)
+        {
+                if (this.IsDeleted)
+                {
+                        throw new DomainValidationException("Cannot update metadata of a deleted image.");
+                }
+
+                // Validate all inputs and actorId before mutating state so failed updates leave the entity unchanged.
+                string? validatedAltText = ImageMetadataValidator.ValidateAltText(altText: altText);
+                string? validatedTags = ImageTags.NormalizeOptional(rawTags: tags);
+                string? validatedAlbumPath = ValueObjects.AlbumPath.NormalizeOptional(rawAlbumPath: albumPath);
+
+                this.MarkModified(actorId: actorId);
+                this.AltText = validatedAltText;
+                this.Tags = validatedTags;
+                this.AlbumPath = validatedAlbumPath;
         }
 
         /// <summary>
@@ -124,7 +177,7 @@ public sealed class ImageEntity : BaseEntity
                 }
 
                 // Validate both altText and actorId before mutating AltText so failed calls leave the entity unchanged.
-                string? validatedAltText = ValidateAltText(altText);
+                string? validatedAltText = ImageMetadataValidator.ValidateAltText(altText: altText);
                 this.MarkModified(actorId);
                 this.AltText = validatedAltText;
         }
@@ -144,166 +197,5 @@ public sealed class ImageEntity : BaseEntity
                 // Validate actorId via MarkModified before flipping IsDeleted so invalid calls do not partially mutate state.
                 this.MarkModified(actorId);
                 this.IsDeleted = true;
-        }
-
-        /// <summary>
-        /// Validates, trims, and checks an uploaded file name for length and path-traversal safety.
-        /// </summary>
-        /// <param name="fileName">The raw file name supplied by the caller.</param>
-        /// <returns>The trimmed, safe file name.</returns>
-        /// <exception cref="DomainValidationException">Thrown when <paramref name="fileName"/> is blank, exceeds <see cref="DomainConstants.MAX_FILE_NAME_LENGTH"/>, or contains forbidden path characters.</exception>
-        private static string ValidateFileName(string fileName)
-        {
-                if (string.IsNullOrWhiteSpace(fileName))
-                {
-                        throw new DomainValidationException("File name cannot be null or whitespace.");
-                }
-
-                string trimmed = fileName.Trim();
-                if (trimmed.Length > DomainConstants.MAX_FILE_NAME_LENGTH)
-                {
-                        throw new DomainValidationException(
-                                $"File name cannot exceed {DomainConstants.MAX_FILE_NAME_LENGTH} characters.");
-                }
-
-                if (ContainsForbiddenPathCharacters(trimmed))
-                {
-                        throw new DomainValidationException(
-                                "File name cannot contain path separators, parent-directory traversal segments, or control characters.");
-                }
-
-                return trimmed;
-        }
-
-        /// <summary>
-        /// Detects path separators, parent-directory traversal sequences (<c>..</c>), and control characters inside a file name.
-        /// </summary>
-        /// <param name="fileName">The trimmed file name to inspect.</param>
-        /// <returns><see langword="true"/> if any forbidden substring or control character is present; otherwise <see langword="false"/>.</returns>
-        private static bool ContainsForbiddenPathCharacters(string fileName)
-        {
-                // Rejects any '..' substring (even rare names like 'photo..png') to guarantee simple path-traversal protection if kiosk caches write files to disk.
-                foreach (string forbiddenSegment in DomainConstants.FORBIDDEN_FILE_NAME_SEGMENTS)
-                {
-                        if (fileName.Contains(forbiddenSegment, StringComparison.Ordinal))
-                        {
-                                return true;
-                        }
-                }
-
-                foreach (char character in fileName)
-                {
-                        if (char.IsControl(character))
-                        {
-                                return true;
-                        }
-                }
-
-                return false;
-        }
-
-        /// <summary>
-        /// Validates and normalizes an image MIME content type against the permitted raster allowlist.
-        /// </summary>
-        /// <param name="contentType">The raw MIME content type.</param>
-        /// <returns>The trimmed, lowercase MIME content type.</returns>
-        /// <exception cref="DomainValidationException">Thrown when <paramref name="contentType"/> is blank or not in <see cref="DomainConstants.ALLOWED_IMAGE_CONTENT_TYPES"/>.</exception>
-        private static string ValidateContentType(string contentType)
-        {
-                if (string.IsNullOrWhiteSpace(contentType))
-                {
-                        throw new DomainValidationException("Content type cannot be null or whitespace.");
-                }
-
-                // Normalize to lowercase so HTTP responses always send consistent MIME strings regardless of client casing.
-                string normalized = contentType.Trim().ToLowerInvariant();
-                if (!DomainConstants.ALLOWED_IMAGE_CONTENT_TYPES.Contains(normalized))
-                {
-                        throw new DomainValidationException(
-                                $"Content type '{normalized}' is not an allowed image content type.");
-                }
-
-                return normalized;
-        }
-
-        /// <summary>
-        /// Ensures an image payload size falls within configured domain byte limits.
-        /// </summary>
-        /// <param name="fileSizeBytes">The image payload size in bytes.</param>
-        /// <exception cref="DomainValidationException">Thrown when <paramref name="fileSizeBytes"/> is outside the permitted byte range.</exception>
-        private static void ValidateFileSize(long fileSizeBytes)
-        {
-                if (fileSizeBytes < DomainConstants.MIN_IMAGE_SIZE_BYTES || fileSizeBytes > DomainConstants.MAX_IMAGE_SIZE_BYTES)
-                {
-                        throw new DomainValidationException(
-                                $"File size must be between {DomainConstants.MIN_IMAGE_SIZE_BYTES} and {DomainConstants.MAX_IMAGE_SIZE_BYTES} bytes.");
-                }
-        }
-
-        /// <summary>
-        /// Validates and normalizes a hexadecimal SHA-256 digest string.
-        /// </summary>
-        /// <param name="sha256Hash">The raw SHA-256 hexadecimal digest.</param>
-        /// <returns>The trimmed, lowercase 64-character hexadecimal SHA-256 string.</returns>
-        /// <exception cref="DomainValidationException">Thrown when <paramref name="sha256Hash"/> is blank, not 64 characters, or contains non-hex characters.</exception>
-        private static string ValidateSha256Hash(string sha256Hash)
-        {
-                if (string.IsNullOrWhiteSpace(sha256Hash))
-                {
-                        throw new DomainValidationException("SHA-256 hash cannot be null or whitespace.");
-                }
-
-                string trimmed = sha256Hash.Trim();
-
-                // Strict 64-char hex validation prevents malformed strings from reaching HTTP ETag headers or breaking cache deduplication.
-                if (trimmed.Length != DomainConstants.SHA256_HEX_LENGTH || !IsAsciiHexString(trimmed))
-                {
-                        throw new DomainValidationException(
-                                $"SHA-256 hash must be exactly {DomainConstants.SHA256_HEX_LENGTH} hexadecimal characters.");
-                }
-
-                return trimmed.ToLowerInvariant();
-        }
-
-        /// <summary>
-        /// Checks whether every character in a string is an ASCII hexadecimal digit (<c>0-9</c>, <c>a-f</c>, <c>A-F</c>).
-        /// </summary>
-        /// <param name="value">The string to check.</param>
-        /// <returns><see langword="true"/> if all characters are ASCII hex digits; otherwise <see langword="false"/>.</returns>
-        private static bool IsAsciiHexString(string value)
-        {
-                foreach (char character in value)
-                {
-                        if (!char.IsAsciiHexDigit(character))
-                        {
-                                return false;
-                        }
-                }
-
-                return true;
-        }
-
-        /// <summary>
-        /// Validates and normalizes optional accessibility alternative text.
-        /// </summary>
-        /// <param name="altText">The raw alternative text, or <see langword="null"/>.</param>
-        /// <returns>The trimmed alternative text, or <see langword="null"/> when input is blank.</returns>
-        /// <exception cref="DomainValidationException">Thrown when the trimmed alternative text exceeds <see cref="DomainConstants.MAX_ALT_TEXT_LENGTH"/>.</exception>
-        private static string? ValidateAltText(string? altText)
-        {
-                // Collapse whitespace-only input to null so callers and the database treat missing and blank alt text identically.
-                if (string.IsNullOrWhiteSpace(altText))
-                {
-                        return null;
-                }
-
-                string trimmed = altText.Trim();
-                if (trimmed.Length > DomainConstants.MAX_ALT_TEXT_LENGTH)
-                {
-                        throw new DomainValidationException(
-                                $"Alternative text cannot exceed {DomainConstants.MAX_ALT_TEXT_LENGTH} characters.");
-                }
-
-                return trimmed;
         }
 }
