@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using ContentService.Api.Common;
+using ContentService.Api.Endpoints;
 using ContentService.Api.ExceptionHandling;
 using ContentService.Application;
 using ContentService.Infrastructure;
@@ -46,6 +47,12 @@ if (app.Environment.IsDevelopment())
 
 // Enforce the named Blazor CORS policy globally before route execution so preflight and endpoint responses share one origin rule.
 app.UseCors(ApiConstants.BLAZOR_CORS_POLICY_NAME);
+
+// Keep HTTP handlers thin and delegate all validation, quota, and persistence rules to Application use cases.
+app.MapImageEndpoints();
+app.MapTemplateEndpoints();
+app.MapPublishingEndpoints();
+app.MapHealthEndpoints();
 
 app.Run();
 
