@@ -7,6 +7,8 @@ using ContentService.Domain.Entities;
 using ContentService.Domain.Enums;
 using ContentService.Domain.Exceptions;
 using ContentService.Domain.ValueObjects;
+using ContentService.Infrastructure.Persistence;
+using ContentService.Infrastructure.Repositories;
 using ContentService.Tests.Application.Persistence;
 
 namespace ContentService.Tests.Application;
@@ -92,8 +94,9 @@ public sealed class ResolvePublishBundleUseCaseTests : IAsyncLifetime
         public async Task ExecuteAsync_WhenTemplateAndImplementationShareReferences_ResolvesAndDeduplicatesAssetsAsync()
         {
                 // Arrange
-                SqlServerTemplateRepository templateRepository = new(fixture: this._fixture);
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 ImageEntity firstImage = CreateSeededImage(storageNodeId: NODE_ONE_ID, payloadBytes: FIRST_IMAGE_BYTES);
                 ImageEntity secondImage = CreateSeededImage(storageNodeId: NODE_TWO_ID, payloadBytes: SECOND_IMAGE_BYTES);
 
@@ -147,8 +150,9 @@ public sealed class ResolvePublishBundleUseCaseTests : IAsyncLifetime
         public async Task ExecuteAsync_WhenTemplateIdIsNull_ResolvesStandaloneImplementationBundleAsync()
         {
                 // Arrange
-                SqlServerTemplateRepository templateRepository = new(fixture: this._fixture);
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 ImageEntity image = CreateSeededImage(storageNodeId: NODE_ONE_ID, payloadBytes: FIRST_IMAGE_BYTES);
                 await imageRepository.AddAsync(
                         metadata: image,
@@ -185,8 +189,9 @@ public sealed class ResolvePublishBundleUseCaseTests : IAsyncLifetime
         public async Task ExecuteAsync_BundleChecksum_IsDeterministicAndSensitiveToContentChangesAsync()
         {
                 // Arrange
-                SqlServerTemplateRepository templateRepository = new(fixture: this._fixture);
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 ImageEntity firstImage = CreateSeededImage(storageNodeId: NODE_ONE_ID, payloadBytes: FIRST_IMAGE_BYTES);
                 ImageEntity secondImage = CreateSeededImage(storageNodeId: NODE_ONE_ID, payloadBytes: SECOND_IMAGE_BYTES);
 
@@ -270,8 +275,9 @@ public sealed class ResolvePublishBundleUseCaseTests : IAsyncLifetime
         public async Task ExecuteAsync_WhenTemplateOrImageMissing_ThrowsKeyNotFoundExceptionAsync()
         {
                 // Arrange
-                SqlServerTemplateRepository templateRepository = new(fixture: this._fixture);
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 ImageEntity deletedImage = CreateSeededImage(storageNodeId: NODE_ONE_ID, payloadBytes: FIRST_IMAGE_BYTES);
                 deletedImage.MarkDeleted(actorId: VALID_ACTOR_ID);
                 await imageRepository.AddAsync(
@@ -312,8 +318,9 @@ public sealed class ResolvePublishBundleUseCaseTests : IAsyncLifetime
                 string invalidJson)
         {
                 // Arrange
-                SqlServerTemplateRepository templateRepository = new(fixture: this._fixture);
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 ResolvePublishBundleUseCase useCase = new(
                         templateRepository: templateRepository,
                         imageRepository: imageRepository);
@@ -333,8 +340,9 @@ public sealed class ResolvePublishBundleUseCaseTests : IAsyncLifetime
         public async Task ExecuteAsync_WhenTemplateIdEmptyOrJsonOversized_ThrowsDomainValidationExceptionAsync()
         {
                 // Arrange
-                SqlServerTemplateRepository templateRepository = new(fixture: this._fixture);
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 ResolvePublishBundleUseCase useCase = new(
                         templateRepository: templateRepository,
                         imageRepository: imageRepository);

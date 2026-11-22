@@ -8,6 +8,8 @@ using ContentService.Domain.Entities;
 using ContentService.Domain.Enums;
 using ContentService.Domain.Exceptions;
 using ContentService.Domain.ValueObjects;
+using ContentService.Infrastructure.Persistence;
+using ContentService.Infrastructure.Repositories;
 using ContentService.Tests.Application.Persistence;
 using MicrosoftOptions = Microsoft.Extensions.Options.Options;
 
@@ -94,8 +96,9 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
         public async Task CreateTemplateUseCase_WhenValidWithPictureReferences_IndexesReferencesAndPersistsAsync()
         {
                 // Arrange
-                SqlServerTemplateRepository templateRepository = new(fixture: this._fixture);
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 ImageEntity image = CreateSeededImage(storageNodeId: VALID_NODE_ID);
                 await imageRepository.AddAsync(
                         metadata: image,
@@ -146,8 +149,9 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
                 string invalidSchemaJson)
         {
                 // Arrange
-                SqlServerTemplateRepository templateRepository = new(fixture: this._fixture);
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 CreateTemplateUseCase useCase = BuildCreateTemplateUseCase(
                         templateRepository: templateRepository,
                         imageRepository: imageRepository);
@@ -172,8 +176,9 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
         public async Task CreateTemplateUseCase_WhenDuplicateNameOrUndefinedEnum_ThrowsDomainValidationExceptionAsync()
         {
                 // Arrange
-                SqlServerTemplateRepository templateRepository = new(fixture: this._fixture);
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 TemplateEntity existing = TemplateEntity.Create(
                         storageNodeId: VALID_NODE_ID,
                         name: "Water Cycle",
@@ -217,8 +222,9 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
         public async Task CreateTemplateUseCase_WhenImageMissingDeletedOrWrongShard_ThrowsKeyNotFoundExceptionAsync()
         {
                 // Arrange
-                SqlServerTemplateRepository templateRepository = new(fixture: this._fixture);
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 ImageEntity deletedImage = CreateSeededImage(storageNodeId: VALID_NODE_ID);
                 deletedImage.MarkDeleted(actorId: VALID_ACTOR_ID);
                 ImageEntity shardOneImage = CreateSeededImage(storageNodeId: VALID_NODE_ID);
@@ -280,8 +286,9 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
         public async Task UpdateTemplateUseCase_WhenValidOrStaleToken_ReconcilesReferencesOrThrowsConcurrencyConflictAsync()
         {
                 // Arrange
-                SqlServerTemplateRepository templateRepository = new(fixture: this._fixture);
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 ImageEntity retainedImage = CreateSeededImage(storageNodeId: VALID_NODE_ID);
                 ImageEntity removedImage = CreateSeededImage(storageNodeId: VALID_NODE_ID);
                 ImageEntity addedImage = CreateSeededImage(storageNodeId: VALID_NODE_ID);
@@ -362,8 +369,9 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
         public async Task UpdateTemplateUseCase_WhenArchivedOrRepositoryStampDrifts_ThrowsExpectedExceptionAsync()
         {
                 // Arrange
-                SqlServerTemplateRepository templateRepository = new(fixture: this._fixture);
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 TemplateEntity archivedTemplate = TemplateEntity.Create(
                         storageNodeId: VALID_NODE_ID,
                         name: "Archived",
@@ -382,7 +390,7 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
                 await templateRepository.AddAsync(template: activeTemplate, cancellationToken: CancellationToken.None);
                 Guid observedStamp = activeTemplate.ConcurrencyStamp;
                 // Simulate a concurrent writer rotating the persisted row stamp after our read.
-                await templateRepository.RotatePersistedConcurrencyStampAsync(
+                await this._fixture.RotatePersistedConcurrencyStampAsync(
                         templateId: activeTemplate.Id,
                         newConcurrencyStamp: Guid.NewGuid(),
                         cancellationToken: CancellationToken.None);
@@ -423,8 +431,9 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
         public async Task UpdateTemplateUseCase_WhenNameConflictsWithExistingTemplate_ThrowsDomainValidationExceptionAsync()
         {
                 // Arrange
-                SqlServerTemplateRepository templateRepository = new(fixture: this._fixture);
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 TemplateEntity firstTemplate = TemplateEntity.Create(
                         storageNodeId: VALID_NODE_ID,
                         name: "First Template",
@@ -465,7 +474,8 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
         public async Task GetListAndDeleteTemplateUseCases_WhenExecuted_FilterClampAndArchiveProperlyAsync()
         {
                 // Arrange
-                SqlServerTemplateRepository templateRepository = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
                 TemplateEntity quizTemplate = TemplateEntity.Create(
                         storageNodeId: VALID_NODE_ID,
                         name: "Quiz Alpha",
