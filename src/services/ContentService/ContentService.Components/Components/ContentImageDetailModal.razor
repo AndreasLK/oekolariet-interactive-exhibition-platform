@@ -1,0 +1,117 @@
+@* Controlled lightbox modal displaying preview, searchable description/tags/album metadata, inline edit toggle, and optional select/delete actions. *@
+<Modal IsOpen="@this.IsOpen"
+       IsOpenChanged="@this.IsOpenChanged"
+       Title="@this.ResolveModalTitle()"
+       CloseOnBackdropClick="@(!this.IsSavingMetadata && !this.IsDeleting)"
+       Modifier="@this.BuildModalModifier()">
+        <ChildContent>
+                @if (this.Image is not null)
+                {
+                        <Column Gap="1rem" Modifier="@UIModifier.New.FillMaxWidth()">
+                                @* Render full image via ContentService's immutable content URI rather than buffering raw bytes into WASM memory. *@
+                                <Box ContentAlignment="BoxAlignment.Center"
+                                     Modifier="@this.BuildPreviewContainerModifier()">
+                                        <Image Source="@this.ImageSource"
+                                               Alt="@this.ResolveAltText()"
+                                               Fit="ImageFit.Contain"
+                                               FallbackText="Image preview unavailable"
+                                               Modifier="@this.BuildPreviewImageModifier()" />
+                                </Box>
+
+                                <Divider />
+
+                                @if (this._isEditing)
+                                {
+                                        <ContentImageMetadataEditor Image="@this.Image"
+                                                                    IsSaving="@this.IsSavingMetadata"
+                                                                    OnSaveRequested="@this.HandleSaveMetadataRequestedAsync"
+                                                                    OnCancelRequested="@this.HandleCancelEdit" />
+                                }
+                                else
+                                {
+                                        <Grid Columns="@DETAIL_GRID_COLUMNS" Gap="0.75rem" Modifier="@UIModifier.New.FillMaxWidth()">
+                                                <Column Gap="0.2rem">
+                                                        <Text Value="Album" Variant="TypographyVariant.Caption" Muted="true" />
+                                                        <Pill Text="@(this.Image.AlbumPath ?? "Root")"
+                                                              Variant="@(string.IsNullOrWhiteSpace(value: this.Image.AlbumPath) ? Pill.PillVariant.Neutral : Pill.PillVariant.Accent)" />
+                                                </Column>
+                                                <Column Gap="0.2rem">
+                                                        <Text Value="File Size &amp; Type" Variant="TypographyVariant.Caption" Muted="true" />
+                                                        <Text Value="@($"{ContentImageDisplayFormatter.FormatByteSize(sizeBytes: this.Image.SizeBytes)} � {this.Image.ContentType}")"
+                                                              Variant="TypographyVariant.Body" />
+                                                </Column>
+                                                <Column Gap="0.2rem">
+                                                        <Text Value="Uploaded" Variant="TypographyVariant.Caption" Muted="true" />
+                                                        <Text Value="@this.Image.CreatedAt.ToLocalTime().ToString(format: "yyyy-MM-dd HH:mm")" Variant="TypographyVariant.Body" />
+                                                </Column>
+                                                <Column Gap="0.2rem">
+                                                        <Text Value="Picture Reference" Variant="TypographyVariant.Caption" Muted="true" />
+                                                        <Text Value="@this.Image.PictureReference" Variant="TypographyVariant.Mono" Wrap="true" />
+                                                </Column>
+                                        </Grid>
+
+                                        <Column Gap="0.2rem">
+                                                <Text Value="Description / Alt Text" Variant="TypographyVariant.Caption" Muted="true" />
+                                                <Text Value="@(string.IsNullOrWhiteSpace(value: this.Image.AltText) ? "No description added." : this.Image.AltText)"
+                                                      Variant="TypographyVariant.Body"
+                                                      Muted="@string.IsNullOrWhiteSpace(value: this.Image.AltText)"
+                                                      Wrap="true" />
+                                        </Column>
+
+                                        <Row Gap="0.4rem" Wrap="true" VerticalAlignment="VerticalAlignment.Center">
+                                                <Text Value="Tags:" Variant="TypographyVariant.Caption" Muted="true" />
+                                                @if (this.Image.Tags.Count == 0)
+                                                {
+                                                        <ALKsPersonalUI.Layout.Text Value="None" Variant="TypographyVariant.Caption" Muted="true" />
+                                                }
+                                                else
+                                                {
+                                                        @foreach (string tag in this.Image.Tags)
+                                                        {
+                                                                <Pill @key="tag" Text="@tag" Variant="Pill.PillVariant.Neutral" />
+                                                        }
+                                                }
+                                        </Row>
+                                }
+                        </Column>
+                }
+        </ChildContent>
+        <FooterContent>
+                <Row HorizontalArrangement="Arrangement.End"
+                     VerticalAlignment="VerticalAlignment.Center"
+                     Gap="0.75rem"
+                     Wrap="true"
+                     Modifier="@UIModifier.New.FillMaxWidth()">
+                        @if (this.AllowDelete && this.Image is not null && !this._isEditing)
+                        {
+                                @* ALKsPersonalUI ActionButton suppresses normal clicks when HoldToConfirmDurationMilliseconds > 0 and invokes OnClick after holding pointer down. *@
+                                <ActionButton Text="Hold to Delete"
+                                              Variant="ActionButton.ButtonVariant.Outline"
+                                              HoldToConfirmDurationMilliseconds="@HOLD_TO_DELETE_DURATION_MS"
+                                              IsLoading="@this.IsDeleting"
+                                              IsDisabled="@this.IsDeleting"
+                                              OnClick="@this.HandleDeleteClickedAsync"
+                                              Modifier="@this.BuildDeleteButtonModifier()" />
+                        }
+
+                        @if (this.AllowEditMetadata && this.Image is not null && !this._isEditing)
+                        {
+                                <ActionButton Text="Edit Details"
+                                              Variant="ActionButton.ButtonVariant.Outline"
+                                              OnClick="@this.HandleStartEdit" />
+                        }
+
+                        <ActionButton Text="Close"
+                                      Variant="ActionButton.ButtonVariant.Ghost"
+                                      IsDisabled="@(this.IsSavingMetadata || this.IsDeleting)"
+                                      OnClick="@this.HandleCloseClickedAsync" />
+
+                        @if (this.ShowSelectButton && this.Image is not null && !this._isEditing)
+                        {
+                                <ActionButton Text="Select Image"
+                                              Variant="ActionButton.ButtonVariant.Solid"
+                                              OnClick="@this.HandleSelectClickedAsync" />
+                        }
+                </Row>
+        </FooterContent>
+</Modal>
