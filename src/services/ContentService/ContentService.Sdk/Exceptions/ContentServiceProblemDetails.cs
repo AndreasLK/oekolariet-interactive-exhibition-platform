@@ -6,6 +6,9 @@ namespace ContentService.Sdk.Exceptions;
 /// <summary>
 /// Deserialization contract for RFC 7807 ProblemDetails payloads returned by <c>ContentService.Api</c>.
 /// </summary>
+/// <remarks>
+/// Kept as a standalone SDK DTO rather than referencing <c>Microsoft.AspNetCore.Mvc.ProblemDetails</c> so Blazor WASM and lightweight consumers avoid server framework dependencies.
+/// </remarks>
 public sealed class ContentServiceProblemDetails
 {
         /// <summary>
