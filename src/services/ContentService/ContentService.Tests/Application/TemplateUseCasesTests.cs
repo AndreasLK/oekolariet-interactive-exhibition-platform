@@ -33,10 +33,10 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
         }
 
         /// <inheritdoc />
-        public Task InitializeAsync() => this._fixture.ResetDatabaseAsync();
+        public ValueTask InitializeAsync() => new(this._fixture.ResetDatabaseAsync());
 
         /// <inheritdoc />
-        public Task DisposeAsync() => Task.CompletedTask;
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
         /// <summary>
         /// Verifies that <see cref="UpdateTemplateUseCase"/> reconciles added/removed image links in SQL Server, increments schema version, and detects stale concurrency tokens.

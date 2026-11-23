@@ -34,10 +34,10 @@ public sealed class SqlServerImageInfrastructureTests : IAsyncLifetime
         }
 
         /// <inheritdoc />
-        public Task InitializeAsync() => this._fixture.ResetDatabaseAsync();
+        public ValueTask InitializeAsync() => new(this._fixture.ResetDatabaseAsync());
 
         /// <inheritdoc />
-        public Task DisposeAsync() => Task.CompletedTask;
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
         /// <summary>
         /// Verifies that <see cref="ContentDbContext"/> applied migrations cleanly with zero pending model migrations.

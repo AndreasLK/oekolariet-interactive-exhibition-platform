@@ -54,7 +54,7 @@ public sealed class MsSqlContentDatabaseFixture : IAsyncLifetime
         /// Starts the SQL Server Docker container and applies all EF Core migrations.
         /// </summary>
         /// <returns>A task representing asynchronous container and schema initialization.</returns>
-        public async Task InitializeAsync()
+        public async ValueTask InitializeAsync()
         {
                 await this._container.StartAsync();
 
@@ -78,7 +78,7 @@ public sealed class MsSqlContentDatabaseFixture : IAsyncLifetime
         /// Stops and disposes the SQL Server Docker container after all collection tests finish.
         /// </summary>
         /// <returns>A task representing asynchronous container cleanup.</returns>
-        public async Task DisposeAsync()
+        public async ValueTask DisposeAsync()
         {
                 await this._container.DisposeAsync();
         }

@@ -38,10 +38,10 @@ public sealed class UploadImageUseCaseTests : IAsyncLifetime
         }
 
         /// <inheritdoc />
-        public Task InitializeAsync() => this._fixture.ResetDatabaseAsync();
+        public ValueTask InitializeAsync() => new(this._fixture.ResetDatabaseAsync());
 
         /// <inheritdoc />
-        public Task DisposeAsync() => Task.CompletedTask;
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
         /// <summary>
         /// Verifies that a valid upload persists metadata and binary payload atomically in SQL Server and computes exact SHA-256.

@@ -32,10 +32,10 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
         }
 
         /// <inheritdoc />
-        public Task InitializeAsync() => this._fixture.ResetDatabaseAsync();
+        public ValueTask InitializeAsync() => new(this._fixture.ResetDatabaseAsync());
 
         /// <inheritdoc />
-        public Task DisposeAsync() => Task.CompletedTask;
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
         /// <summary>
         /// Verifies that <see cref="GetImageMetadataUseCase"/> returns active metadata and throws <see cref="KeyNotFoundException"/> for soft-deleted or unknown images.

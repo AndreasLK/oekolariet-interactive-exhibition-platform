@@ -32,10 +32,10 @@ public sealed class CreateTemplateUseCaseTests : IAsyncLifetime
         }
 
         /// <inheritdoc />
-        public Task InitializeAsync() => this._fixture.ResetDatabaseAsync();
+        public ValueTask InitializeAsync() => new(this._fixture.ResetDatabaseAsync());
 
         /// <inheritdoc />
-        public Task DisposeAsync() => Task.CompletedTask;
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
         /// <summary>
         /// Verifies that <see cref="CreateTemplateUseCase"/> extracts <c>picture.{node}.{guid}</c> references and persists indexed join rows in SQL Server.
