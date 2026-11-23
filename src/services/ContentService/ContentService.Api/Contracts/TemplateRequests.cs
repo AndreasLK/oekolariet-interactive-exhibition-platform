@@ -1,9 +1,9 @@
-using ContentService.Domain.Enums;
+using ContentService.Facade.Dtos;
 
 namespace ContentService.Api.Contracts;
 
 /// <summary>
-/// Separates the HTTP creation body from <see cref="Application.Models.CreateTemplateCommand"/> so the API can resolve trusted actor identity server-side without exposing internal command fields.
+/// Separates the HTTP creation body from <see cref="CreateTemplateCommandDto"/> so the API can resolve trusted actor identity server-side without exposing internal command fields.
 /// </summary>
 /// <param name="Name">Unique human-readable template name used by curators to identify reusable layouts.</param>
 /// <param name="ComponentType">Target Blazor UI component category so editors know which renderer owns the schema.</param>
@@ -11,12 +11,12 @@ namespace ContentService.Api.Contracts;
 /// <param name="ActorId">Optional caller attribution used only when no authenticated principal identity is present.</param>
 public sealed record class CreateTemplateRequest(
         string Name,
-        TemplateComponentType ComponentType,
+        TemplateComponentTypeDto ComponentType,
         string SchemaJson,
         string? ActorId = null);
 
 /// <summary>
-/// Separates the HTTP update body from <see cref="Application.Models.UpdateTemplateCommand"/> so the route <c>{id}</c> remains authoritative and callers must prove they hold the latest version.
+/// Separates the HTTP update body from <see cref="UpdateTemplateCommandDto"/> so the route <c>{id}</c> remains authoritative and callers must prove they hold the latest version.
 /// </summary>
 /// <param name="Name">Updated template name.</param>
 /// <param name="SchemaJson">Updated raw JSON schema payload.</param>
