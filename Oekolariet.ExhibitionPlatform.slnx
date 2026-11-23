@@ -9,6 +9,7 @@
     <Project Path="src/services/ContentService/ContentService.Application/ContentService.Application.csproj" />
     <Project Path="src/services/ContentService/ContentService.Components/ContentService.Components.csproj" />
     <Project Path="src/services/ContentService/ContentService.Domain/ContentService.Domain.csproj" />
+    <Project Path="src/services/ContentService/ContentService.Facade/ContentService.Facade.csproj" />
     <Project Path="src/services/ContentService/ContentService.Infrastructure/ContentService.Infrastructure.csproj" />
     <Project Path="src/services/ContentService/ContentService.Sdk/ContentService.Sdk.csproj" />
     <Project Path="src/services/ContentService/ContentService.Tests/ContentService.Tests.csproj" />
