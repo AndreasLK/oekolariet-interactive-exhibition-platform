@@ -35,10 +35,18 @@ public sealed class SkiaImagePreviewGenerator : IImagePreviewGenerator
 
                 cancellationToken.ThrowIfCancellationRequested();
 
-                using SKBitmap? sourceBitmap = SKBitmap.Decode(buffer: sourceBytes);
-                if (sourceBitmap is null || sourceBitmap.Width <= 0 || sourceBitmap.Height <= 0)
+                // Create the codec explicitly because SKBitmap.Decode(byte[]) throws ArgumentNullException when synthetic or truncated headers yield a null SKCodec in SkiaSharp 3.x.
+                using MemoryStream sourceStream = new(buffer: sourceBytes, writable: false);
+                using SKCodec? codec = SKCodec.Create(stream: sourceStream);
+                if (codec is null)
                 {
                         // Unsupported or synthetic stub bytes fall back to original bytes cleanly.
+                        return Task.FromResult<ImagePreviewPayload?>(result: null);
+                }
+
+                using SKBitmap? sourceBitmap = SKBitmap.Decode(codec: codec);
+                if (sourceBitmap is null || sourceBitmap.Width <= 0 || sourceBitmap.Height <= 0)
+                {
                         return Task.FromResult<ImagePreviewPayload?>(result: null);
                 }
 
