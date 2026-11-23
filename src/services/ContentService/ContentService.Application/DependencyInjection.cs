@@ -1,5 +1,5 @@
-using ContentService.Application.Interfaces;
 using ContentService.Application.Common;
+using ContentService.Application.Interfaces;
 using ContentService.Application.Options;
 using ContentService.Application.UseCases.Health;
 using ContentService.Application.UseCases.Images;
@@ -31,17 +31,17 @@ public static class DependencyInjection
                 ArgumentNullException.ThrowIfNull(services);
                 ArgumentNullException.ThrowIfNull(configuration);
 
-                // Validate options at host startup so misconfigured quotas or shard identifiers never fail silently until the first upload.
+                // Validate options at host startup so misconfigured quotas or storage node labels fail fast instead of waiting for the first upload.
                 services.AddSingleton<IValidateOptions<ContentStorageOptions>, ContentStorageOptionsValidator>();
                 services
                         .AddOptions<ContentStorageOptions>()
                         .Bind(configuration.GetSection(ApplicationConstants.CONTENT_STORAGE_SECTION_NAME))
                         .ValidateOnStart();
 
-                // Magic-byte validation is stateless and thread-safe, so a single shared instance suffices across requests.
-                services.AddSingleton<IImageSignatureValidator, MagicByteImageSignatureValidator>();
+                // Header signature validation is stateless and thread-safe, so one shared instance works across all requests.
+                services.AddSingleton<IImageSignatureValidator, ImageHeaderSignatureValidator>();
 
-                // Register use cases as scoped so each request shares one scoped repository/DbContext unit of work.
+                // Register use cases as scoped so each HTTP request shares one scoped repository/DbContext instance.
                 services.AddScoped<UploadImageUseCase>();
                 services.AddScoped<GetImageMetadataUseCase>();
                 services.AddScoped<ListImagesUseCase>();
@@ -60,4 +60,3 @@ public static class DependencyInjection
                 return services;
         }
 }
-

@@ -167,7 +167,7 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
                         imageRepository: imageRepository,
                         quotaMonitor: quotaMonitor,
                         maxImageSizeBytes: SMALL_MAX_IMAGE_BYTES);
-                // Copy valid PNG magic bytes into an oversized buffer so magic-byte validation alone cannot mask the true stream length.
+                // Copy valid PNG header bytes into an oversized buffer so header validation alone cannot mask the true stream length.
                 byte[] oversizedPayload = new byte[OVERSIZED_ACTUAL_LENGTH];
                 Array.Copy(sourceArray: VALID_PNG_PAYLOAD, destinationArray: oversizedPayload, length: VALID_PNG_PAYLOAD.Length);
                 using MemoryStream stream = new(buffer: oversizedPayload, writable: false);
@@ -356,63 +356,11 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
         }
 
         /// <summary>
-        /// Verifies that matching ETags return <c>IsNotModified = true</c> without opening <see cref="SqlServerImageBinaryStore"/>.
+        /// Verifies that <see cref="GetImageStreamUseCase"/> streams real image bytes from SQL Server and throws <see cref="KeyNotFoundException"/> when the binary row is missing.
         /// </summary>
-        /// <param name="eTagFormat">The client <c>If-None-Match</c> header variant.</param>
         /// <returns>A task representing the asynchronous test execution.</returns>
-        [Theory]
-        [InlineData("plain")]
-        [InlineData("quoted")]
-        [InlineData("weak")]
-        [InlineData("list")]
-        [InlineData("uppercase")]
-        public async Task GetImageStreamUseCase_WhenETagMatches_SkipsBinaryStoreAndReturnsNotModifiedAsync(string eTagFormat)
-        {
-                // Arrange
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
-                SqlServerImageBinaryStore binaryStore = new(fixture: this._fixture);
-                ImageEntity image = CreateSeededImage(payloadBytes: VALID_PNG_PAYLOAD);
-                ImageBinaryEntity binary = ImageBinaryEntity.Create(imageId: image.Id, data: VALID_PNG_PAYLOAD);
-                await imageRepository.AddAsync(metadata: image, binary: binary, cancellationToken: CancellationToken.None);
-
-                string headerValue = eTagFormat switch
-                {
-                        "plain" => image.Sha256Hash,
-                        "quoted" => $"\"{image.Sha256Hash}\"",
-                        "weak" => $"W/\"{image.Sha256Hash}\"",
-                        "list" => $"\"other-etag\", W/\"{image.Sha256Hash}\"",
-                        "uppercase" => $"\"{image.Sha256Hash.ToUpperInvariant()}\"",
-                        _ => throw new InvalidOperationException("Unsupported test format.")
-                };
-
-                GetImageStreamUseCase useCase = new(
-                        imageRepository: imageRepository,
-                        imageBinaryStore: binaryStore);
-
-                // Act
-                await using ImageStreamResult result = await useCase.ExecuteAsync(
-                        query: new GetImageStreamQuery { ImageId = image.Id, IfNoneMatchETag = headerValue },
-                        cancellationToken: CancellationToken.None);
-
-                // Assert
-                // Ensure ETag short-circuiting leaves Content null and never touches SqlServerImageBinaryStore.
-                Assert.True(result.IsNotModified);
-                Assert.Null(result.Content);
-                Assert.Equal(0, binaryStore.OpenReadCallCount);
-        }
-
-        /// <summary>
-        /// Verifies that non-matching or malformed ETags stream real image bytes from SQL Server and missing binary rows throw <see cref="KeyNotFoundException"/>.
-        /// </summary>
-        /// <param name="clientETag">A non-matching or malformed ETag header.</param>
-        /// <returns>A task representing the asynchronous test execution.</returns>
-        [Theory]
-        [InlineData(null)]
-        [InlineData("\"")]
-        [InlineData("\"unclosed")]
-        [InlineData("w/\"lowercase-weak\"")]
-        [InlineData("\"non-matching-hash\"")]
-        public async Task GetImageStreamUseCase_WhenETagMissesOrMalformed_OpensStreamAsync(string? clientETag)
+        [Fact]
+        public async Task GetImageStreamUseCase_WhenActiveOrMissingBinary_StreamsBytesOrThrowsKeyNotFoundAsync()
         {
                 // Arrange
                 SqlServerImageRepository imageRepository = new(fixture: this._fixture);
@@ -431,16 +379,15 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
 
                 // Act
                 await using ImageStreamResult result = await useCase.ExecuteAsync(
-                        query: new GetImageStreamQuery { ImageId = image.Id, IfNoneMatchETag = clientETag },
+                        query: new GetImageStreamQuery { ImageId = image.Id },
                         cancellationToken: CancellationToken.None);
 
                 // Assert
-                Assert.False(result.IsNotModified);
-                Assert.NotNull(result.Content);
+                Assert.Equal(image.Id, result.Metadata.Id);
                 Assert.Equal(1, binaryStore.OpenReadCallCount);
 
                 using MemoryStream copy = new();
-                await result.Content!.CopyToAsync(destination: copy, cancellationToken: CancellationToken.None);
+                await result.Content.CopyToAsync(destination: copy, cancellationToken: CancellationToken.None);
                 Assert.Equal(VALID_PNG_PAYLOAD, copy.ToArray());
 
                 await Assert.ThrowsAsync<KeyNotFoundException>(() => useCase.ExecuteAsync(
@@ -567,7 +514,7 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
                 return new UploadImageUseCase(
                         imageRepository: imageRepository,
                         quotaMonitor: quotaMonitor,
-                        signatureValidator: new MagicByteImageSignatureValidator(),
+                        signatureValidator: new ImageHeaderSignatureValidator(),
                         options: MicrosoftOptions.Create(options));
         }
 

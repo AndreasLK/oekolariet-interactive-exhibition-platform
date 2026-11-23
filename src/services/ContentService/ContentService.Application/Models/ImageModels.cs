@@ -13,7 +13,7 @@ public sealed record class UploadImageCommand
         public required string FileName { get; init; }
 
         /// <summary>
-        /// Gets the declared MIME content type (must match the binary header signature).
+        /// Gets the declared MIME content type (must match the file's leading header bytes).
         /// </summary>
         public required string ContentType { get; init; }
 
@@ -49,7 +49,7 @@ public sealed record class ImageMetadataResult
         public required Guid Id { get; init; }
 
         /// <summary>
-        /// Gets the shard-aware picture reference (<c>picture.{node}.{guid}</c>) used inside template JSON schemas.
+        /// Gets the picture reference (<c>picture.{node}.{guid}</c>) used inside template JSON schemas.
         /// </summary>
         public required string PictureReference { get; init; }
 
@@ -89,7 +89,7 @@ public sealed record class ImageMetadataResult
         public required DateTimeOffset CreatedAt { get; init; }
 
         /// <summary>
-        /// Gets the domain-managed optimistic concurrency stamp for this image record.
+        /// Gets the domain-managed optimistic edit-lock stamp for this image record.
         /// </summary>
         public required Guid ConcurrencyStamp { get; init; }
 }
@@ -116,7 +116,7 @@ public sealed record class ListImagesQuery
 }
 
 /// <summary>
-/// Query criteria for streaming image binary bytes with optional conditional ETag validation.
+/// Query criteria for loading an exhibition image's readable byte stream.
 /// </summary>
 public sealed record class GetImageStreamQuery
 {
@@ -124,32 +124,26 @@ public sealed record class GetImageStreamQuery
         /// Gets the unique identifier of the requested image.
         /// </summary>
         public required Guid ImageId { get; init; }
-
-        /// <summary>
-        /// Gets the optional HTTP <c>If-None-Match</c> ETag header value supplied by the client cache.
-        /// </summary>
-        public string? IfNoneMatchETag { get; init; }
 }
 
 /// <summary>
-/// Represents the outcome of an image stream request, owning disposal of <see cref="Content"/> when modified.
+/// Represents an image metadata + readable payload stream result, owning disposal of <see cref="Content"/>.
 /// </summary>
-/// <remarks>
-/// Implemented with private construction and static factories so inconsistent <c>(Content: null, IsNotModified: false)</c> states cannot be built.
-/// </remarks>
 public sealed record class ImageStreamResult : IDisposable, IAsyncDisposable
 {
         /// <summary>
         /// Initializes a new instance of the <see cref="ImageStreamResult"/> class.
         /// </summary>
         /// <param name="metadata">The image metadata.</param>
-        /// <param name="content">The binary payload stream, or <see langword="null"/> when not modified.</param>
-        /// <param name="isNotModified">Whether the client's cached ETag matched the stored image digest.</param>
-        private ImageStreamResult(ImageMetadataResult metadata, Stream? content, bool isNotModified)
+        /// <param name="content">The open, caller-owned image payload stream.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="metadata"/> or <paramref name="content"/> is <see langword="null"/>.</exception>
+        public ImageStreamResult(ImageMetadataResult metadata, Stream content)
         {
+                ArgumentNullException.ThrowIfNull(metadata);
+                ArgumentNullException.ThrowIfNull(content);
+
                 this.Metadata = metadata;
                 this.Content = content;
-                this.IsNotModified = isNotModified;
         }
 
         /// <summary>
@@ -158,58 +152,25 @@ public sealed record class ImageStreamResult : IDisposable, IAsyncDisposable
         public ImageMetadataResult Metadata { get; }
 
         /// <summary>
-        /// Gets the readable binary stream when <see cref="IsNotModified"/> is <see langword="false"/>; otherwise <see langword="null"/>.
+        /// Gets the readable binary stream containing the image payload.
         /// </summary>
-        public Stream? Content { get; }
+        public Stream Content { get; }
 
         /// <summary>
-        /// Gets a value indicating whether the client's cached ETag matched and binary streaming was skipped.
-        /// </summary>
-        public bool IsNotModified { get; }
-
-        /// <summary>
-        /// Creates a conditional cache-hit result carrying metadata without opening a binary stream.
-        /// </summary>
-        /// <param name="metadata">The image metadata matching the client's ETag.</param>
-        /// <returns>An <see cref="ImageStreamResult"/> with <see cref="IsNotModified"/> set to <see langword="true"/>.</returns>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="metadata"/> is <see langword="null"/>.</exception>
-        public static ImageStreamResult NotModified(ImageMetadataResult metadata)
-        {
-                ArgumentNullException.ThrowIfNull(metadata);
-                return new ImageStreamResult(metadata: metadata, content: null, isNotModified: true);
-        }
-
-        /// <summary>
-        /// Creates a full stream result carrying image metadata and an open binary payload stream.
-        /// </summary>
-        /// <param name="metadata">The image metadata.</param>
-        /// <param name="content">The open, caller-owned image payload stream.</param>
-        /// <returns>An <see cref="ImageStreamResult"/> with <see cref="IsNotModified"/> set to <see langword="false"/>.</returns>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="metadata"/> or <paramref name="content"/> is <see langword="null"/>.</exception>
-        public static ImageStreamResult WithContent(ImageMetadataResult metadata, Stream content)
-        {
-                ArgumentNullException.ThrowIfNull(metadata);
-                ArgumentNullException.ThrowIfNull(content);
-                return new ImageStreamResult(metadata: metadata, content: content, isNotModified: false);
-        }
-
-        /// <summary>
-        /// Disposes the underlying binary <see cref="Content"/> stream if one was opened.
+        /// Disposes the underlying binary <see cref="Content"/> stream.
         /// </summary>
         public void Dispose()
         {
-                this.Content?.Dispose();
+                this.Content.Dispose();
         }
 
         /// <summary>
-        /// Asynchronously disposes the underlying binary <see cref="Content"/> stream if one was opened.
+        /// Asynchronously disposes the underlying binary <see cref="Content"/> stream.
         /// </summary>
         /// <returns>A <see cref="ValueTask"/> representing the asynchronous dispose operation.</returns>
         public ValueTask DisposeAsync()
         {
-                return this.Content is null
-                        ? ValueTask.CompletedTask
-                        : this.Content.DisposeAsync();
+                return this.Content.DisposeAsync();
         }
 }
 
@@ -228,4 +189,3 @@ public sealed record class DeleteImageCommand
         /// </summary>
         public required string ActorId { get; init; }
 }
-

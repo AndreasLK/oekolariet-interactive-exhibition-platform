@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
@@ -13,22 +12,22 @@ using ContentService.Domain.ValueObjects;
 namespace ContentService.Application.UseCases.Publishing;
 
 /// <summary>
-/// Resolves all picture dependencies across an optional template and implementation JSON into a deterministic, checksum-sealed offline kiosk bundle.
+/// Validates and seals an exhibition implementation and optional template into a deterministic offline kiosk bundle so kiosks can verify asset completeness and integrity with a single checksum.
 /// </summary>
 public sealed class ResolvePublishBundleUseCase
 {
         /// <summary>
-        /// Template aggregate repository.
+        /// Loads optional templates (including archived ones) when an exhibition references a saved layout schema.
         /// </summary>
         private readonly ITemplateRepository _templateRepository;
 
         /// <summary>
-        /// Image metadata repository used to verify and resolve bundle assets.
+        /// Resolves active image metadata and SHA-256 digests so offline kiosks receive verifiable download manifests.
         /// </summary>
         private readonly IImageRepository _imageRepository;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ResolvePublishBundleUseCase"/> class.
+        /// Captures template and image repositories so bundle validation and deterministic hashing stay independent of SQL Server.
         /// </summary>
         /// <param name="templateRepository">The template persistence repository.</param>
         /// <param name="imageRepository">The image metadata repository.</param>
@@ -45,10 +44,10 @@ public sealed class ResolvePublishBundleUseCase
         }
 
         /// <summary>
-        /// Validates implementation JSON, loads any linked template, verifies all referenced image assets exist, and computes a deterministic bundle checksum.
+        /// Resolves all referenced image assets across template and implementation JSON and seals them with a canonical SHA-256 bundle checksum for offline kiosk sync.
         /// </summary>
         /// <param name="command">The publish bundle resolution request.</param>
-        /// <param name="cancellationToken">A token to observe while loading templates and image metadata.</param>
+        /// <param name="cancellationToken">Propagates cancellation while loading templates and resolving image metadata.</param>
         /// <returns>A deterministic <see cref="PublishBundleResult"/> ready for offline kiosk packaging.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="command"/> is <see langword="null"/>.</exception>
         /// <exception cref="DomainValidationException">Thrown when implementation JSON is invalid/oversized, contains base64 data URIs, or <see cref="ResolvePublishBundleCommand.TemplateId"/> is <see cref="Guid.Empty"/>.</exception>
@@ -69,7 +68,7 @@ public sealed class ResolvePublishBundleUseCase
                         throw new DomainValidationException("Template ID cannot be empty when specified.");
                 }
 
-                // Extract implementation references before hitting the database so embedded base64 data URIs fail immediately.
+                // Extract implementation picture references before hitting the database so embedded base64 data URIs fail fast without DB round-trips.
                 HashSet<PictureReference> combinedReferences =
                         [.. PictureReference.ExtractReferences(jsonPayload: command.ImplementationJson)];
 
@@ -89,7 +88,7 @@ public sealed class ResolvePublishBundleUseCase
                         references: combinedReferences,
                         cancellationToken: cancellationToken);
 
-                // Sort deterministically by formatted GUID string then StorageNodeId so bundle ordering and checksums stay identical regardless of JSON key order.
+                // Sort canonically by formatted GUID then StorageNodeId so identical exhibition content yields the exact same manifest and checksum regardless of JSON order.
                 List<ImageEntity> orderedImages =
                 [
                         .. resolvedImages
@@ -122,17 +121,17 @@ public sealed class ResolvePublishBundleUseCase
         }
 
         /// <summary>
-        /// Loads the requested template when <paramref name="templateId"/> is specified, allowing archived templates for active draft publishing.
+        /// Loads the linked template when specified, intentionally permitting archived templates so in-flight exhibition drafts do not break when a template is retired.
         /// </summary>
         /// <param name="templateId">The optional template identifier.</param>
-        /// <param name="cancellationToken">A token to observe while querying the template repository.</param>
-        /// <returns>The loaded <see cref="TemplateEntity"/>, or <see langword="null"/> if <paramref name="templateId"/> is <see langword="null"/>.</returns>
+        /// <param name="cancellationToken">Propagates cancellation while querying the template repository.</param>
+        /// <returns>The loaded <see cref="TemplateEntity"/>, or <see langword="null"/> when publishing a standalone implementation without a template.</returns>
         /// <exception cref="KeyNotFoundException">Thrown when a non-null <paramref name="templateId"/> does not exist.</exception>
         private async Task<TemplateEntity?> LoadTemplateIfRequestedAsync(
                 Guid? templateId,
                 CancellationToken cancellationToken)
         {
-                // Templates are optional for ad-hoc implementations; when specified, archived templates remain readable for existing drafts.
+                // Templates are optional for ad-hoc implementations; when referenced, archived templates remain readable so existing drafts can still publish.
                 if (!templateId.HasValue)
                 {
                         return null;
@@ -150,7 +149,7 @@ public sealed class ResolvePublishBundleUseCase
         }
 
         /// <summary>
-        /// Computes a canonical, length-prefixed SHA-256 checksum across template schema, implementation JSON, and sorted asset digests.
+        /// Computes a canonical SHA-256 checksum over length-prefixed segments so kiosks detect any tamper or mismatch without ambiguity from arbitrary JSON characters.
         /// </summary>
         /// <param name="templateSchemaJson">The optional template schema JSON.</param>
         /// <param name="implementationJson">The exhibition implementation JSON.</param>
@@ -163,7 +162,7 @@ public sealed class ResolvePublishBundleUseCase
         {
                 using IncrementalHash sha256 = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
 
-                // Length-prefix every field instead of joining with delimiters so arbitrary JSON contents can never cause framing collisions.
+                // Length-prefix every segment instead of joining with delimiters so arbitrary JSON contents can never cause framing collisions.
                 AppendLengthPrefixedUtf8(sha256: sha256, value: templateSchemaJson ?? string.Empty);
                 AppendLengthPrefixedUtf8(sha256: sha256, value: implementationJson);
 
@@ -178,30 +177,18 @@ public sealed class ResolvePublishBundleUseCase
         }
 
         /// <summary>
-        /// Encodes <paramref name="value"/> as UTF-8 prefixed with its big-endian 32-bit byte length into <paramref name="sha256"/>.
+        /// Writes a 4-byte length header before each UTF-8 segment so adjacent fields cannot merge ambiguously.
         /// </summary>
         /// <param name="sha256">The incremental SHA-256 hash accumulator.</param>
         /// <param name="value">The string segment to encode and append.</param>
         private static void AppendLengthPrefixedUtf8(IncrementalHash sha256, string value)
         {
-                // Rent a pooled buffer sized for worst-case UTF-8 expansion to avoid per-segment heap allocations.
-                int maxByteCount = Encoding.UTF8.GetMaxByteCount(value.Length);
-                byte[] buffer = ArrayPool<byte>.Shared.Rent(maxByteCount);
-
-                try
-                {
-                        // Write the actual encoded byte count as a 4-byte big-endian prefix so field boundaries remain unambiguous.
-                        int actualByteCount = Encoding.UTF8.GetBytes(chars: value.AsSpan(), bytes: buffer.AsSpan());
-                        Span<byte> lengthPrefix = stackalloc byte[sizeof(int)];
-                        BinaryPrimitives.WriteInt32BigEndian(destination: lengthPrefix, value: actualByteCount);
-                        sha256.AppendData(lengthPrefix);
-                        sha256.AppendData(buffer.AsSpan(start: 0, length: actualByteCount));
-                }
-                finally
-                {
-                        // Always return the pooled buffer even if encoding or hashing throws.
-                        ArrayPool<byte>.Shared.Return(buffer);
-                }
+                // Without length prefixes, ("ab", "c") and ("a", "bc") would feed the identical byte sequence "abc" into SHA-256.
+                // Writing each segment's exact UTF-8 byte length first in fixed big-endian byte order keeps boundaries unambiguous on every CPU.
+                byte[] utf8Bytes = Encoding.UTF8.GetBytes(value);
+                byte[] lengthPrefix = new byte[sizeof(int)];
+                BinaryPrimitives.WriteInt32BigEndian(destination: lengthPrefix, value: utf8Bytes.Length);
+                sha256.AppendData(lengthPrefix);
+                sha256.AppendData(utf8Bytes);
         }
 }
-
