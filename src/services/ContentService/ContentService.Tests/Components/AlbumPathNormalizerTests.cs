@@ -11,7 +11,7 @@ public sealed class AlbumPathNormalizerTests
         /// Verifies relative directory extraction and album combination helpers preserve recursive subfolder structure.
         /// </summary>
         [Fact]
-        public void AlbumHelpers_ExtractAndCombine_NormalizeRecursiveFolders()
+        public void ExtractAndCombine_WhenGivenRecursiveFolders_NormalizeHierarchyPaths()
         {
                 // Act
                 string? extracted = AlbumPathNormalizer.ExtractRelativeDirectory(relativeFilePath: @"Madaffald\Frugt\banana.png");
