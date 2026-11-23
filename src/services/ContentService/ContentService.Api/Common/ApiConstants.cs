@@ -76,6 +76,11 @@ internal static class ApiConstants
         public const string IMAGE_CONTENT_ROUTE = "/{id:guid}/content";
 
         /// <summary>
+        /// Sub-resource route serving the saved lightweight preview image for fast gallery rendering.
+        /// </summary>
+        public const string IMAGE_PREVIEW_ROUTE = "/{id:guid}/preview";
+
+        /// <summary>
         /// Sub-resource route for updating searchable image metadata (description, tags, and album path).
         /// </summary>
         public const string IMAGE_METADATA_ROUTE = "/{id:guid}/metadata";

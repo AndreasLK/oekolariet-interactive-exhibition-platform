@@ -18,8 +18,8 @@
         </ItemGroup>
 
         <ItemGroup>
-                <ProjectReference Include="..\ContentService.Application\ContentService.Application.csproj" />
                 <ProjectReference Include="..\ContentService.Domain\ContentService.Domain.csproj" />
+                <ProjectReference Include="..\ContentService.Facade\ContentService.Facade.csproj" />
                 <ProjectReference Include="..\ContentService.Infrastructure\ContentService.Infrastructure.csproj" />
         </ItemGroup>
 

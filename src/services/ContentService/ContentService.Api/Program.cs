@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 using ContentService.Api.Common;
 using ContentService.Api.Endpoints;
 using ContentService.Api.ExceptionHandling;
-using ContentService.Application;
+using ContentService.Facade;
 using ContentService.Infrastructure;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Http.Features;
@@ -10,8 +10,8 @@ using Microsoft.Extensions.Options;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-// Keep HTTP endpoints decoupled from SQL Server details by wiring Application use cases and Infrastructure adapters separately.
-builder.Services.AddContentServiceApplication(configuration: builder.Configuration);
+// Keep HTTP endpoints decoupled from SQL Server and Application internals by wiring CQS Facades and Infrastructure adapters separately.
+builder.Services.AddContentServiceFacade(configuration: builder.Configuration);
 builder.Services.AddContentServiceInfrastructure(configuration: builder.Configuration);
 
 // Force Minimal API parameter/body binding errors into GlobalExceptionHandler so clients still receive RFC 7807 ProblemDetails and CORS headers instead of bare 400 responses.
