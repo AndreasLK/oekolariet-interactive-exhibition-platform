@@ -1,0 +1,195 @@
+@page "/user-preview"
+
+@* Production-ready user preview powered by ContentService.Sdk and ContentService.Components without developer diagnostics. *@
+<Column Gap="1.5rem" Modifier="@UIModifier.New.FillMaxWidth()">
+        <Row HorizontalArrangement="Arrangement.SpaceBetween"
+             VerticalAlignment="VerticalAlignment.Center"
+             Wrap="true"
+             Gap="1rem"
+             Modifier="@UIModifier.New.FillMaxWidth()">
+                <Column Gap="0.35rem">
+                        <Text Value="Exhibition Content Studio" Variant="TypographyVariant.H1" />
+                        <Text Value="Manage exhibition media, preview layout templates, and verify publish bundles."
+                              Variant="TypographyVariant.Body"
+                              Muted="true" />
+                </Column>
+
+                <Row Gap="0.5rem" Wrap="true" VerticalAlignment="VerticalAlignment.Center">
+                        <Pill Text="@this.BuildStorageStatusLabel()"
+                              Variant="@this.ResolveStorageStatusVariant()" />
+                        <ActionButton Text="Refresh Status"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Size="ActionButton.ButtonSize.Small"
+                                      IsLoading="@this._isLoadingHealth"
+                                      IsDisabled="@this._isLoadingHealth"
+                                      OnClick="@this.RefreshStorageHealthAsync" />
+                </Row>
+        </Row>
+
+        <Row Gap="0.5rem" Wrap="true" VerticalAlignment="VerticalAlignment.Center">
+                <Pill Text="Media Library"
+                      Variant="@(this._activeTab == PreviewTab.MediaLibrary ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
+                      OnClick="@(() => this.SelectTab(tab: PreviewTab.MediaLibrary))" />
+                <Pill Text="Templates"
+                      Variant="@(this._activeTab == PreviewTab.Templates ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
+                      OnClick="@(() => this.SelectTab(tab: PreviewTab.Templates))" />
+                <Pill Text="Publish Preview"
+                      Variant="@(this._activeTab == PreviewTab.PublishPreview ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
+                      OnClick="@(() => this.SelectTab(tab: PreviewTab.PublishPreview))" />
+        </Row>
+
+        @switch (this._activeTab)
+        {
+                case PreviewTab.MediaLibrary:
+                        <ContentImageGallery AllowDelete="true"
+                                             OnImageSelected="@this.HandleImageSelectedAsync" />
+
+                        @if (this._selectedImage is not null)
+                        {
+                                <Column Gap="0.75rem" Modifier="@this.BuildPanelModifier()">
+                                        <Row HorizontalArrangement="Arrangement.SpaceBetween"
+                                             VerticalAlignment="VerticalAlignment.Center"
+                                             Wrap="true"
+                                             Gap="0.5rem"
+                                             Modifier="@UIModifier.New.FillMaxWidth()">
+                                                <Text Value="Selected Asset" Variant="TypographyVariant.Title" />
+                                                <Pill Text="@FormatByteSize(bytes: this._selectedImage.SizeBytes)"
+                                                      Variant="Pill.PillVariant.Neutral" />
+                                        </Row>
+
+                                        <Row Gap="1.25rem" Wrap="true" VerticalAlignment="VerticalAlignment.Top" Modifier="@UIModifier.New.FillMaxWidth()">
+                                                <Box ContentAlignment="BoxAlignment.Center"
+                                                     Modifier="@this.BuildPreviewBoxModifier()">
+                                                        <Image Source="@this.ResolveSelectedImageSource()"
+                                                               Alt="@(this._selectedImage.AltText ?? this._selectedImage.FileName)"
+                                                               Fit="ImageFit.Contain"
+                                                               Modifier="@this.BuildPreviewImageModifier()" />
+                                                </Box>
+
+                                                <Column Gap="0.5rem" Modifier="@this.BuildMetadataColumnModifier()">
+                                                        <Text Value="@this._selectedImage.FileName" Variant="TypographyVariant.Subtitle" />
+                                                        <Text Value="@(string.IsNullOrWhiteSpace(value: this._selectedImage.AltText) ? "No description provided." : this._selectedImage.AltText)"
+                                                              Variant="TypographyVariant.Body"
+                                                              Muted="true" />
+                                                        <Text Value="@($"Album: {this._selectedImage.AlbumPath ?? "Root"} | Format: {this._selectedImage.ContentType}")"
+                                                              Variant="TypographyVariant.Caption" />
+
+                                                        @if (this._selectedImage.Tags.Count > 0)
+                                                        {
+                                                                <Row Gap="0.35rem" Wrap="true">
+                                                                        @foreach (string tag in this._selectedImage.Tags)
+                                                                        {
+                                                                                <Pill Text="@tag" Variant="Pill.PillVariant.Neutral" />
+                                                                        }
+                                                                </Row>
+                                                        }
+
+                                                        <Row Gap="0.75rem" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
+                                                                <ActionButton Text="Verify &amp; Download"
+                                                                              Variant="ActionButton.ButtonVariant.Solid"
+                                                                              Size="ActionButton.ButtonSize.Small"
+                                                                              IsLoading="@this._isDownloadingImage"
+                                                                              IsDisabled="@this._isDownloadingImage"
+                                                                              OnClick="@this.HandleDownloadSelectedImageAsync" />
+                                                        </Row>
+                                                </Column>
+                                        </Row>
+                                </Column>
+                        }
+                        break;
+
+                case PreviewTab.Templates:
+                        <ContentTemplateGallery OnTemplateSelected="@this.HandleTemplateSelectedAsync" />
+
+                        @if (this._selectedTemplate is not null)
+                        {
+                                <Column Gap="0.75rem" Modifier="@this.BuildPanelModifier()">
+                                        <Row HorizontalArrangement="Arrangement.SpaceBetween"
+                                             VerticalAlignment="VerticalAlignment.Center"
+                                             Wrap="true"
+                                             Gap="0.5rem"
+                                             Modifier="@UIModifier.New.FillMaxWidth()">
+                                                <Text Value="@this._selectedTemplate.Name" Variant="TypographyVariant.Title" />
+                                                <Row Gap="0.5rem" Wrap="true">
+                                                        <Pill Text="@this._selectedTemplate.ComponentType.ToString()" Variant="Pill.PillVariant.Accent" />
+                                                        <Pill Text="@($"v{this._selectedTemplate.SchemaVersion}")" Variant="Pill.PillVariant.Neutral" />
+                                                </Row>
+                                        </Row>
+
+                                        <ContentTemplatePreview SchemaJson="@this._selectedTemplate.SchemaJson" />
+                                </Column>
+                        }
+                        break;
+
+                case PreviewTab.PublishPreview:
+                        <Column Gap="1rem" Modifier="@this.BuildPanelModifier()">
+                                <Row HorizontalArrangement="Arrangement.SpaceBetween"
+                                     VerticalAlignment="VerticalAlignment.Center"
+                                     Wrap="true"
+                                     Gap="0.75rem"
+                                     Modifier="@UIModifier.New.FillMaxWidth()">
+                                        <Column Gap="0.25rem">
+                                                <Text Value="Publish Bundle Readiness" Variant="TypographyVariant.Title" />
+                                                <Text Value="Verify and checksum-seal your selected template and media assets for offline exhibition kiosks."
+                                                      Variant="TypographyVariant.Caption"
+                                                      Muted="true" />
+                                        </Column>
+
+                                        <ActionButton Text="Resolve Publish Bundle"
+                                                      Variant="ActionButton.ButtonVariant.Solid"
+                                                      Size="ActionButton.ButtonSize.Small"
+                                                      IsLoading="@this._isResolvingBundle"
+                                                      IsDisabled="@this._isResolvingBundle"
+                                                      OnClick="@this.HandleResolvePublishBundleAsync" />
+                                </Row>
+
+                                <Row Gap="1rem" Wrap="true">
+                                        <Pill Text="@($"Template: {this._selectedTemplate?.Name ?? "None selected"}")"
+                                              Variant="@(this._selectedTemplate is null ? Pill.PillVariant.Neutral : Pill.PillVariant.Success)" />
+                                        <Pill Text="@($"Image: {this._selectedImage?.FileName ?? "None selected"}")"
+                                              Variant="@(this._selectedImage is null ? Pill.PillVariant.Neutral : Pill.PillVariant.Success)" />
+                                </Row>
+
+                                @if (this._resolvedBundle is not null)
+                                {
+                                        <Divider />
+
+                                        <Column Gap="0.5rem" Modifier="@UIModifier.New.FillMaxWidth()">
+                                                <Row HorizontalArrangement="Arrangement.SpaceBetween"
+                                                     VerticalAlignment="VerticalAlignment.Center"
+                                                     Wrap="true"
+                                                     Gap="0.5rem"
+                                                     Modifier="@UIModifier.New.FillMaxWidth()">
+                                                        <Text Value="Resolved Bundle" Variant="TypographyVariant.Subtitle" />
+                                                        <Pill Text="@($"{this._resolvedBundle.Assets.Count} asset(s) verified")"
+                                                              Variant="Pill.PillVariant.Success" />
+                                                </Row>
+
+                                                <Text Value="@($"Checksum: {this._resolvedBundle.BundleChecksum}")"
+                                                      Variant="TypographyVariant.Mono" />
+
+                                                @if (this._resolvedBundle.Assets.Count > 0)
+                                                {
+                                                        <Column Gap="0.35rem" Modifier="@UIModifier.New.FillMaxWidth()">
+                                                                @foreach (ContentBundleAsset asset in this._resolvedBundle.Assets)
+                                                                {
+                                                                        <Row HorizontalArrangement="Arrangement.SpaceBetween"
+                                                                             VerticalAlignment="VerticalAlignment.Center"
+                                                                             Wrap="true"
+                                                                             Gap="0.5rem"
+                                                                             Modifier="@UIModifier.New.FillMaxWidth()">
+                                                                                <Text Value="@asset.ExternalId" Variant="TypographyVariant.Mono" />
+                                                                                <Text Value="@($"{asset.ContentType} · {FormatByteSize(bytes: asset.SizeBytes)}")"
+                                                                                      Variant="TypographyVariant.Caption"
+                                                                                      Muted="true" />
+                                                                        </Row>
+                                                                }
+                                                        </Column>
+                                                }
+                                        </Column>
+                                }
+                        </Column>
+                        break;
+        }
+</Column>
+
