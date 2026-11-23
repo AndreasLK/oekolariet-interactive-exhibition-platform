@@ -1,14 +1,14 @@
 using ContentService.Api.Common;
 using ContentService.Api.Contracts;
-using ContentService.Application.Common;
-using ContentService.Application.Models;
-using ContentService.Application.UseCases.Images;
+using ContentService.Facade.Common;
+using ContentService.Facade.Dtos;
+using ContentService.Facade.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ContentService.Api.Endpoints;
 
 /// <summary>
-/// Exposes HTTP endpoints for exhibition image uploads, catalog queries, binary downloads, and soft-deletion while delegating all domain/quota rules to Application use cases.
+/// Exposes HTTP endpoints for exhibition image uploads, catalog queries, binary downloads, and soft-deletion while delegating all domain/quota rules to CQS facades.
 /// </summary>
 internal static class ImageEndpoints
 {
@@ -27,31 +27,36 @@ internal static class ImageEndpoints
                 // Disable cookie antiforgery on the stateless API upload endpoint so Blazor WASM and backend clients can post multipart files without browser form tokens.
                 group.MapPost(pattern: ApiConstants.GROUP_ROOT_ROUTE, handler: HandleUploadImageAsync)
                         .DisableAntiforgery()
-                        .Produces<ImageMetadataResult>(StatusCodes.Status201Created)
+                        .Produces<ImageMetadataDto>(StatusCodes.Status201Created)
                         .ProducesProblem(StatusCodes.Status400BadRequest)
                         .ProducesProblem(StatusCodes.Status413PayloadTooLarge)
                         .ProducesProblem(StatusCodes.Status415UnsupportedMediaType)
                         .ProducesProblem(StatusCodes.Status507InsufficientStorage);
 
                 group.MapGet(pattern: ApiConstants.GROUP_ROOT_ROUTE, handler: HandleListImagesAsync)
-                        .Produces<PagedResult<ImageMetadataResult>>(StatusCodes.Status200OK);
+                        .Produces<PagedResultDto<ImageMetadataDto>>(StatusCodes.Status200OK);
 
                 group.MapGet(pattern: ApiConstants.IMAGE_ALBUMS_ROUTE, handler: HandleListAlbumsAsync)
                         .Produces<IReadOnlyList<string>>(StatusCodes.Status200OK)
                         .ProducesProblem(StatusCodes.Status400BadRequest);
 
                 group.MapGet(pattern: ApiConstants.RESOURCE_ID_ROUTE, handler: HandleGetImageMetadataAsync)
-                        .Produces<ImageMetadataResult>(StatusCodes.Status200OK)
+                        .Produces<ImageMetadataDto>(StatusCodes.Status200OK)
                         .ProducesProblem(StatusCodes.Status400BadRequest)
                         .ProducesProblem(StatusCodes.Status404NotFound);
 
                 group.MapPatch(pattern: ApiConstants.IMAGE_METADATA_ROUTE, handler: HandleUpdateImageMetadataAsync)
-                        .Produces<ImageMetadataResult>(StatusCodes.Status200OK)
+                        .Produces<ImageMetadataDto>(StatusCodes.Status200OK)
                         .ProducesProblem(StatusCodes.Status400BadRequest)
                         .ProducesProblem(StatusCodes.Status404NotFound)
                         .ProducesProblem(StatusCodes.Status409Conflict);
 
                 group.MapGet(pattern: ApiConstants.IMAGE_CONTENT_ROUTE, handler: HandleGetImageContentAsync)
+                        .Produces(StatusCodes.Status200OK)
+                        .ProducesProblem(StatusCodes.Status400BadRequest)
+                        .ProducesProblem(StatusCodes.Status404NotFound);
+
+                group.MapGet(pattern: ApiConstants.IMAGE_PREVIEW_ROUTE, handler: HandleGetImagePreviewAsync)
                         .Produces(StatusCodes.Status200OK)
                         .ProducesProblem(StatusCodes.Status400BadRequest)
                         .ProducesProblem(StatusCodes.Status404NotFound);
@@ -66,28 +71,28 @@ internal static class ImageEndpoints
         }
 
         /// <summary>
-        /// Forwards the raw multipart upload stream directly to <see cref="UploadImageUseCase"/> so large files are not double-buffered at the API boundary before size and quota checks run.
+        /// Forwards the raw multipart upload stream directly to <see cref="IImageCommandFacade"/> so large files are not double-buffered at the API boundary before size and quota checks run.
         /// </summary>
         /// <param name="file">The uploaded multipart image file.</param>
         /// <param name="altText">Optional accessibility alt text / description.</param>
         /// <param name="albumPath">Optional recursive album path (e.g., <c>Madaffald/Frugt</c>).</param>
         /// <param name="tags">Optional comma-separated search tags.</param>
         /// <param name="httpContext">The active HTTP context used to resolve trusted actor identity.</param>
-        /// <param name="useCase">The upload image application use case.</param>
+        /// <param name="commandFacade">The CQS image command facade.</param>
         /// <param name="cancellationToken">Propagates client disconnects to abort upload streaming and persistence.</param>
-        /// <returns>An HTTP 201 Created response containing the persisted <see cref="ImageMetadataResult"/>.</returns>
+        /// <returns>An HTTP 201 Created response containing the persisted <see cref="ImageMetadataDto"/>.</returns>
         private static async Task<IResult> HandleUploadImageAsync(
                 IFormFile file,
                 [FromForm] string? altText,
                 [FromForm] string? albumPath,
                 [FromForm] string? tags,
                 HttpContext httpContext,
-                UploadImageUseCase useCase,
+                IImageCommandFacade commandFacade,
                 CancellationToken cancellationToken)
         {
-                // Pass the multipart stream directly instead of buffering a second copy in the API layer; UploadImageUseCase enforces strict byte ceilings as it reads.
+                // Pass the multipart stream directly instead of buffering a second copy in the API layer; downstream validation enforces strict byte ceilings as it reads.
                 await using Stream contentStream = file.OpenReadStream();
-                UploadImageCommand command = new()
+                UploadImageCommandDto command = new()
                 {
                         FileName = file.FileName ?? string.Empty,
                         ContentType = ImageContentResponseHeaders.ExtractMediaType(rawContentType: file.ContentType),
@@ -99,7 +104,7 @@ internal static class ImageEndpoints
                         Tags = tags
                 };
 
-                ImageMetadataResult created = await useCase.ExecuteAsync(
+                ImageMetadataDto created = await commandFacade.UploadImageAsync(
                         command: command,
                         cancellationToken: cancellationToken);
 
@@ -109,35 +114,35 @@ internal static class ImageEndpoints
         }
 
         /// <summary>
-        /// Applies default pagination bounds before querying <see cref="ListImagesUseCase"/> so catalog browsing cannot trigger unbounded database reads.
+        /// Applies default pagination bounds before querying <see cref="IImageQueryFacade"/> so catalog browsing cannot trigger unbounded database reads.
         /// </summary>
         /// <param name="page">Optional 1-based page index.</param>
         /// <param name="pageSize">Optional page size.</param>
         /// <param name="searchTerm">Optional search filter matched against file name, alt text, and tags.</param>
         /// <param name="albumPath">Optional recursive album path filter.</param>
         /// <param name="includeSubalbums">Optional flag controlling whether nested sub-albums are included (defaults to true).</param>
-        /// <param name="useCase">The list images application use case.</param>
+        /// <param name="queryFacade">The CQS image query facade.</param>
         /// <param name="cancellationToken">Propagates client disconnects during listing.</param>
-        /// <returns>An HTTP 200 OK response containing a <see cref="PagedResult{T}"/> of image metadata.</returns>
+        /// <returns>An HTTP 200 OK response containing a <see cref="PagedResultDto{T}"/> of image metadata.</returns>
         private static async Task<IResult> HandleListImagesAsync(
                 [FromQuery] int? page,
                 [FromQuery] int? pageSize,
                 [FromQuery] string? searchTerm,
                 [FromQuery] string? albumPath,
                 [FromQuery] bool? includeSubalbums,
-                ListImagesUseCase useCase,
+                IImageQueryFacade queryFacade,
                 CancellationToken cancellationToken)
         {
-                ListImagesQuery query = new()
+                ListImagesQueryDto query = new()
                 {
-                        Page = page ?? ApplicationConstants.DEFAULT_PAGE,
-                        PageSize = pageSize ?? ApplicationConstants.DEFAULT_PAGE_SIZE,
+                        Page = page ?? FacadeConstants.DEFAULT_PAGE,
+                        PageSize = pageSize ?? FacadeConstants.DEFAULT_PAGE_SIZE,
                         SearchTerm = searchTerm,
                         AlbumPath = albumPath,
                         IncludeSubalbums = includeSubalbums ?? true
                 };
 
-                PagedResult<ImageMetadataResult> result = await useCase.ExecuteAsync(
+                PagedResultDto<ImageMetadataDto> result = await queryFacade.ListImagesAsync(
                         query: query,
                         cancellationToken: cancellationToken);
 
@@ -148,16 +153,16 @@ internal static class ImageEndpoints
         /// Lists immediate child album paths directly beneath an optional parent album.
         /// </summary>
         /// <param name="parentPath">Optional parent album path, or <see langword="null"/> for root albums.</param>
-        /// <param name="useCase">The list albums application use case.</param>
+        /// <param name="queryFacade">The CQS image query facade.</param>
         /// <param name="cancellationToken">Propagates client disconnects during album lookup.</param>
         /// <returns>An HTTP 200 OK response containing sorted immediate child album paths.</returns>
         private static async Task<IResult> HandleListAlbumsAsync(
                 [FromQuery] string? parentPath,
-                ListAlbumsUseCase useCase,
+                IImageQueryFacade queryFacade,
                 CancellationToken cancellationToken)
         {
-                IReadOnlyList<string> childAlbums = await useCase.ExecuteAsync(
-                        query: new ListAlbumsQuery { ParentAlbumPath = parentPath },
+                IReadOnlyList<string> childAlbums = await queryFacade.ListAlbumsAsync(
+                        parentAlbumPath: parentPath,
                         cancellationToken: cancellationToken);
 
                 return Results.Ok(childAlbums);
@@ -169,17 +174,17 @@ internal static class ImageEndpoints
         /// <param name="id">The unique image identifier.</param>
         /// <param name="request">The metadata update payload and expected concurrency stamp.</param>
         /// <param name="httpContext">The active HTTP context used to resolve trusted actor identity.</param>
-        /// <param name="useCase">The update metadata application use case.</param>
+        /// <param name="commandFacade">The CQS image command facade.</param>
         /// <param name="cancellationToken">Propagates client disconnects during persistence.</param>
-        /// <returns>An HTTP 200 OK response containing the updated <see cref="ImageMetadataResult"/>.</returns>
+        /// <returns>An HTTP 200 OK response containing the updated <see cref="ImageMetadataDto"/>.</returns>
         private static async Task<IResult> HandleUpdateImageMetadataAsync(
                 Guid id,
                 UpdateImageMetadataRequest request,
                 HttpContext httpContext,
-                UpdateImageMetadataUseCase useCase,
+                IImageCommandFacade commandFacade,
                 CancellationToken cancellationToken)
         {
-                UpdateImageMetadataCommand command = new()
+                UpdateImageMetadataCommandDto command = new()
                 {
                         ImageId = id,
                         AltText = request.AltText,
@@ -189,7 +194,7 @@ internal static class ImageEndpoints
                         ActorId = RequestActorResolver.ResolveActorId(httpContext: httpContext)
                 };
 
-                ImageMetadataResult updated = await useCase.ExecuteAsync(
+                ImageMetadataDto updated = await commandFacade.UpdateImageMetadataAsync(
                         command: command,
                         cancellationToken: cancellationToken);
 
@@ -200,15 +205,15 @@ internal static class ImageEndpoints
         /// Exposes image metadata independently of <c>/content</c> so editors and publishers can inspect file size, alt text, and SHA-256 digests without transferring image bytes.
         /// </summary>
         /// <param name="id">The unique image identifier.</param>
-        /// <param name="useCase">The get image metadata application use case.</param>
+        /// <param name="queryFacade">The CQS image query facade.</param>
         /// <param name="cancellationToken">Propagates client disconnects during lookup.</param>
         /// <returns>An HTTP 200 OK response containing the image metadata.</returns>
         private static async Task<IResult> HandleGetImageMetadataAsync(
                 Guid id,
-                GetImageMetadataUseCase useCase,
+                IImageQueryFacade queryFacade,
                 CancellationToken cancellationToken)
         {
-                ImageMetadataResult metadata = await useCase.ExecuteAsync(
+                ImageMetadataDto metadata = await queryFacade.GetImageMetadataAsync(
                         imageId: id,
                         cancellationToken: cancellationToken);
 
@@ -220,32 +225,41 @@ internal static class ImageEndpoints
         /// </summary>
         /// <param name="id">The unique image identifier.</param>
         /// <param name="httpContext">The active HTTP context used to set response headers.</param>
-        /// <param name="useCase">The get image stream application use case.</param>
+        /// <param name="queryFacade">The CQS image query facade.</param>
         /// <param name="cancellationToken">Propagates client disconnects to cancel loading.</param>
         /// <returns>An HTTP 200 streaming response whose stream ownership transfers to ASP.NET Core.</returns>
         private static async Task<IResult> HandleGetImageContentAsync(
                 Guid id,
                 HttpContext httpContext,
-                GetImageStreamUseCase useCase,
+                IImageQueryFacade queryFacade,
                 CancellationToken cancellationToken)
         {
-                ImageStreamResult streamResult = await useCase.ExecuteAsync(
-                        query: new GetImageStreamQuery { ImageId = id },
+                ImageStreamDto streamDto = await queryFacade.GetImageContentAsync(
+                        imageId: id,
                         cancellationToken: cancellationToken);
 
-                // Dispose streamResult if header setup fails before Results.Stream assumes ownership.
-                try
-                {
-                        ImageContentResponseHeaders.Configure(response: httpContext.Response, metadata: streamResult.Metadata);
-                        return Results.Stream(
-                                stream: streamResult.Content,
-                                contentType: streamResult.Metadata.ContentType);
-                }
-                catch
-                {
-                        await streamResult.DisposeAsync();
-                        throw;
-                }
+                return await StreamImageAsync(streamDto: streamDto, httpContext: httpContext);
+        }
+
+        /// <summary>
+        /// Streams the saved lightweight preview image with immutable caching headers, generating and persisting it on first access if absent.
+        /// </summary>
+        /// <param name="id">The unique image identifier.</param>
+        /// <param name="httpContext">The active HTTP context used to set response headers.</param>
+        /// <param name="queryFacade">The CQS image query facade.</param>
+        /// <param name="cancellationToken">Propagates client disconnects to cancel loading or generation.</param>
+        /// <returns>An HTTP 200 streaming response whose stream ownership transfers to ASP.NET Core.</returns>
+        private static async Task<IResult> HandleGetImagePreviewAsync(
+                Guid id,
+                HttpContext httpContext,
+                IImageQueryFacade queryFacade,
+                CancellationToken cancellationToken)
+        {
+                ImageStreamDto streamDto = await queryFacade.GetImagePreviewAsync(
+                        imageId: id,
+                        cancellationToken: cancellationToken);
+
+                return await StreamImageAsync(streamDto: streamDto, httpContext: httpContext);
         }
 
         /// <summary>
@@ -253,22 +267,47 @@ internal static class ImageEndpoints
         /// </summary>
         /// <param name="id">The unique image identifier.</param>
         /// <param name="httpContext">The active HTTP context used to resolve trusted actor identity.</param>
-        /// <param name="useCase">The delete image application use case.</param>
+        /// <param name="commandFacade">The CQS image command facade.</param>
         /// <param name="cancellationToken">Propagates client disconnects during deletion.</param>
         /// <returns>An HTTP 204 No Content response.</returns>
         private static async Task<IResult> HandleDeleteImageAsync(
                 Guid id,
                 HttpContext httpContext,
-                DeleteImageUseCase useCase,
+                IImageCommandFacade commandFacade,
                 CancellationToken cancellationToken)
         {
-                DeleteImageCommand command = new()
+                DeleteImageCommandDto command = new()
                 {
                         ImageId = id,
                         ActorId = RequestActorResolver.ResolveActorId(httpContext: httpContext)
                 };
 
-                await useCase.ExecuteAsync(command: command, cancellationToken: cancellationToken);
+                await commandFacade.DeleteImageAsync(command: command, cancellationToken: cancellationToken);
                 return Results.NoContent();
+        }
+
+        /// <summary>
+        /// Configures caching/security response headers and hands stream disposal ownership to ASP.NET Core, cleaning up on header failure.
+        /// </summary>
+        /// <param name="streamDto">The open image stream DTO.</param>
+        /// <param name="httpContext">The active HTTP context.</param>
+        /// <returns>An HTTP 200 streaming <see cref="IResult"/>.</returns>
+        private static async Task<IResult> StreamImageAsync(
+                ImageStreamDto streamDto,
+                HttpContext httpContext)
+        {
+                // Dispose streamDto if header setup fails before Results.Stream assumes ownership.
+                try
+                {
+                        ImageContentResponseHeaders.Configure(response: httpContext.Response, metadata: streamDto.Metadata);
+                        return Results.Stream(
+                                stream: streamDto.Content,
+                                contentType: streamDto.Metadata.ContentType);
+                }
+                catch
+                {
+                        await streamDto.DisposeAsync();
+                        throw;
+                }
         }
 }
