@@ -1,4 +1,5 @@
 using ContentService.Application.Interfaces;
+using ContentService.Infrastructure.Images;
 using ContentService.Infrastructure.Persistence;
 using ContentService.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -55,6 +56,7 @@ public static class DependencyInjection
                 services.AddScoped<IImageBinaryStore, SqlServerImageBinaryStore>();
                 services.AddScoped<ITemplateRepository, SqlServerTemplateRepository>();
                 services.AddScoped<IStorageQuotaMonitor, SqlServerStorageQuotaMonitor>();
+                services.AddSingleton<IImagePreviewGenerator, SkiaImagePreviewGenerator>();
 
                 return services;
         }
