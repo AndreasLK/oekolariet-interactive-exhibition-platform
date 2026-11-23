@@ -54,9 +54,9 @@ public sealed class ImageApiIntegrationTests : IAsyncLifetime
                 using HttpClient client = factory.CreateClient();
 
                 // Act 1: Upload valid PNG with parameterized Content-Type header to verify media type extraction.
-                using HttpResponseMessage uploadResponse = await ApiIntegrationTestHelpers.UploadImageAsync(
+                using HttpResponseMessage uploadResponse = await ApiIntegrationTestFixtures.UploadImageAsync(
                         client: client,
-                        payload: ApiIntegrationTestHelpers.VALID_PNG_PAYLOAD,
+                        payload: ApiIntegrationTestFixtures.VALID_PNG_PAYLOAD,
                         fileName: "exhibit-hero.png",
                         contentType: $"{DomainConstants.CONTENT_TYPE_PNG}; charset=binary",
                         altText: "Hero photo");
@@ -64,28 +64,28 @@ public sealed class ImageApiIntegrationTests : IAsyncLifetime
                 // Assert 1
                 Assert.Equal(HttpStatusCode.Created, uploadResponse.StatusCode);
                 ImageMetadataResult? uploaded = await uploadResponse.Content.ReadFromJsonAsync<ImageMetadataResult>(
-                        options: ApiIntegrationTestHelpers.API_JSON_OPTIONS);
+                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
                 Assert.NotNull(uploaded);
-                Assert.Equal($"{ApiIntegrationTestHelpers.IMAGES_ROUTE}/{uploaded.Id}", uploadResponse.Headers.Location?.ToString());
+                Assert.Equal($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{uploaded.Id}", uploadResponse.Headers.Location?.ToString());
                 Assert.Equal("exhibit-hero.png", uploaded.FileName);
                 Assert.Equal(DomainConstants.CONTENT_TYPE_PNG, uploaded.ContentType);
                 Assert.Equal("Hero photo", uploaded.AltText);
-                Assert.Equal(ApiIntegrationTestHelpers.VALID_PNG_PAYLOAD.Length, uploaded.SizeBytes);
+                Assert.Equal(ApiIntegrationTestFixtures.VALID_PNG_PAYLOAD.Length, uploaded.SizeBytes);
 
                 // Act 2: Metadata + List
-                using HttpResponseMessage metadataResponse = await client.GetAsync($"{ApiIntegrationTestHelpers.IMAGES_ROUTE}/{uploaded.Id}");
-                using HttpResponseMessage listResponse = await client.GetAsync($"{ApiIntegrationTestHelpers.IMAGES_ROUTE}?page=1&pageSize=10&searchTerm=hero");
+                using HttpResponseMessage metadataResponse = await client.GetAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{uploaded.Id}");
+                using HttpResponseMessage listResponse = await client.GetAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}?page=1&pageSize=10&searchTerm=hero");
 
                 // Assert 2
                 Assert.Equal(HttpStatusCode.OK, metadataResponse.StatusCode);
                 Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
                 PagedResult<ImageMetadataResult>? listed = await listResponse.Content.ReadFromJsonAsync<PagedResult<ImageMetadataResult>>(
-                        options: ApiIntegrationTestHelpers.API_JSON_OPTIONS);
+                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
                 Assert.NotNull(listed);
                 Assert.Single(listed.Items);
 
                 // Act 3: Stream content
-                using HttpResponseMessage contentResponse = await client.GetAsync($"{ApiIntegrationTestHelpers.IMAGES_ROUTE}/{uploaded.Id}/content");
+                using HttpResponseMessage contentResponse = await client.GetAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{uploaded.Id}/content");
                 byte[] downloadedBytes = await contentResponse.Content.ReadAsByteArrayAsync();
 
                 // Assert 3
@@ -97,13 +97,13 @@ public sealed class ImageApiIntegrationTests : IAsyncLifetime
                 Assert.Equal(EXPECTED_NOSNIFF_HEADER, contentResponse.Headers.GetValues(HeaderNames.XContentTypeOptions).Single());
                 Assert.Equal(EXPECTED_ACCEPT_RANGES_HEADER, contentResponse.Headers.AcceptRanges.Single());
                 Assert.Equal(EXPECTED_INLINE_DISPOSITION, contentResponse.Content.Headers.ContentDisposition?.DispositionType);
-                Assert.Equal(ApiIntegrationTestHelpers.VALID_PNG_PAYLOAD.Length, contentResponse.Content.Headers.ContentLength);
-                Assert.Equal(ApiIntegrationTestHelpers.VALID_PNG_PAYLOAD, downloadedBytes);
+                Assert.Equal(ApiIntegrationTestFixtures.VALID_PNG_PAYLOAD.Length, contentResponse.Content.Headers.ContentLength);
+                Assert.Equal(ApiIntegrationTestFixtures.VALID_PNG_PAYLOAD, downloadedBytes);
 
                 // Act 4: Delete unreferenced image -> 204 -> 404
-                using HttpResponseMessage deleteResponse = await client.DeleteAsync($"{ApiIntegrationTestHelpers.IMAGES_ROUTE}/{uploaded.Id}");
-                using HttpResponseMessage afterDeleteMetadata = await client.GetAsync($"{ApiIntegrationTestHelpers.IMAGES_ROUTE}/{uploaded.Id}");
-                using HttpResponseMessage afterDeleteContent = await client.GetAsync($"{ApiIntegrationTestHelpers.IMAGES_ROUTE}/{uploaded.Id}/content");
+                using HttpResponseMessage deleteResponse = await client.DeleteAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{uploaded.Id}");
+                using HttpResponseMessage afterDeleteMetadata = await client.GetAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{uploaded.Id}");
+                using HttpResponseMessage afterDeleteContent = await client.GetAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{uploaded.Id}/content");
 
                 // Assert 4
                 Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
@@ -120,7 +120,7 @@ public sealed class ImageApiIntegrationTests : IAsyncLifetime
                 // Arrange: tight MaxImageSizeBytes = 64
                 Dictionary<string, string?> sizeOverrides = new()
                 {
-                        [ApiIntegrationTestHelpers.MAX_IMAGE_SIZE_CONFIG_KEY] = SMALL_MAX_IMAGE_BYTES.ToString()
+                        [ApiIntegrationTestFixtures.MAX_IMAGE_SIZE_CONFIG_KEY] = SMALL_MAX_IMAGE_BYTES.ToString()
                 };
                 using ContentApiWebApplicationFactory sizeFactory = new(
                         connectionString: this._fixture.ConnectionString,
@@ -130,34 +130,34 @@ public sealed class ImageApiIntegrationTests : IAsyncLifetime
                 byte[] spoofedSvg = Encoding.UTF8.GetBytes("<svg><script>alert(1)</script></svg>");
                 byte[] oversizedPng = new byte[OVERSIZED_PNG_BYTES];
                 Array.Copy(
-                        sourceArray: ApiIntegrationTestHelpers.VALID_PNG_PAYLOAD,
+                        sourceArray: ApiIntegrationTestFixtures.VALID_PNG_PAYLOAD,
                         destinationArray: oversizedPng,
-                        length: ApiIntegrationTestHelpers.VALID_PNG_PAYLOAD.Length);
+                        length: ApiIntegrationTestFixtures.VALID_PNG_PAYLOAD.Length);
 
                 // Act 1 & 2: Invalid magic bytes & oversized upload
-                using HttpResponseMessage spoofedResponse = await ApiIntegrationTestHelpers.UploadImageAsync(
+                using HttpResponseMessage spoofedResponse = await ApiIntegrationTestFixtures.UploadImageAsync(
                         client: sizeClient,
                         payload: spoofedSvg,
                         fileName: "spoofed.png",
                         contentType: DomainConstants.CONTENT_TYPE_PNG);
-                using HttpResponseMessage oversizedResponse = await ApiIntegrationTestHelpers.UploadImageAsync(
+                using HttpResponseMessage oversizedResponse = await ApiIntegrationTestFixtures.UploadImageAsync(
                         client: sizeClient,
                         payload: oversizedPng,
                         fileName: "too-big.png",
                         contentType: DomainConstants.CONTENT_TYPE_PNG);
 
                 // Assert 1 & 2
-                await ApiIntegrationTestHelpers.AssertProblemDetailsStatusAsync(
+                await ApiIntegrationTestFixtures.AssertProblemDetailsStatusAsync(
                         response: spoofedResponse,
                         expectedStatusCode: HttpStatusCode.BadRequest);
-                await ApiIntegrationTestHelpers.AssertProblemDetailsStatusAsync(
+                await ApiIntegrationTestFixtures.AssertProblemDetailsStatusAsync(
                         response: oversizedResponse,
                         expectedStatusCode: HttpStatusCode.BadRequest);
 
                 // Arrange: tight quota = 8 bytes
                 Dictionary<string, string?> quotaOverrides = new()
                 {
-                        [ApiIntegrationTestHelpers.TOTAL_QUOTA_CONFIG_KEY] = TIGHT_QUOTA_BYTES.ToString()
+                        [ApiIntegrationTestFixtures.TOTAL_QUOTA_CONFIG_KEY] = TIGHT_QUOTA_BYTES.ToString()
                 };
                 using ContentApiWebApplicationFactory quotaFactory = new(
                         connectionString: this._fixture.ConnectionString,
@@ -165,14 +165,14 @@ public sealed class ImageApiIntegrationTests : IAsyncLifetime
                 using HttpClient quotaClient = quotaFactory.CreateClient();
 
                 // Act 3: Quota exceeded
-                using HttpResponseMessage quotaResponse = await ApiIntegrationTestHelpers.UploadImageAsync(
+                using HttpResponseMessage quotaResponse = await ApiIntegrationTestFixtures.UploadImageAsync(
                         client: quotaClient,
-                        payload: ApiIntegrationTestHelpers.VALID_PNG_PAYLOAD,
+                        payload: ApiIntegrationTestFixtures.VALID_PNG_PAYLOAD,
                         fileName: "over-quota.png",
                         contentType: DomainConstants.CONTENT_TYPE_PNG);
 
                 // Assert 3
-                await ApiIntegrationTestHelpers.AssertProblemDetailsStatusAsync(
+                await ApiIntegrationTestFixtures.AssertProblemDetailsStatusAsync(
                         response: quotaResponse,
                         expectedStatusCode: HttpStatusCode.InsufficientStorage);
         }
@@ -187,30 +187,30 @@ public sealed class ImageApiIntegrationTests : IAsyncLifetime
                 using ContentApiWebApplicationFactory factory = new(connectionString: this._fixture.ConnectionString);
                 using HttpClient client = factory.CreateClient();
 
-                using HttpResponseMessage uploadResponse = await ApiIntegrationTestHelpers.UploadImageAsync(
+                using HttpResponseMessage uploadResponse = await ApiIntegrationTestFixtures.UploadImageAsync(
                         client: client,
-                        payload: ApiIntegrationTestHelpers.VALID_PNG_PAYLOAD,
+                        payload: ApiIntegrationTestFixtures.VALID_PNG_PAYLOAD,
                         fileName: "linked.png",
                         contentType: DomainConstants.CONTENT_TYPE_PNG);
                 ImageMetadataResult? image = await uploadResponse.Content.ReadFromJsonAsync<ImageMetadataResult>(
-                        options: ApiIntegrationTestHelpers.API_JSON_OPTIONS);
+                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
                 Assert.NotNull(image);
 
                 CreateTemplateRequest createTemplate = new(
                         Name: "Referencing Template",
-                        ComponentType: TemplateComponentType.QuizTemplate,
+                        ComponentType: ContentService.Facade.Dtos.TemplateComponentTypeDto.QuizTemplate,
                         SchemaJson: $"{{\"hero\":\"{image.PictureReference}\"}}");
                 using HttpResponseMessage templateResponse = await client.PostAsJsonAsync(
-                        requestUri: ApiIntegrationTestHelpers.TEMPLATES_ROUTE,
+                        requestUri: ApiIntegrationTestFixtures.TEMPLATES_ROUTE,
                         value: createTemplate,
-                        options: ApiIntegrationTestHelpers.API_JSON_OPTIONS);
+                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
                 Assert.Equal(HttpStatusCode.Created, templateResponse.StatusCode);
 
                 // Act
-                using HttpResponseMessage deleteResponse = await client.DeleteAsync($"{ApiIntegrationTestHelpers.IMAGES_ROUTE}/{image.Id}");
+                using HttpResponseMessage deleteResponse = await client.DeleteAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{image.Id}");
 
                 // Assert
-                await ApiIntegrationTestHelpers.AssertProblemDetailsStatusAsync(
+                await ApiIntegrationTestFixtures.AssertProblemDetailsStatusAsync(
                         response: deleteResponse,
                         expectedStatusCode: HttpStatusCode.Conflict);
         }
