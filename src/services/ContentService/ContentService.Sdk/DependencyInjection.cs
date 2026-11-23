@@ -32,7 +32,7 @@ public static class DependencyInjection
                         .Bind(configuration.GetSection(SdkConstants.CONTENT_SERVICE_SECTION_NAME))
                         .ValidateOnStart();
 
-                return RegisterTypedImageClient(services: services);
+                return RegisterTypedClients(services: services);
         }
 
         /// <summary>
@@ -55,28 +55,39 @@ public static class DependencyInjection
                         .Configure(configureOptions)
                         .ValidateOnStart();
 
-                return RegisterTypedImageClient(services: services);
+                return RegisterTypedClients(services: services);
         }
 
-        private static IHttpClientBuilder RegisterTypedImageClient(IServiceCollection services)
+        /// <summary>
+        /// Registers all ContentService typed HTTP clients with shared base-address and timeout configuration.
+        /// </summary>
+        /// <param name="services">The target service collection.</param>
+        /// <returns>The <see cref="IHttpClientBuilder"/> for the primary image client.</returns>
+        private static IHttpClientBuilder RegisterTypedClients(IServiceCollection services)
         {
-                return services.AddHttpClient<IContentServiceImageClient, ContentServiceImageClient>(
-                        configureClient: static (serviceProvider, httpClient) =>
-                        {
-                                ContentServiceClientOptions clientOptions = serviceProvider
-                                        .GetRequiredService<IOptions<ContentServiceClientOptions>>()
-                                        .Value;
+                services.AddHttpClient<IContentServiceTemplateClient, ContentServiceTemplateClient>(configureClient: ConfigureHttpClient);
+                services.AddHttpClient<IContentServicePublishingClient, ContentServicePublishingClient>(configureClient: ConfigureHttpClient);
+                services.AddHttpClient<IContentServiceHealthClient, ContentServiceHealthClient>(configureClient: ConfigureHttpClient);
+                return services.AddHttpClient<IContentServiceImageClient, ContentServiceImageClient>(configureClient: ConfigureHttpClient);
+        }
 
-                                if (clientOptions.BaseAddress is not null)
-                                {
-                                        httpClient.BaseAddress = clientOptions.BaseAddress;
-                                }
+        private static void ConfigureHttpClient(
+                IServiceProvider serviceProvider,
+                HttpClient httpClient)
+        {
+                ContentServiceClientOptions clientOptions = serviceProvider
+                        .GetRequiredService<IOptions<ContentServiceClientOptions>>()
+                        .Value;
 
-                                if (clientOptions.RequestTimeout is not null)
-                                {
-                                        httpClient.Timeout = clientOptions.RequestTimeout.Value;
-                                }
-                        });
+                if (clientOptions.BaseAddress is not null)
+                {
+                        httpClient.BaseAddress = clientOptions.BaseAddress;
+                }
+
+                if (clientOptions.RequestTimeout is not null)
+                {
+                        httpClient.Timeout = clientOptions.RequestTimeout.Value;
+                }
         }
 }
 
