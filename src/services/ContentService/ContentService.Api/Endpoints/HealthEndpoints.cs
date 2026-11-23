@@ -1,6 +1,6 @@
 using ContentService.Api.Common;
-using ContentService.Application.Models;
-using ContentService.Application.UseCases.Health;
+using ContentService.Facade.Dtos;
+using ContentService.Facade.Interfaces;
 
 namespace ContentService.Api.Endpoints;
 
@@ -20,22 +20,22 @@ internal static class HealthEndpoints
 
                 endpoints.MapGet(pattern: ApiConstants.STORAGE_HEALTH_ROUTE, handler: HandleGetStorageHealthAsync)
                         .WithTags(ApiConstants.HEALTH_OPENAPI_TAG)
-                        .Produces<StorageHealthResult>(StatusCodes.Status200OK);
+                        .Produces<StorageHealthDto>(StatusCodes.Status200OK);
 
                 return endpoints;
         }
 
         /// <summary>
-        /// Delegates quota calculation to <see cref="GetStorageHealthUseCase"/> so HTTP routing stays decoupled from threshold rules.
+        /// Delegates quota calculation to <see cref="IContentPlatformQueryFacade"/> so HTTP routing stays decoupled from threshold rules.
         /// </summary>
-        /// <param name="useCase">The storage health application use case.</param>
+        /// <param name="queryFacade">The CQS platform query facade.</param>
         /// <param name="cancellationToken">Propagates HTTP request aborts to cancel pending SQL aggregation.</param>
-        /// <returns>An HTTP 200 OK response containing the <see cref="StorageHealthResult"/>.</returns>
+        /// <returns>An HTTP 200 OK response containing the <see cref="StorageHealthDto"/>.</returns>
         private static async Task<IResult> HandleGetStorageHealthAsync(
-                GetStorageHealthUseCase useCase,
+                IContentPlatformQueryFacade queryFacade,
                 CancellationToken cancellationToken)
         {
-                StorageHealthResult health = await useCase.ExecuteAsync(cancellationToken: cancellationToken);
+                StorageHealthDto health = await queryFacade.GetStorageHealthAsync(cancellationToken: cancellationToken);
                 return Results.Ok(health);
         }
 }
