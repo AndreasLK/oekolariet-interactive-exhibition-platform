@@ -42,4 +42,49 @@ public sealed class SqlServerImageBinaryStore : IImageBinaryStore
                         ? null
                         : new MemoryStream(buffer: payloadBytes, writable: false);
         }
+
+        /// <inheritdoc />
+        public async Task<ImagePreviewStreamResult?> OpenPreviewReadAsync(Guid imageId, CancellationToken cancellationToken)
+        {
+                var previewRow = await (
+                        from binary in this._dbContext.ImageBinaries.AsNoTracking()
+                        join image in this._dbContext.Images.AsNoTracking()
+                                on binary.ImageId equals image.Id
+                        where binary.ImageId == imageId && !image.IsDeleted && binary.PreviewData != null
+                        select new
+                        {
+                                binary.PreviewData,
+                                binary.PreviewContentType
+                        })
+                        .FirstOrDefaultAsync(cancellationToken: cancellationToken);
+
+                if (previewRow?.PreviewData is null || string.IsNullOrWhiteSpace(value: previewRow.PreviewContentType))
+                {
+                        return null;
+                }
+
+                MemoryStream stream = new(buffer: previewRow.PreviewData, writable: false);
+                return new ImagePreviewStreamResult(
+                        Content: stream,
+                        ContentType: previewRow.PreviewContentType,
+                        SizeBytes: previewRow.PreviewData.Length);
+        }
+
+        /// <inheritdoc />
+        public async Task SavePreviewAsync(
+                Guid imageId,
+                byte[] previewBytes,
+                string contentType,
+                CancellationToken cancellationToken)
+        {
+                var binary = await this._dbContext.ImageBinaries
+                        .FirstOrDefaultAsync(row => row.ImageId == imageId, cancellationToken: cancellationToken);
+                if (binary is null)
+                {
+                        return;
+                }
+
+                binary.SetPreview(previewData: previewBytes, previewContentType: contentType);
+                await this._dbContext.SaveChangesAsync(cancellationToken: cancellationToken);
+        }
 }
