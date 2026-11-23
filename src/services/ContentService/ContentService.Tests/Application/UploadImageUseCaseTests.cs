@@ -53,31 +53,31 @@ public sealed class UploadImageUseCaseTests : IAsyncLifetime
                 await using ContentDbContext dbContext = this._fixture.CreateDbContext();
                 SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 SqlServerStorageQuotaMonitor quotaMonitor = new(dbContext: dbContext);
-                UploadImageUseCase useCase = ImageUseCaseTestHelpers.CreateUploadUseCase(
+                UploadImageUseCase useCase = ImageUseCaseTestFixtures.CreateUploadUseCase(
                         imageRepository: imageRepository,
                         quotaMonitor: quotaMonitor);
-                using MemoryStream stream = new(buffer: ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD, writable: false);
+                using MemoryStream stream = new(buffer: ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD, writable: false);
                 UploadImageCommand command = new()
                 {
-                        FileName = ImageUseCaseTestHelpers.VALID_FILE_NAME,
+                        FileName = ImageUseCaseTestFixtures.VALID_FILE_NAME,
                         ContentType = DomainConstants.CONTENT_TYPE_PNG,
-                        DeclaredLengthBytes = ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD.Length,
+                        DeclaredLengthBytes = ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD.Length,
                         Content = stream,
-                        ActorId = ImageUseCaseTestHelpers.VALID_ACTOR_ID,
+                        ActorId = ImageUseCaseTestFixtures.VALID_ACTOR_ID,
                         AltText = "Exhibition mascot"
                 };
-                string expectedHash = Convert.ToHexStringLower(SHA256.HashData(ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD));
+                string expectedHash = Convert.ToHexStringLower(SHA256.HashData(ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD));
 
                 // Act
                 ImageMetadataResult result = await useCase.ExecuteAsync(command: command, cancellationToken: CancellationToken.None);
 
                 // Assert
-                Assert.Equal(ImageUseCaseTestHelpers.VALID_FILE_NAME, result.FileName);
+                Assert.Equal(ImageUseCaseTestFixtures.VALID_FILE_NAME, result.FileName);
                 Assert.Equal(DomainConstants.CONTENT_TYPE_PNG, result.ContentType);
-                Assert.Equal(ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD.Length, result.SizeBytes);
+                Assert.Equal(ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD.Length, result.SizeBytes);
                 Assert.Equal(expectedHash, result.Sha256Hash);
-                Assert.Equal($"picture.{ImageUseCaseTestHelpers.VALID_NODE_ID}.{result.Id:D}", result.PictureReference);
-                Assert.Equal($"{ImageUseCaseTestHelpers.VALID_NODE_ID}_{result.Id:D}", result.ExternalId);
+                Assert.Equal($"picture.{ImageUseCaseTestFixtures.VALID_NODE_ID}.{result.Id:D}", result.PictureReference);
+                Assert.Equal($"{ImageUseCaseTestFixtures.VALID_NODE_ID}_{result.Id:D}", result.ExternalId);
                 Assert.Equal("Exhibition mascot", result.AltText);
                 Assert.Equal(1, await this._fixture.CountStoredImagesAsync(cancellationToken: CancellationToken.None));
 
@@ -85,7 +85,7 @@ public sealed class UploadImageUseCaseTests : IAsyncLifetime
                         imageId: result.Id,
                         cancellationToken: CancellationToken.None);
                 Assert.NotNull(storedBinary);
-                Assert.Equal(ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD, storedBinary.Data);
+                Assert.Equal(ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD, storedBinary.Data);
         }
 
         /// <summary>
@@ -98,23 +98,23 @@ public sealed class UploadImageUseCaseTests : IAsyncLifetime
                 await using ContentDbContext dbContext = this._fixture.CreateDbContext();
                 SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 SqlServerStorageQuotaMonitor quotaMonitor = new(dbContext: dbContext);
-                UploadImageUseCase useCase = ImageUseCaseTestHelpers.CreateUploadUseCase(
+                UploadImageUseCase useCase = ImageUseCaseTestFixtures.CreateUploadUseCase(
                         imageRepository: imageRepository,
                         quotaMonitor: quotaMonitor,
                         maxImageSizeBytes: SMALL_MAX_IMAGE_BYTES);
                 byte[] oversizedPayload = new byte[OVERSIZED_ACTUAL_LENGTH];
                 Array.Copy(
-                        sourceArray: ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD,
+                        sourceArray: ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD,
                         destinationArray: oversizedPayload,
-                        length: ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD.Length);
+                        length: ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD.Length);
                 using MemoryStream stream = new(buffer: oversizedPayload, writable: false);
                 UploadImageCommand command = new()
                 {
-                        FileName = ImageUseCaseTestHelpers.VALID_FILE_NAME,
+                        FileName = ImageUseCaseTestFixtures.VALID_FILE_NAME,
                         ContentType = DomainConstants.CONTENT_TYPE_PNG,
                         DeclaredLengthBytes = SPOOFED_SMALL_LENGTH,
                         Content = stream,
-                        ActorId = ImageUseCaseTestHelpers.VALID_ACTOR_ID
+                        ActorId = ImageUseCaseTestFixtures.VALID_ACTOR_ID
                 };
 
                 // Act & Assert
@@ -133,21 +133,21 @@ public sealed class UploadImageUseCaseTests : IAsyncLifetime
                 await using ContentDbContext dbContext = this._fixture.CreateDbContext();
                 SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 SqlServerStorageQuotaMonitor quotaMonitor = new(dbContext: dbContext);
-                UploadImageUseCase useCase = ImageUseCaseTestHelpers.CreateUploadUseCase(
+                UploadImageUseCase useCase = ImageUseCaseTestFixtures.CreateUploadUseCase(
                         imageRepository: imageRepository,
                         quotaMonitor: quotaMonitor);
 
                 using MemoryStream emptyStream = new([]);
-                using UnreadableMemoryStream unreadableStream = new(buffer: ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD);
+                using UnreadableMemoryStream unreadableStream = new(buffer: ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD);
                 using FaultingStream faultingStream = new();
 
                 UploadImageCommand emptyPayloadCommand = new()
                 {
-                        FileName = ImageUseCaseTestHelpers.VALID_FILE_NAME,
+                        FileName = ImageUseCaseTestFixtures.VALID_FILE_NAME,
                         ContentType = DomainConstants.CONTENT_TYPE_PNG,
-                        DeclaredLengthBytes = ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD.Length,
+                        DeclaredLengthBytes = ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD.Length,
                         Content = emptyStream,
-                        ActorId = ImageUseCaseTestHelpers.VALID_ACTOR_ID
+                        ActorId = ImageUseCaseTestFixtures.VALID_ACTOR_ID
                 };
                 UploadImageCommand unreadableCommand = emptyPayloadCommand with { Content = unreadableStream };
                 UploadImageCommand faultingCommand = emptyPayloadCommand with { Content = faultingStream };
@@ -172,18 +172,18 @@ public sealed class UploadImageUseCaseTests : IAsyncLifetime
                 await using ContentDbContext dbContext = this._fixture.CreateDbContext();
                 SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 SqlServerStorageQuotaMonitor quotaMonitor = new(dbContext: dbContext);
-                UploadImageUseCase useCase = ImageUseCaseTestHelpers.CreateUploadUseCase(
+                UploadImageUseCase useCase = ImageUseCaseTestFixtures.CreateUploadUseCase(
                         imageRepository: imageRepository,
                         quotaMonitor: quotaMonitor);
                 byte[] svgBytes = Encoding.UTF8.GetBytes("<svg><script>alert(1)</script></svg>");
                 using MemoryStream stream = new(buffer: svgBytes, writable: false);
                 UploadImageCommand command = new()
                 {
-                        FileName = ImageUseCaseTestHelpers.VALID_FILE_NAME,
+                        FileName = ImageUseCaseTestFixtures.VALID_FILE_NAME,
                         ContentType = DomainConstants.CONTENT_TYPE_PNG,
                         DeclaredLengthBytes = svgBytes.Length,
                         Content = stream,
-                        ActorId = ImageUseCaseTestHelpers.VALID_ACTOR_ID
+                        ActorId = ImageUseCaseTestFixtures.VALID_ACTOR_ID
                 };
 
                 // Act & Assert
@@ -205,38 +205,38 @@ public sealed class UploadImageUseCaseTests : IAsyncLifetime
                 SqlServerStorageQuotaMonitor quotaMonitor = new(dbContext: dbContext);
 
                 byte[] existingBytes = new byte[SEED_TEN_BYTES_LENGTH];
-                ImageEntity existingImage = ImageUseCaseTestHelpers.CreateSeededImage(payloadBytes: existingBytes);
+                ImageEntity existingImage = ImageUseCaseTestFixtures.CreateSeededImage(payloadBytes: existingBytes);
                 ImageBinaryEntity existingBinary = ImageBinaryEntity.Create(imageId: existingImage.Id, data: existingBytes);
                 await imageRepository.AddAsync(metadata: existingImage, binary: existingBinary, cancellationToken: CancellationToken.None);
 
-                UploadImageUseCase tightQuotaUseCase = ImageUseCaseTestHelpers.CreateUploadUseCase(
+                UploadImageUseCase tightQuotaUseCase = ImageUseCaseTestFixtures.CreateUploadUseCase(
                         imageRepository: imageRepository,
                         quotaMonitor: quotaMonitor,
                         totalQuotaBytes: TIGHT_QUOTA_BYTES);
 
-                byte[] largerPng = [.. ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD, 0xAA, 0xBB, 0xCC];
+                byte[] largerPng = [.. ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD, 0xAA, 0xBB, 0xCC];
                 using MemoryStream spoofedStream = new(buffer: largerPng, writable: false);
                 UploadImageCommand spoofedCommand = new()
                 {
-                        FileName = ImageUseCaseTestHelpers.VALID_FILE_NAME,
+                        FileName = ImageUseCaseTestFixtures.VALID_FILE_NAME,
                         ContentType = DomainConstants.CONTENT_TYPE_PNG,
                         DeclaredLengthBytes = SPOOFED_UNDER_QUOTA_LENGTH_BYTES,
                         Content = spoofedStream,
-                        ActorId = ImageUseCaseTestHelpers.VALID_ACTOR_ID
+                        ActorId = ImageUseCaseTestFixtures.VALID_ACTOR_ID
                 };
 
-                UploadImageUseCase zeroQuotaUseCase = ImageUseCaseTestHelpers.CreateUploadUseCase(
+                UploadImageUseCase zeroQuotaUseCase = ImageUseCaseTestFixtures.CreateUploadUseCase(
                         imageRepository: imageRepository,
                         quotaMonitor: quotaMonitor,
                         totalQuotaBytes: 0L);
-                using MemoryStream validStream = new(buffer: ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD, writable: false);
+                using MemoryStream validStream = new(buffer: ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD, writable: false);
                 UploadImageCommand normalCommand = new()
                 {
-                        FileName = ImageUseCaseTestHelpers.VALID_FILE_NAME,
+                        FileName = ImageUseCaseTestFixtures.VALID_FILE_NAME,
                         ContentType = DomainConstants.CONTENT_TYPE_PNG,
-                        DeclaredLengthBytes = ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD.Length,
+                        DeclaredLengthBytes = ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD.Length,
                         Content = validStream,
-                        ActorId = ImageUseCaseTestHelpers.VALID_ACTOR_ID
+                        ActorId = ImageUseCaseTestFixtures.VALID_ACTOR_ID
                 };
 
                 // Act & Assert

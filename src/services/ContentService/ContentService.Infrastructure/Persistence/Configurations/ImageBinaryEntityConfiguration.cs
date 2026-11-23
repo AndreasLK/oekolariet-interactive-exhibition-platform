@@ -18,6 +18,8 @@ internal sealed class ImageBinaryEntityConfiguration : IEntityTypeConfiguration<
                 builder.HasKey(binary => binary.ImageId);
                 builder.Property(binary => binary.ImageId).ValueGeneratedNever();
                 builder.Property(binary => binary.Data).IsRequired();
+                builder.Property(binary => binary.PreviewData);
+                builder.Property(binary => binary.PreviewContentType).HasMaxLength(64);
 
                 // Normal API deletes only soft-delete Images (IsDeleted = true); Cascade only cleans up these bytes if an Image row is physically deleted in SQL.
                 builder.HasOne<ImageEntity>()

@@ -7,7 +7,7 @@ namespace ContentService.Tests.Infrastructure;
 /// <summary>
 /// Shared constants and image fixture builders for SQL Server infrastructure integration tests.
 /// </summary>
-internal static class InfrastructureTestHelpers
+internal static class InfrastructureTestFixtures
 {
         public const string VALID_NODE_ID = "node-1";
         public const string VALID_ACTOR_ID = "infra-tester";

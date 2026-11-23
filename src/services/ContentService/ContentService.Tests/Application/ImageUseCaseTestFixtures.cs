@@ -12,7 +12,7 @@ namespace ContentService.Tests.Application;
 /// <summary>
 /// Shared fixtures and factory helpers for SQL Server image use case integration tests.
 /// </summary>
-internal static class ImageUseCaseTestHelpers
+internal static class ImageUseCaseTestFixtures
 {
         public const string VALID_NODE_ID = "node-1";
         public const string VALID_ACTOR_ID = "curator-1";

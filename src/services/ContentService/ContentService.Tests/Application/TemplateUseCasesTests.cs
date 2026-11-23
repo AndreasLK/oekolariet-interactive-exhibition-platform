@@ -48,24 +48,24 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
                 await using ContentDbContext dbContext = this._fixture.CreateDbContext();
                 SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
                 SqlServerImageRepository imageRepository = new(dbContext: dbContext);
-                ImageEntity retainedImage = TemplateUseCaseTestHelpers.CreateSeededImage(storageNodeId: TemplateUseCaseTestHelpers.VALID_NODE_ID);
-                ImageEntity removedImage = TemplateUseCaseTestHelpers.CreateSeededImage(storageNodeId: TemplateUseCaseTestHelpers.VALID_NODE_ID);
-                ImageEntity addedImage = TemplateUseCaseTestHelpers.CreateSeededImage(storageNodeId: TemplateUseCaseTestHelpers.VALID_NODE_ID);
+                ImageEntity retainedImage = TemplateUseCaseTestFixtures.CreateSeededImage(storageNodeId: TemplateUseCaseTestFixtures.VALID_NODE_ID);
+                ImageEntity removedImage = TemplateUseCaseTestFixtures.CreateSeededImage(storageNodeId: TemplateUseCaseTestFixtures.VALID_NODE_ID);
+                ImageEntity addedImage = TemplateUseCaseTestFixtures.CreateSeededImage(storageNodeId: TemplateUseCaseTestFixtures.VALID_NODE_ID);
 
                 await imageRepository.AddAsync(
                         metadata: retainedImage,
-                        binary: ImageBinaryEntity.Create(imageId: retainedImage.Id, data: TemplateUseCaseTestHelpers.SAMPLE_IMAGE_BYTES),
+                        binary: ImageBinaryEntity.Create(imageId: retainedImage.Id, data: TemplateUseCaseTestFixtures.SAMPLE_IMAGE_BYTES),
                         cancellationToken: CancellationToken.None);
                 await imageRepository.AddAsync(
                         metadata: removedImage,
-                        binary: ImageBinaryEntity.Create(imageId: removedImage.Id, data: TemplateUseCaseTestHelpers.SAMPLE_IMAGE_BYTES),
+                        binary: ImageBinaryEntity.Create(imageId: removedImage.Id, data: TemplateUseCaseTestFixtures.SAMPLE_IMAGE_BYTES),
                         cancellationToken: CancellationToken.None);
                 await imageRepository.AddAsync(
                         metadata: addedImage,
-                        binary: ImageBinaryEntity.Create(imageId: addedImage.Id, data: TemplateUseCaseTestHelpers.SAMPLE_IMAGE_BYTES),
+                        binary: ImageBinaryEntity.Create(imageId: addedImage.Id, data: TemplateUseCaseTestFixtures.SAMPLE_IMAGE_BYTES),
                         cancellationToken: CancellationToken.None);
 
-                CreateTemplateUseCase createUseCase = TemplateUseCaseTestHelpers.BuildCreateTemplateUseCase(
+                CreateTemplateUseCase createUseCase = TemplateUseCaseTestFixtures.BuildCreateTemplateUseCase(
                         templateRepository: templateRepository,
                         imageRepository: imageRepository);
                 UpdateTemplateUseCase updateUseCase = new(
@@ -78,7 +78,7 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
                                 Name = "Template V1",
                                 ComponentType = TemplateComponentType.QuizTemplate,
                                 SchemaJson = $"{{\"keep\":\"{retainedImage.Reference}\",\"drop\":\"{removedImage.Reference}\"}}",
-                                ActorId = TemplateUseCaseTestHelpers.VALID_ACTOR_ID
+                                ActorId = TemplateUseCaseTestFixtures.VALID_ACTOR_ID
                         },
                         cancellationToken: CancellationToken.None);
 
@@ -90,7 +90,7 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
                                 Name = "Template V2",
                                 SchemaJson = $"{{\"keep\":\"{retainedImage.Reference}\",\"add\":\"{addedImage.Reference}\"}}",
                                 ExpectedConcurrencyStamp = created.ConcurrencyStamp,
-                                ActorId = TemplateUseCaseTestHelpers.VALID_ACTOR_ID
+                                ActorId = TemplateUseCaseTestFixtures.VALID_ACTOR_ID
                         },
                         cancellationToken: CancellationToken.None);
 
@@ -111,9 +111,9 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
                         {
                                 TemplateId = created.Id,
                                 Name = "Template V3 Stale",
-                                SchemaJson = TemplateUseCaseTestHelpers.EMPTY_JSON_OBJECT,
+                                SchemaJson = TemplateUseCaseTestFixtures.EMPTY_JSON_OBJECT,
                                 ExpectedConcurrencyStamp = created.ConcurrencyStamp,
-                                ActorId = TemplateUseCaseTestHelpers.VALID_ACTOR_ID
+                                ActorId = TemplateUseCaseTestFixtures.VALID_ACTOR_ID
                         },
                         cancellationToken: CancellationToken.None));
         }
@@ -129,20 +129,20 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
                 SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
                 SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 TemplateEntity archivedTemplate = TemplateEntity.Create(
-                        storageNodeId: TemplateUseCaseTestHelpers.VALID_NODE_ID,
+                        storageNodeId: TemplateUseCaseTestFixtures.VALID_NODE_ID,
                         name: "Archived",
                         componentType: TemplateComponentType.InfoScreen,
-                        schemaJson: TemplateUseCaseTestHelpers.EMPTY_JSON_OBJECT,
-                        actorId: TemplateUseCaseTestHelpers.VALID_ACTOR_ID);
-                archivedTemplate.Archive(actorId: TemplateUseCaseTestHelpers.VALID_ACTOR_ID);
+                        schemaJson: TemplateUseCaseTestFixtures.EMPTY_JSON_OBJECT,
+                        actorId: TemplateUseCaseTestFixtures.VALID_ACTOR_ID);
+                archivedTemplate.Archive(actorId: TemplateUseCaseTestFixtures.VALID_ACTOR_ID);
                 await templateRepository.AddAsync(template: archivedTemplate, cancellationToken: CancellationToken.None);
 
                 TemplateEntity activeTemplate = TemplateEntity.Create(
-                        storageNodeId: TemplateUseCaseTestHelpers.VALID_NODE_ID,
+                        storageNodeId: TemplateUseCaseTestFixtures.VALID_NODE_ID,
                         name: "Active",
                         componentType: TemplateComponentType.InfoScreen,
-                        schemaJson: TemplateUseCaseTestHelpers.EMPTY_JSON_OBJECT,
-                        actorId: TemplateUseCaseTestHelpers.VALID_ACTOR_ID);
+                        schemaJson: TemplateUseCaseTestFixtures.EMPTY_JSON_OBJECT,
+                        actorId: TemplateUseCaseTestFixtures.VALID_ACTOR_ID);
                 await templateRepository.AddAsync(template: activeTemplate, cancellationToken: CancellationToken.None);
                 Guid observedStamp = activeTemplate.ConcurrencyStamp;
                 await this._fixture.RotatePersistedConcurrencyStampAsync(
@@ -160,9 +160,9 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
                         {
                                 TemplateId = archivedTemplate.Id,
                                 Name = "Updated Archived",
-                                SchemaJson = TemplateUseCaseTestHelpers.EMPTY_JSON_OBJECT,
+                                SchemaJson = TemplateUseCaseTestFixtures.EMPTY_JSON_OBJECT,
                                 ExpectedConcurrencyStamp = archivedTemplate.ConcurrencyStamp,
-                                ActorId = TemplateUseCaseTestHelpers.VALID_ACTOR_ID
+                                ActorId = TemplateUseCaseTestFixtures.VALID_ACTOR_ID
                         },
                         cancellationToken: CancellationToken.None));
 
@@ -171,9 +171,9 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
                         {
                                 TemplateId = activeTemplate.Id,
                                 Name = "Updated Active",
-                                SchemaJson = TemplateUseCaseTestHelpers.EMPTY_JSON_OBJECT,
+                                SchemaJson = TemplateUseCaseTestFixtures.EMPTY_JSON_OBJECT,
                                 ExpectedConcurrencyStamp = observedStamp,
-                                ActorId = TemplateUseCaseTestHelpers.VALID_ACTOR_ID
+                                ActorId = TemplateUseCaseTestFixtures.VALID_ACTOR_ID
                         },
                         cancellationToken: CancellationToken.None));
         }
@@ -189,17 +189,17 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
                 SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
                 SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 TemplateEntity firstTemplate = TemplateEntity.Create(
-                        storageNodeId: TemplateUseCaseTestHelpers.VALID_NODE_ID,
+                        storageNodeId: TemplateUseCaseTestFixtures.VALID_NODE_ID,
                         name: "First Template",
                         componentType: TemplateComponentType.InfoScreen,
-                        schemaJson: TemplateUseCaseTestHelpers.EMPTY_JSON_OBJECT,
-                        actorId: TemplateUseCaseTestHelpers.VALID_ACTOR_ID);
+                        schemaJson: TemplateUseCaseTestFixtures.EMPTY_JSON_OBJECT,
+                        actorId: TemplateUseCaseTestFixtures.VALID_ACTOR_ID);
                 TemplateEntity secondTemplate = TemplateEntity.Create(
-                        storageNodeId: TemplateUseCaseTestHelpers.VALID_NODE_ID,
+                        storageNodeId: TemplateUseCaseTestFixtures.VALID_NODE_ID,
                         name: "Second Template",
                         componentType: TemplateComponentType.InfoScreen,
-                        schemaJson: TemplateUseCaseTestHelpers.EMPTY_JSON_OBJECT,
-                        actorId: TemplateUseCaseTestHelpers.VALID_ACTOR_ID);
+                        schemaJson: TemplateUseCaseTestFixtures.EMPTY_JSON_OBJECT,
+                        actorId: TemplateUseCaseTestFixtures.VALID_ACTOR_ID);
                 await templateRepository.AddAsync(template: firstTemplate, cancellationToken: CancellationToken.None);
                 await templateRepository.AddAsync(template: secondTemplate, cancellationToken: CancellationToken.None);
 
@@ -213,9 +213,9 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
                         {
                                 TemplateId = secondTemplate.Id,
                                 Name = "first template",
-                                SchemaJson = TemplateUseCaseTestHelpers.EMPTY_JSON_OBJECT,
+                                SchemaJson = TemplateUseCaseTestFixtures.EMPTY_JSON_OBJECT,
                                 ExpectedConcurrencyStamp = secondTemplate.ConcurrencyStamp,
-                                ActorId = TemplateUseCaseTestHelpers.VALID_ACTOR_ID
+                                ActorId = TemplateUseCaseTestFixtures.VALID_ACTOR_ID
                         },
                         cancellationToken: CancellationToken.None));
         }
@@ -230,17 +230,17 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
                 await using ContentDbContext dbContext = this._fixture.CreateDbContext();
                 SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
                 TemplateEntity quizTemplate = TemplateEntity.Create(
-                        storageNodeId: TemplateUseCaseTestHelpers.VALID_NODE_ID,
+                        storageNodeId: TemplateUseCaseTestFixtures.VALID_NODE_ID,
                         name: "Quiz Alpha",
                         componentType: TemplateComponentType.QuizTemplate,
-                        schemaJson: TemplateUseCaseTestHelpers.EMPTY_JSON_OBJECT,
-                        actorId: TemplateUseCaseTestHelpers.VALID_ACTOR_ID);
+                        schemaJson: TemplateUseCaseTestFixtures.EMPTY_JSON_OBJECT,
+                        actorId: TemplateUseCaseTestFixtures.VALID_ACTOR_ID);
                 TemplateEntity gameTemplate = TemplateEntity.Create(
-                        storageNodeId: TemplateUseCaseTestHelpers.VALID_NODE_ID,
+                        storageNodeId: TemplateUseCaseTestFixtures.VALID_NODE_ID,
                         name: "Sorting Beta",
                         componentType: TemplateComponentType.GameTemplate,
-                        schemaJson: TemplateUseCaseTestHelpers.EMPTY_JSON_OBJECT,
-                        actorId: TemplateUseCaseTestHelpers.VALID_ACTOR_ID);
+                        schemaJson: TemplateUseCaseTestFixtures.EMPTY_JSON_OBJECT,
+                        actorId: TemplateUseCaseTestFixtures.VALID_ACTOR_ID);
                 await templateRepository.AddAsync(template: quizTemplate, cancellationToken: CancellationToken.None);
                 await templateRepository.AddAsync(template: gameTemplate, cancellationToken: CancellationToken.None);
 
@@ -260,7 +260,7 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
                         cancellationToken: CancellationToken.None);
 
                 await deleteUseCase.ExecuteAsync(
-                        command: new DeleteTemplateCommand { TemplateId = quizTemplate.Id, ActorId = TemplateUseCaseTestHelpers.VALID_ACTOR_ID },
+                        command: new DeleteTemplateCommand { TemplateId = quizTemplate.Id, ActorId = TemplateUseCaseTestFixtures.VALID_ACTOR_ID },
                         cancellationToken: CancellationToken.None);
                 TemplateResult archivedStillReadable = await getUseCase.ExecuteAsync(
                         templateId: quizTemplate.Id,
@@ -274,10 +274,10 @@ public sealed class TemplateUseCasesTests : IAsyncLifetime
                 Assert.True(archivedStillReadable.IsArchived);
 
                 await Assert.ThrowsAsync<KeyNotFoundException>(() => deleteUseCase.ExecuteAsync(
-                        command: new DeleteTemplateCommand { TemplateId = quizTemplate.Id, ActorId = TemplateUseCaseTestHelpers.VALID_ACTOR_ID },
+                        command: new DeleteTemplateCommand { TemplateId = quizTemplate.Id, ActorId = TemplateUseCaseTestFixtures.VALID_ACTOR_ID },
                         cancellationToken: CancellationToken.None));
                 await Assert.ThrowsAsync<KeyNotFoundException>(() => deleteUseCase.ExecuteAsync(
-                        command: new DeleteTemplateCommand { TemplateId = Guid.NewGuid(), ActorId = TemplateUseCaseTestHelpers.VALID_ACTOR_ID },
+                        command: new DeleteTemplateCommand { TemplateId = Guid.NewGuid(), ActorId = TemplateUseCaseTestFixtures.VALID_ACTOR_ID },
                         cancellationToken: CancellationToken.None));
                 await Assert.ThrowsAsync<KeyNotFoundException>(() => getUseCase.ExecuteAsync(
                         templateId: Guid.NewGuid(),

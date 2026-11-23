@@ -68,23 +68,23 @@ public sealed class SqlServerImageInfrastructureTests : IAsyncLifetime
                 SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
 
-                ImageEntity referencedImage = InfrastructureTestHelpers.CreateSeededImage(payloadBytes: InfrastructureTestHelpers.PNG_HEADER_BYTES);
-                ImageEntity unreferencedImage = InfrastructureTestHelpers.CreateSeededImage(payloadBytes: InfrastructureTestHelpers.PNG_HEADER_BYTES);
+                ImageEntity referencedImage = InfrastructureTestFixtures.CreateSeededImage(payloadBytes: InfrastructureTestFixtures.PNG_HEADER_BYTES);
+                ImageEntity unreferencedImage = InfrastructureTestFixtures.CreateSeededImage(payloadBytes: InfrastructureTestFixtures.PNG_HEADER_BYTES);
                 await imageRepository.AddAsync(
                         metadata: referencedImage,
-                        binary: ImageBinaryEntity.Create(imageId: referencedImage.Id, data: InfrastructureTestHelpers.PNG_HEADER_BYTES),
+                        binary: ImageBinaryEntity.Create(imageId: referencedImage.Id, data: InfrastructureTestFixtures.PNG_HEADER_BYTES),
                         cancellationToken: CancellationToken.None);
                 await imageRepository.AddAsync(
                         metadata: unreferencedImage,
-                        binary: ImageBinaryEntity.Create(imageId: unreferencedImage.Id, data: InfrastructureTestHelpers.PNG_HEADER_BYTES),
+                        binary: ImageBinaryEntity.Create(imageId: unreferencedImage.Id, data: InfrastructureTestFixtures.PNG_HEADER_BYTES),
                         cancellationToken: CancellationToken.None);
 
                 TemplateEntity template = TemplateEntity.Create(
-                        storageNodeId: InfrastructureTestHelpers.VALID_NODE_ID,
+                        storageNodeId: InfrastructureTestFixtures.VALID_NODE_ID,
                         name: "FK Protected Template",
                         componentType: TemplateComponentType.InfoScreen,
                         schemaJson: $"{{\"hero\":\"{referencedImage.Reference}\"}}",
-                        actorId: InfrastructureTestHelpers.VALID_ACTOR_ID);
+                        actorId: InfrastructureTestFixtures.VALID_ACTOR_ID);
                 await templateRepository.AddAsync(template: template, cancellationToken: CancellationToken.None);
 
                 // Act & Assert
@@ -109,10 +109,10 @@ public sealed class SqlServerImageInfrastructureTests : IAsyncLifetime
                 // Arrange
                 byte[] largePayload = new byte[MULTI_CHUNK_PAYLOAD_BYTES];
                 Array.Copy(
-                        sourceArray: InfrastructureTestHelpers.PNG_HEADER_BYTES,
+                        sourceArray: InfrastructureTestFixtures.PNG_HEADER_BYTES,
                         destinationArray: largePayload,
-                        length: InfrastructureTestHelpers.PNG_HEADER_BYTES.Length);
-                for (int index = InfrastructureTestHelpers.PNG_HEADER_BYTES.Length; index < largePayload.Length; index++)
+                        length: InfrastructureTestFixtures.PNG_HEADER_BYTES.Length);
+                for (int index = InfrastructureTestFixtures.PNG_HEADER_BYTES.Length; index < largePayload.Length; index++)
                 {
                         largePayload[index] = (byte)(index % PAYLOAD_BYTE_MODULUS);
                 }
@@ -121,9 +121,9 @@ public sealed class SqlServerImageInfrastructureTests : IAsyncLifetime
                 SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 SqlServerImageBinaryStore binaryStore = new(dbContext: dbContext);
 
-                ImageEntity activeImage = InfrastructureTestHelpers.CreateSeededImage(payloadBytes: largePayload);
-                ImageEntity deletedImage = InfrastructureTestHelpers.CreateSeededImage(payloadBytes: InfrastructureTestHelpers.PNG_HEADER_BYTES);
-                deletedImage.MarkDeleted(actorId: InfrastructureTestHelpers.VALID_ACTOR_ID);
+                ImageEntity activeImage = InfrastructureTestFixtures.CreateSeededImage(payloadBytes: largePayload);
+                ImageEntity deletedImage = InfrastructureTestFixtures.CreateSeededImage(payloadBytes: InfrastructureTestFixtures.PNG_HEADER_BYTES);
+                deletedImage.MarkDeleted(actorId: InfrastructureTestFixtures.VALID_ACTOR_ID);
 
                 await imageRepository.AddAsync(
                         metadata: activeImage,
@@ -131,7 +131,7 @@ public sealed class SqlServerImageInfrastructureTests : IAsyncLifetime
                         cancellationToken: CancellationToken.None);
                 await imageRepository.AddAsync(
                         metadata: deletedImage,
-                        binary: ImageBinaryEntity.Create(imageId: deletedImage.Id, data: InfrastructureTestHelpers.PNG_HEADER_BYTES),
+                        binary: ImageBinaryEntity.Create(imageId: deletedImage.Id, data: InfrastructureTestFixtures.PNG_HEADER_BYTES),
                         cancellationToken: CancellationToken.None);
 
                 // Act
@@ -158,9 +158,9 @@ public sealed class SqlServerImageInfrastructureTests : IAsyncLifetime
 
                 Stream? syncStream = await binaryStore.OpenReadAsync(imageId: activeImage.Id, cancellationToken: CancellationToken.None);
                 Assert.NotNull(syncStream);
-                byte[] syncBuffer = new byte[InfrastructureTestHelpers.PNG_HEADER_BYTES.Length];
+                byte[] syncBuffer = new byte[InfrastructureTestFixtures.PNG_HEADER_BYTES.Length];
                 syncStream.ReadExactly(buffer: syncBuffer.AsSpan());
-                Assert.Equal(InfrastructureTestHelpers.PNG_HEADER_BYTES, syncBuffer);
+                Assert.Equal(InfrastructureTestFixtures.PNG_HEADER_BYTES, syncBuffer);
                 syncStream.Dispose();
                 syncStream.Dispose();
                 Assert.False(syncStream.CanRead);
@@ -177,20 +177,20 @@ public sealed class SqlServerImageInfrastructureTests : IAsyncLifetime
                 SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 SqlServerImageBinaryStore binaryStore = new(dbContext: dbContext);
 
-                ImageEntity activeImage = InfrastructureTestHelpers.CreateSeededImage(payloadBytes: InfrastructureTestHelpers.PNG_HEADER_BYTES);
-                ImageEntity deletedImage = InfrastructureTestHelpers.CreateSeededImage(payloadBytes: InfrastructureTestHelpers.PNG_HEADER_BYTES);
-                deletedImage.MarkDeleted(actorId: InfrastructureTestHelpers.VALID_ACTOR_ID);
+                ImageEntity activeImage = InfrastructureTestFixtures.CreateSeededImage(payloadBytes: InfrastructureTestFixtures.PNG_HEADER_BYTES);
+                ImageEntity deletedImage = InfrastructureTestFixtures.CreateSeededImage(payloadBytes: InfrastructureTestFixtures.PNG_HEADER_BYTES);
+                deletedImage.MarkDeleted(actorId: InfrastructureTestFixtures.VALID_ACTOR_ID);
 
                 await imageRepository.AddAsync(
                         metadata: activeImage,
-                        binary: ImageBinaryEntity.Create(imageId: activeImage.Id, data: InfrastructureTestHelpers.PNG_HEADER_BYTES),
+                        binary: ImageBinaryEntity.Create(imageId: activeImage.Id, data: InfrastructureTestFixtures.PNG_HEADER_BYTES),
                         cancellationToken: CancellationToken.None);
                 await imageRepository.AddAsync(
                         metadata: deletedImage,
-                        binary: ImageBinaryEntity.Create(imageId: deletedImage.Id, data: InfrastructureTestHelpers.PNG_HEADER_BYTES),
+                        binary: ImageBinaryEntity.Create(imageId: deletedImage.Id, data: InfrastructureTestFixtures.PNG_HEADER_BYTES),
                         cancellationToken: CancellationToken.None);
 
-                ImageEntity metadataOnlyImage = InfrastructureTestHelpers.CreateSeededImage(payloadBytes: InfrastructureTestHelpers.PNG_HEADER_BYTES);
+                ImageEntity metadataOnlyImage = InfrastructureTestFixtures.CreateSeededImage(payloadBytes: InfrastructureTestFixtures.PNG_HEADER_BYTES);
                 await this._fixture.SeedImageMetadataOnlyAsync(image: metadataOnlyImage, cancellationToken: CancellationToken.None);
 
                 // Act

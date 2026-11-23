@@ -11,7 +11,7 @@ namespace ContentService.Tests.Application;
 /// <summary>
 /// Shared constants and entity/use-case factory helpers for SQL Server template use case integration tests.
 /// </summary>
-internal static class TemplateUseCaseTestHelpers
+internal static class TemplateUseCaseTestFixtures
 {
         public const string VALID_NODE_ID = "node-1";
         public const string OTHER_NODE_ID = "node-2";

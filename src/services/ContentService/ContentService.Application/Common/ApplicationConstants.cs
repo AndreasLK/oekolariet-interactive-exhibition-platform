@@ -26,8 +26,12 @@ public static class ApplicationConstants
         private const long BYTES_PER_GIBIBYTE = (long)BYTES_PER_MEBIBYTE * BYTES_PER_KIBIBYTE;
 
         /// <summary>
-        /// Keeps upload copy buffers compact in memory (80 KiB) while matching standard .NET stream copy efficiency.
+        /// Keeps upload copy buffers at 80 KiB (81,920 bytes) so each chunk array stays safely below .NET's 85,000-byte Large Object Heap (LOH) threshold while matching <see cref="Stream.CopyTo(Stream)"/>'s default efficiency.
         /// </summary>
+        /// <remarks>
+        /// Allocations of 85,000 bytes or more go straight to the LOH, which is only collected during expensive Gen 2 GCs and is not compacted by default.
+        /// Staying at 80 KiB keeps temporary stream buffers on the Small Object Heap (SOH) for cheap Gen 0/1 collection under concurrent uploads.
+        /// </remarks>
         private const int STREAM_BUFFER_KIBIBYTES = 80;
 
         /// <summary>
