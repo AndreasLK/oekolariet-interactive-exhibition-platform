@@ -1,5 +1,4 @@
-# Single-stage SDK image is used because only the ContentService.Domain class library exists today (no ASP.NET runtime host to publish yet).
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 WORKDIR /src
 
 # Copy and restore the .csproj before copying all source files so Docker reuses the NuGet restore cache whenever dependencies are unchanged.
