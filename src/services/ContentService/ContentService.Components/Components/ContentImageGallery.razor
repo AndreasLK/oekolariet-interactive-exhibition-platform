@@ -8,17 +8,17 @@
              Modifier="@UIModifier.New.FillMaxWidth()">
                 <SearchInput Value="@this._searchTerm"
                              ValueChanged="@this.HandleSearchChangedAsync"
-                             Placeholder="Search by file name, description, or tags..."
-                             AriaLabel="Search images"
+                             Placeholder="Søg efter filnavn, beskrivelse eller tags..."
+                             AriaLabel="Søg i billeder"
                              Modifier="@ContentGalleryLayout.BuildSearchInputModifier()" />
 
                 <Row HorizontalArrangement="Arrangement.End"
                      VerticalAlignment="VerticalAlignment.Center"
                      Gap="0.5rem"
                      Wrap="true">
-                        <Pill Text="@($"{this._totalCount} image(s)")" Variant="Pill.PillVariant.Neutral" />
+                        <Pill Text="@($"{this._totalCount} billede(r)")" Variant="Pill.PillVariant.Neutral" />
 
-                        <ActionButton Text="Refresh"
+                        <ActionButton Text="Opdater"
                                       Variant="ActionButton.ButtonVariant.Outline"
                                       Size="ActionButton.ButtonSize.Small"
                                       IsDisabled="@this._isLoading"
@@ -42,7 +42,10 @@
         {
                 <Box ContentAlignment="BoxAlignment.Center"
                      Modifier="@ContentGalleryLayout.BuildLoaderBoxModifier()">
-                        <OrbitalLoader LoadingText="Loading exhibition images..." />
+                        <Column Gap="0.75rem" HorizontalAlignment="HorizontalAlignment.Center">
+                                <SimpleSpinner Size="2rem" />
+                                <Text Value="Indlæser udstillingsbilleder..." Variant="TypographyVariant.Caption" Muted="true" />
+                        </Column>
                 </Box>
         }
         else if (this._images.Count == 0)
@@ -51,7 +54,7 @@
                      Modifier="@ContentGalleryLayout.BuildEmptyStateBoxModifier()">
                         <Column HorizontalAlignment="HorizontalAlignment.Center" Gap="0.75rem">
                                 <Text Value="@ContentGalleryLayout.ResolveEmptyStateMessage(searchTerm: this._searchTerm, currentAlbumPath: this._currentAlbumPath)" Variant="TypographyVariant.Subtitle" Muted="true" />
-                                <ActionButton Text="Upload images"
+                                <ActionButton Text="Upload billeder"
                                               Variant="ActionButton.ButtonVariant.Solid"
                                               OnClick="@this.HandleOpenUploadModal" />
                         </Column>
@@ -64,13 +67,13 @@
                         @foreach (ContentImageMetadata image in this._images)
                         {
                                 <MediaTile @key="image.Id"
-                                           ImageSource="@this.ResolveImageContentSource(imageId: image.Id)"
+                                           ImageSource="@this.ResolveImagePreviewSource(imageId: image.Id)"
                                            ImageAlt="@this.ResolveImageAlt(image: image)"
                                            Title="@image.FileName"
                                            Subtitle="@ContentImageDisplayFormatter.FormatTileSubtitle(image: image)"
-                                           IsSelectionMode="@this.OnImageSelected.HasDelegate"
+                                           IsSelectionMode="@this.IsSelectionEnabled()"
                                            IsSelected="@(this._selectedImageId == image.Id)"
-                                           OnClick="@(() => this.HandleTileClicked(image: image))"
+                                           OnClick="@(() => this.HandleTileClickedAsync(image: image))"
                                            OnToggleSelect="@((isSelected) => this.HandleTileSelectionToggledAsync(image: image, isSelected: isSelected))" />
                         }
                 </Grid>
@@ -81,17 +84,17 @@
                              VerticalAlignment="VerticalAlignment.Center"
                              Gap="0.75rem"
                              Modifier="@ContentGalleryLayout.BuildPaginationRowModifier()">
-                                <ActionButton Text="Previous"
+                                <ActionButton Text="Forrige"
                                               Variant="ActionButton.ButtonVariant.Outline"
                                               Size="ActionButton.ButtonSize.Small"
                                               IsDisabled="@(this._isLoading || this._currentPage <= FIRST_PAGE)"
                                               OnClick="@this.HandlePreviousPageClickedAsync" />
 
-                                <Text Value="@($"Page {this._currentPage} of {this._totalPages}")"
+                                <Text Value="@($"Side {this._currentPage} af {this._totalPages}")"
                                       Variant="TypographyVariant.Caption"
                                       Muted="true" />
 
-                                <ActionButton Text="Next"
+                                <ActionButton Text="Næste"
                                               Variant="ActionButton.ButtonVariant.Outline"
                                               Size="ActionButton.ButtonSize.Small"
                                               IsDisabled="@(this._isLoading || this._currentPage >= this._totalPages)"
@@ -105,7 +108,7 @@
                          IsOpenChanged="@this.HandleDetailModalVisibilityChanged"
                          Image="@this._inspectedImage"
                          ImageSource="@this.ResolveInspectedImageSource()"
-                         ShowSelectButton="@this.OnImageSelected.HasDelegate"
+                         ShowSelectButton="@this.IsSelectionEnabled()"
                          AllowDelete="@this.AllowDelete"
                          AllowEditMetadata="@this.AllowEditMetadata"
                          IsDeleting="@this._isDeleting"
