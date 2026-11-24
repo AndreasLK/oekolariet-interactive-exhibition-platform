@@ -25,6 +25,7 @@
   </Folder>
   <Folder Name="/src/tests/" />
   <Folder Name="/src/tests/EditorService/">
+    <Project Path="src/tests/EditorService/EditorService.Application.Tests/EditorService.Application.Tests.csproj" />
     <Project Path="src/tests/EditorService/EditorService.Domain.Tests/EditorService.Domain.Tests.csproj" />
   </Folder>
   <Folder Name="/tests/" />
