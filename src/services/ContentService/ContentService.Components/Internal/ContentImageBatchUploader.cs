@@ -1,11 +1,19 @@
-using ALKsPersonalUI.Inputs;
 using ALKsPersonalUI.Overlays;
 using ContentService.Sdk.Clients;
 using ContentService.Sdk.Exceptions;
 using ContentService.Sdk.Models;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Options;
 
 namespace ContentService.Components.Internal;
+
+/// <summary>
+/// Represents a selected browser image file paired with an optional relative folder path and preview data URL.
+/// </summary>
+internal sealed record SelectedImageFile(
+        IBrowserFile File,
+        string? RelativePath = null,
+        string? PreviewDataUrl = null);
 
 /// <summary>
 /// Streams queued <see cref="SelectedImageFile"/> batches sequentially to <see cref="IContentServiceImageClient"/> with bounded WASM memory usage.

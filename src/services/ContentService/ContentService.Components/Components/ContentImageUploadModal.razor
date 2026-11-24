@@ -1,89 +1,215 @@
-@* Controlled upload modal using ALKsPersonalUI 3.1.3 ImageUpload (folder relative paths + bounded previews) and metadata inputs. *@
+@* Controlled upload modal using ALKsPersonalUI 3.1.5 ImageUpload (with built-in Danish localization and clear callback) and UIModifier layout. *@
 <Modal IsOpen="@this.IsOpen"
        IsOpenChanged="@this.HandleModalVisibilityChangedAsync"
-       Title="Upload Images or Folders"
+       Title="Upload billeder"
        CloseOnBackdropClick="@(!this._isUploading)"
        Modifier="@this.BuildModalModifier()">
         <ChildContent>
                 @if (this.IsOpen)
                 {
                         <Column Gap="1rem" Modifier="@UIModifier.New.FillMaxWidth()">
-                                @* ALKsPersonalUI 3.1.3 captures webkitRelativePath into SelectedImageFile.RelativePath and bounds WASM preview memory. *@
-                                <ImageUpload AllowMultiple="true"
-                                             AllowFolderUpload="true"
-                                             AcceptedExtensions="@ACCEPTED_IMAGE_EXTENSIONS"
-                                             MaxFileSizeBytes="@MAX_IMAGE_SIZE_BYTES"
-                                             MaxAllowedFiles="@MAX_FILES_PER_BATCH"
-                                             ShowPreview="true"
-                                             MaxPreviewItems="@MAX_PREVIEW_ITEMS"
-                                             MaxPreviewDimensionPixels="@MAX_PREVIEW_DIMENSION_PX"
-                                             MaxPreviewBytesTotal="@MAX_PREVIEW_BYTES_TOTAL"
-                                             IsDisabled="@this._isUploading"
-                                             PromptText="Select images or a folder (PNG, JPEG, WebP � max 10 MB each)"
-                                             OnImagesWithPathsSelected="@this.HandleImagesWithPathsSelected" />
+                                @* Inner window locking the dropzone and Mappe button together without previews stretching the button. *@
+                                <Box Modifier="@UIModifier.New.FillMaxWidth()">
+                                        <Row HorizontalArrangement="Arrangement.SpaceBetween"
+                                             VerticalAlignment="VerticalAlignment.Stretch"
+                                             Gap="0.5rem"
+                                             Modifier="@UIModifier.New.FillMaxWidth()">
+                                                <ImageUpload @key="@($"file-{this._uploadInputKey}")"
+                                                             AllowMultiple="true"
+                                                             AllowFolderUpload="false"
+                                                             AcceptedExtensions="@ACCEPTED_IMAGE_EXTENSIONS"
+                                                             MaxFileSizeBytes="@MAX_IMAGE_SIZE_BYTES"
+                                                             MaxAllowedFiles="@MAX_FILES_PER_BATCH"
+                                                             ShowPreview="false"
+                                                             IsDisabled="@this._isUploading"
+                                                             PromptText="Træk billeder hertil eller klik for at vælge filer (PNG, JPEG, WebP - maks. 10 MB pr. fil)"
+                                                             ClearButtonText="Ryd billeder"
+                                                             SelectionSummaryFormatter="@FormatSelectionSummary"
+                                                             UnsupportedFormatErrorFormat="'{0}' er ikke et understøttet billedformat."
+                                                             FileSizeExceededErrorFormat="'{0}' overskrider den maksimale størrelse på {1} MB."
+                                                             Modifier="@this.BuildPrimaryDropzoneModifier()"
+                                                             OnImagesSelected="@this.HandleFileImagesSelectedAsync" />
+
+                                                <ActionButton Variant="ActionButton.ButtonVariant.Outline"
+                                                              Size="ActionButton.ButtonSize.Small"
+                                                              IsDisabled="@this._isUploading"
+                                                              OnClick="@this.HandleOpenFolderPickerAsync"
+                                                              Modifier="@this.BuildFolderButtonModifier()">
+                                                        <Column HorizontalAlignment="HorizontalAlignment.Center"
+                                                                VerticalAlignment="VerticalAlignment.Center"
+                                                                Gap="0.25rem">
+                                                                @* Classic folder SVG icon for opening the OS folder picker directly. *@
+                                                                <svg width="20"
+                                                                     height="20"
+                                                                     viewBox="0 0 24 24"
+                                                                     fill="none"
+                                                                     stroke="currentColor"
+                                                                     stroke-width="2"
+                                                                     stroke-linecap="round"
+                                                                     stroke-linejoin="round"
+                                                                     aria-hidden="true">
+                                                                        <path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+                                                                </svg>
+                                                                <Text Value="Mappe" Variant="TypographyVariant.Caption" />
+                                                        </Column>
+                                                </ActionButton>
+                                        </Row>
+                                </Box>
+
+                                @* Hidden folder-mode ImageUpload (webkitdirectory) triggered directly when the Mappe button is clicked. *@
+                                <div @ref="this._hiddenFolderUploadContainer"
+                                     style="display: none;"
+                                     aria-hidden="true">
+                                        <ImageUpload @key="@($"folder-{this._uploadInputKey}")"
+                                                     AllowMultiple="true"
+                                                     AllowFolderUpload="true"
+                                                     AcceptedExtensions="@ACCEPTED_IMAGE_EXTENSIONS"
+                                                     MaxFileSizeBytes="@MAX_IMAGE_SIZE_BYTES"
+                                                     MaxAllowedFiles="@MAX_FILES_PER_BATCH"
+                                                     ShowPreview="false"
+                                                     IsDisabled="@this._isUploading"
+                                                     OnImagesSelected="@this.HandleFolderImagesSelectedAsync" />
+                                </div>
 
                                 @if (this._pendingFiles.Count > 0)
                                 {
-                                        <Column Gap="0.5rem" Modifier="@UIModifier.New.FillMaxWidth()">
+                                        <Column Gap="0.75rem" Modifier="@UIModifier.New.FillMaxWidth()">
                                                 <Row HorizontalArrangement="Arrangement.SpaceBetween"
                                                      VerticalAlignment="VerticalAlignment.Center"
+                                                     Gap="0.5rem"
+                                                     Wrap="true"
                                                      Modifier="@UIModifier.New.FillMaxWidth()">
-                                                        <Text Value="Ready to upload" Variant="TypographyVariant.Subtitle" />
-                                                        <Pill Text="@($"{this._pendingFiles.Count} file(s)")" Variant="Pill.PillVariant.Accent" />
+                                                        <Row Gap="0.5rem" VerticalAlignment="VerticalAlignment.Center">
+                                                                <Text Value="Klar til upload" Variant="TypographyVariant.Subtitle" />
+                                                                <Pill Text="@($"{this._pendingFiles.Count} fil(er)")" Variant="Pill.PillVariant.Accent" />
+                                                        </Row>
+
+                                                        @if (this._isFolderSelection)
+                                                        {
+                                                                @* Folder selections come from the hidden ImageUpload, so render a single clear-all button here. *@
+                                                                <ActionButton Text="Ryd billeder"
+                                                                              Variant="ActionButton.ButtonVariant.Outline"
+                                                                              Size="ActionButton.ButtonSize.Small"
+                                                                              IsDisabled="@this._isUploading"
+                                                                              OnClick="@this.HandleClearPendingFiles" />
+                                                        }
                                                 </Row>
 
-                                                @foreach (SelectedImageFile item in this._pendingFiles)
-                                                {
-                                                        <Row HorizontalArrangement="Arrangement.SpaceBetween"
-                                                             VerticalAlignment="VerticalAlignment.Center"
-                                                             Gap="0.5rem"
-                                                             Modifier="@this.BuildPendingFileRowModifier()">
-                                                                <Text Value="@item.File.Name" Variant="TypographyVariant.Body" MaxLines="@SINGLE_LINE_MAX_LINES" />
-                                                                <Row Gap="0.4rem" VerticalAlignment="VerticalAlignment.Center">
-                                                                        @if (this.ResolveTargetAlbumPath(selectedFile: item) is string targetAlbum)
-                                                                        {
-                                                                                <Pill Text="@targetAlbum" Variant="Pill.PillVariant.Neutral" />
-                                                                        }
-                                                                        <Text Value="@ContentImageDisplayFormatter.FormatByteSize(sizeBytes: item.File.Size)"
-                                                                              Variant="TypographyVariant.Caption"
-                                                                              Muted="true" />
-                                                                </Row>
-                                                        </Row>
-                                                }
+                                                @* Render previews outside the inner upload window with a per-image remove button. *@
+                                                <Row Gap="0.75rem" Wrap="true" Modifier="@UIModifier.New.FillMaxWidth()">
+                                                        @foreach (SelectedImageFile item in this._pendingFiles)
+                                                        {
+                                                                <Box @key="item" Modifier="@this.BuildPreviewCardModifier()">
+                                                                        <Column Gap="0.4rem" Modifier="@UIModifier.New.FillMaxWidth()">
+                                                                                @if (!string.IsNullOrWhiteSpace(value: item.PreviewDataUrl))
+                                                                                {
+                                                                                        <Image Source="@item.PreviewDataUrl"
+                                                                                               Alt="@item.File.Name"
+                                                                                               Fit="ImageFit.Cover"
+                                                                                               FallbackText="@item.File.Name"
+                                                                                               Modifier="@this.BuildPreviewImageModifier()" />
+                                                                                }
+
+                                                                                <Text Value="@item.File.Name"
+                                                                                      Variant="TypographyVariant.Caption"
+                                                                                      MaxLines="@SINGLE_LINE_MAX_LINES" />
+
+                                                                                <Row HorizontalArrangement="Arrangement.SpaceBetween"
+                                                                                     VerticalAlignment="VerticalAlignment.Center"
+                                                                                     Gap="0.25rem"
+                                                                                     Modifier="@UIModifier.New.FillMaxWidth()">
+                                                                                        <Text Value="@ContentImageDisplayFormatter.FormatByteSize(sizeBytes: item.File.Size)"
+                                                                                              Variant="TypographyVariant.Caption"
+                                                                                              Muted="true" />
+                                                                                        @if (this.ResolveTargetAlbumPath(selectedFile: item) is string targetAlbum)
+                                                                                        {
+                                                                                                <Pill Text="@targetAlbum" Variant="Pill.PillVariant.Neutral" />
+                                                                                        }
+                                                                                </Row>
+
+                                                                                <ActionButton Text="Fjern"
+                                                                                              Variant="ActionButton.ButtonVariant.Outline"
+                                                                                              Size="ActionButton.ButtonSize.Small"
+                                                                                              IsDisabled="@this._isUploading"
+                                                                                              OnClick="@(() => this.HandleRemovePendingFile(selectedFile: item))"
+                                                                                              Modifier="@UIModifier.New.FillMaxWidth()" />
+                                                                        </Column>
+                                                                </Box>
+                                                        }
+                                                </Row>
                                         </Column>
                                 }
 
-                                @if (this.LockAlbumPath && !string.IsNullOrWhiteSpace(value: this._albumPath))
-                                {
-                                        <Row Gap="0.5rem" VerticalAlignment="VerticalAlignment.Center">
-                                                <Text Value="Target Album:" Variant="TypographyVariant.Caption" Muted="true" />
-                                                <Pill Text="@this._albumPath" Variant="Pill.PillVariant.Accent" />
-                                        </Row>
-                                }
-                                else
-                                {
-                                        <TextInput Label="Album Path (optional)"
-                                                   Placeholder="e.g., Madaffald or Madaffald/Frugt"
-                                                   MaxLength="@MAX_ALBUM_PATH_LENGTH"
-                                                   ShowClearButton="true"
-                                                   Value="@this._albumPath"
-                                                   ValueChanged="@this.HandleAlbumPathChanged" />
-                                }
+                                <Column Gap="1rem" Modifier="@UIModifier.New.FillMaxWidth()">
+                                                @if (this.LockAlbumPath && !string.IsNullOrWhiteSpace(value: this._albumPath))
+                                                {
+                                                        <Row Gap="0.5rem" VerticalAlignment="VerticalAlignment.Center">
+                                                                <Text Value="Målalbum:" Variant="TypographyVariant.Caption" Muted="true" />
+                                                                <Pill Text="@this._albumPath" Variant="Pill.PillVariant.Accent" />
+                                                        </Row>
+                                                }
+                                                else
+                                                {
+                                                        <Column Gap="0.4rem" Modifier="@UIModifier.New.FillMaxWidth()">
+                                                                <TextInput Label="Albumsti (valgfri)"
+                                                                           Placeholder="f.eks. Madaffald eller Madaffald/Frugt"
+                                                                           MaxLength="@MAX_ALBUM_PATH_LENGTH"
+                                                                           ShowClearButton="true"
+                                                                           Modifier="@UIModifier.New.FillMaxWidth()"
+                                                                           Value="@this._albumPath"
+                                                                           ValueChanged="@this.HandleAlbumPathChanged" />
 
-                                <TextInput Label="Description / Alt Text (optional)"
-                                           Placeholder="Describe what is in the photo (e.g., Yellow banana)..."
-                                           MaxLength="@MAX_ALT_TEXT_LENGTH"
-                                           ShowClearButton="true"
-                                           Value="@this._altText"
-                                           ValueChanged="@this.HandleAltTextChanged" />
+                                                                @if (this._suggestedAlbums.Count > 0)
+                                                                {
+                                                                        <Row Gap="0.4rem" Wrap="true" VerticalAlignment="VerticalAlignment.Center">
+                                                                                <Text Value="Eksisterende mapper:" Variant="TypographyVariant.Caption" Muted="true" />
+                                                                                @foreach (string album in this._suggestedAlbums)
+                                                                                {
+                                                                                        bool isActiveAlbum = string.Equals(a: this._albumPath.Trim(), b: album, comparisonType: StringComparison.OrdinalIgnoreCase);
+                                                                                        <Pill @key="album"
+                                                                                              Text="@album"
+                                                                                              Variant="@(isActiveAlbum ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
+                                                                                              OnClick="@(() => this.HandleSuggestedAlbumClicked(albumPath: album))" />
+                                                                                }
+                                                                        </Row>
+                                                                }
+                                                        </Column>
+                                                }
 
-                                <TextInput Label="Tags (comma-separated, optional)"
-                                           Placeholder="banana, fruit, organic..."
-                                           MaxLength="@MAX_TAGS_LENGTH"
-                                           ShowClearButton="true"
-                                           Value="@this._tags"
-                                           ValueChanged="@this.HandleTagsChanged" />
-                        </Column>
+                                                <TextArea Label="Beskrivelse / Alt-tekst (valgfri)"
+                                                          Placeholder="Beskriv hvad der er på billedet (f.eks. Gul banan)..."
+                                                          Rows="@ALT_TEXT_ROWS"
+                                                          MaxLength="@MAX_ALT_TEXT_LENGTH"
+                                                          Modifier="@UIModifier.New.FillMaxWidth()"
+                                                          Value="@this._altText"
+                                                          ValueChanged="@this.HandleAltTextChanged" />
+
+                                                <Column Gap="0.4rem" Modifier="@UIModifier.New.FillMaxWidth()">
+                                                        <TextInput Label="Tags (kommasepareret, valgfri)"
+                                                                   Placeholder="banan, frugt, økologi..."
+                                                                   MaxLength="@MAX_TAGS_LENGTH"
+                                                                   ShowClearButton="true"
+                                                                   Modifier="@UIModifier.New.FillMaxWidth()"
+                                                                   Value="@this._tags"
+                                                                   ValueChanged="@this.HandleTagsChanged" />
+
+                                                        @if (this._suggestedTags.Count > 0)
+                                                        {
+                                                                <Row Gap="0.4rem" Wrap="true" VerticalAlignment="VerticalAlignment.Center">
+                                                                        <Text Value="Eksisterende tags:" Variant="TypographyVariant.Caption" Muted="true" />
+                                                                        @foreach (string tag in this._suggestedTags)
+                                                                        {
+                                                                                bool isTagActive = this.IsTagSelected(tag: tag);
+                                                                                <Pill @key="tag"
+                                                                                      Text="@tag"
+                                                                                      Variant="@(isTagActive ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
+                                                                                      OnClick="@(() => this.HandleSuggestedTagClicked(tag: tag))" />
+                                                                        }
+                                                                </Row>
+                                                        }
+                                                </Column>
+                                        </Column>
+                                </Column>
                 }
         </ChildContent>
         <FooterContent>
@@ -91,7 +217,7 @@
                      VerticalAlignment="VerticalAlignment.Center"
                      Gap="0.75rem"
                      Modifier="@UIModifier.New.FillMaxWidth()">
-                        <ActionButton Text="Cancel"
+                        <ActionButton Text="Annuller"
                                       Variant="ActionButton.ButtonVariant.Ghost"
                                       IsDisabled="@this._isUploading"
                                       OnClick="@this.HandleCancelClickedAsync" />
