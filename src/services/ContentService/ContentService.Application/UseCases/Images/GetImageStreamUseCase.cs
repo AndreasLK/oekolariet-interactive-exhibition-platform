@@ -1,5 +1,5 @@
-using ContentService.Application.Interfaces;
 using ContentService.Application.Common;
+using ContentService.Application.Interfaces;
 using ContentService.Application.Models;
 using ContentService.Domain.Entities;
 using ContentService.Domain.Exceptions;
@@ -7,25 +7,25 @@ using ContentService.Domain.Exceptions;
 namespace ContentService.Application.UseCases.Images;
 
 /// <summary>
-/// Opens a sequential binary stream for an exhibition image, skipping storage reads when the client's ETag matches.
+/// Loads an active exhibition image's metadata and binary stream on demand.
 /// </summary>
 public sealed class GetImageStreamUseCase
 {
         /// <summary>
-        /// Image metadata repository.
+        /// Provides image metadata and checks whether the image has been soft-deleted.
         /// </summary>
         private readonly IImageRepository _imageRepository;
 
         /// <summary>
-        /// Sequential binary stream store.
+        /// Loads stored image bytes separately from metadata queries.
         /// </summary>
         private readonly IImageBinaryStore _imageBinaryStore;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="GetImageStreamUseCase"/> class.
+        /// Captures metadata and binary store dependencies so image downloads stay decoupled from SQL Server details.
         /// </summary>
         /// <param name="imageRepository">The image metadata repository.</param>
-        /// <param name="imageBinaryStore">The sequential binary stream store.</param>
+        /// <param name="imageBinaryStore">The binary stream store.</param>
         /// <exception cref="ArgumentNullException">Thrown when any required dependency is <see langword="null"/>.</exception>
         public GetImageStreamUseCase(
                 IImageRepository imageRepository,
@@ -39,14 +39,14 @@ public sealed class GetImageStreamUseCase
         }
 
         /// <summary>
-        /// Resolves metadata, evaluates optional <c>If-None-Match</c> ETag caching, and opens the image binary stream on cache miss.
+        /// Verifies the image exists and is not soft-deleted, then returns its metadata and readable byte stream.
         /// </summary>
-        /// <param name="query">The image stream query containing the image ID and optional client ETag header.</param>
-        /// <param name="cancellationToken">A token to observe while loading metadata or opening the stream.</param>
-        /// <returns>An <see cref="ImageStreamResult"/> carrying either a not-modified marker or an open stream owned by the caller.</returns>
+        /// <param name="query">The image stream query containing the image ID.</param>
+        /// <param name="cancellationToken">Propagates caller cancellation while loading metadata or image bytes.</param>
+        /// <returns>An <see cref="ImageStreamResult"/> carrying metadata and an open stream whose disposal ownership transfers to the caller.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="query"/> is <see langword="null"/>.</exception>
         /// <exception cref="DomainValidationException">Thrown when <see cref="GetImageStreamQuery.ImageId"/> is <see cref="Guid.Empty"/>.</exception>
-        /// <exception cref="KeyNotFoundException">Thrown when the image is missing, soft-deleted, or its binary payload cannot be opened.</exception>
+        /// <exception cref="KeyNotFoundException">Thrown when the image is missing, soft-deleted, or its binary payload cannot be found.</exception>
         public async Task<ImageStreamResult> ExecuteAsync(
                 GetImageStreamQuery query,
                 CancellationToken cancellationToken)
@@ -61,20 +61,13 @@ public sealed class GetImageStreamUseCase
                 ImageEntity? image = await this._imageRepository.GetByIdAsync(
                         id: query.ImageId,
                         cancellationToken: cancellationToken);
-                // Treat soft-deleted images as missing so deleted binaries cannot be streamed or probed.
+                // Treat soft-deleted images as missing so deleted assets cannot be downloaded.
                 if (image is null || image.IsDeleted)
                 {
                         throw new KeyNotFoundException($"Image '{query.ImageId}' was not found.");
                 }
 
                 ImageMetadataResult metadata = ContentResultMapper.ToMetadataResult(image: image);
-
-                // Compare against metadata.Sha256Hash first so HTTP 304 cache hits never touch IImageBinaryStore.
-                if (IsMatchingETag(ifNoneMatchETag: query.IfNoneMatchETag, expectedSha256Hash: image.Sha256Hash))
-                {
-                        return ImageStreamResult.NotModified(metadata: metadata);
-                }
-
                 Stream? contentStream = await this._imageBinaryStore.OpenReadAsync(
                         imageId: image.Id,
                         cancellationToken: cancellationToken);
@@ -83,10 +76,10 @@ public sealed class GetImageStreamUseCase
                         throw new KeyNotFoundException($"Binary payload for image '{query.ImageId}' was not found.");
                 }
 
-                // Transfer stream ownership to the result, disposing immediately if wrapping fails before returning to the caller.
+                // Dispose the opened stream immediately if constructing the result throws.
                 try
                 {
-                        return ImageStreamResult.WithContent(metadata: metadata, content: contentStream);
+                        return new ImageStreamResult(metadata: metadata, content: contentStream);
                 }
                 catch
                 {
@@ -94,64 +87,4 @@ public sealed class GetImageStreamUseCase
                         throw;
                 }
         }
-
-        /// <summary>
-        /// Parses an <c>If-None-Match</c> token or comma-separated ETag list and compares normalized tags against the stored SHA-256 digest.
-        /// </summary>
-        /// <param name="ifNoneMatchETag">The raw client <c>If-None-Match</c> value, or <see langword="null"/>.</param>
-        /// <param name="expectedSha256Hash">The image's stored 64-character SHA-256 digest.</param>
-        /// <returns><see langword="true"/> if any candidate tag matches <paramref name="expectedSha256Hash"/>; otherwise <see langword="false"/>.</returns>
-        private static bool IsMatchingETag(string? ifNoneMatchETag, string expectedSha256Hash)
-        {
-                // Treat absent or blank If-None-Match headers as a cache miss.
-                if (string.IsNullOrWhiteSpace(ifNoneMatchETag))
-                {
-                        return false;
-                }
-
-                // Split comma-separated ETag lists per RFC 9110 so multi-tag conditional requests match any valid tag.
-                string[] candidateTokens = ifNoneMatchETag.Split(
-                        separator: ApplicationConstants.ETAG_LIST_SEPARATOR,
-                        options: StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-                foreach (string rawToken in candidateTokens)
-                {
-                        ReadOnlySpan<char> normalized = NormalizeETagToken(rawToken: rawToken);
-
-                        // Compare case-insensitively because stored SHA-256 digests are lowercase hex while clients may send uppercase.
-                        if (normalized.Equals(other: expectedSha256Hash.AsSpan(), comparisonType: StringComparison.OrdinalIgnoreCase))
-                        {
-                                return true;
-                        }
-                }
-
-                return false;
-        }
-
-        /// <summary>
-        /// Strips an optional RFC 9110 weak prefix (<c>W/</c>) and matching enclosing double quotes safely.
-        /// </summary>
-        /// <param name="rawToken">A trimmed single ETag candidate token.</param>
-        /// <returns>The unwrapped tag characters, or the original span if not symmetrically quoted.</returns>
-        private static ReadOnlySpan<char> NormalizeETagToken(string rawToken)
-        {
-                ReadOnlySpan<char> candidate = rawToken.AsSpan();
-
-                // Strip RFC 9110 case-sensitive "W/" weak indicator before checking surrounding quotes.
-                if (candidate.StartsWith(value: ApplicationConstants.WEAK_ETAG_PREFIX, comparisonType: StringComparison.Ordinal))
-                {
-                        candidate = candidate[ApplicationConstants.WEAK_ETAG_PREFIX.Length..];
-                }
-
-                // Require balanced outer quotes of length >= 2 so malformed inputs like "\"" or "\"abc" never throw or silently match.
-                if (candidate.Length >= ApplicationConstants.MINIMUM_QUOTED_ETAG_LENGTH
-                        && candidate[0] == ApplicationConstants.ETAG_QUOTE_CHAR
-                        && candidate[^1] == ApplicationConstants.ETAG_QUOTE_CHAR)
-                {
-                        return candidate[1..^1];
-                }
-
-                return candidate;
-        }
 }
-

@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Security.Cryptography;
 using ContentService.Application.Interfaces;
 using ContentService.Application.Common;
@@ -12,36 +11,36 @@ using Microsoft.Extensions.Options;
 namespace ContentService.Application.UseCases.Images;
 
 /// <summary>
-/// Validates, hashes, quota-checks, and atomically persists newly uploaded raster exhibition images.
+/// Orchestrates fail-fast validation, bounded stream buffering, file-header verification, quota enforcement, and atomic image persistence so invalid or spoofed uploads cannot exhaust memory or disk.
 /// </summary>
 public sealed class UploadImageUseCase
 {
         /// <summary>
-        /// Image metadata and atomic binary persistence repository.
+        /// Persists metadata and binary rows atomically so neither can exist without the other.
         /// </summary>
         private readonly IImageRepository _imageRepository;
 
         /// <summary>
-        /// Storage node byte consumption monitor.
+        /// Supplies current storage byte usage so uploads fail cleanly with 507 before exhausting configured storage.
         /// </summary>
         private readonly IStorageQuotaMonitor _quotaMonitor;
 
         /// <summary>
-        /// Magic-byte header validator preventing MIME spoofing.
+        /// Verifies the file's leading header bytes so renamed scripts or mismatched files cannot bypass MIME allowlists.
         /// </summary>
         private readonly IImageSignatureValidator _signatureValidator;
 
         /// <summary>
-        /// Configured storage node identity, size limits, and quota budget.
+        /// Provides the logical storage node label, per-image size ceiling, and total quota budget.
         /// </summary>
         private readonly ContentStorageOptions _options;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="UploadImageUseCase"/> class.
+        /// Captures persistence, quota, signature, and storage-limit dependencies so upload security and capacity checks stay testable without SQL Server.
         /// </summary>
         /// <param name="imageRepository">The image metadata and binary persistence repository.</param>
-        /// <param name="quotaMonitor">The storage node byte usage monitor.</param>
-        /// <param name="signatureValidator">The image magic-byte signature validator.</param>
+        /// <param name="quotaMonitor">The storage byte usage monitor.</param>
+        /// <param name="signatureValidator">The image file-header signature validator.</param>
         /// <param name="options">The configured content storage options.</param>
         /// <exception cref="ArgumentNullException">Thrown when any required dependency is <see langword="null"/>.</exception>
         public UploadImageUseCase(
@@ -63,43 +62,45 @@ public sealed class UploadImageUseCase
         }
 
         /// <summary>
-        /// Validates an incoming image upload stream, enforces size/signature/quota rules, and persists metadata and binary atomically.
+        /// Executes cheapest-first checks before reading stream bytes, then verifies actual byte size, file-header bytes, and quota prior to atomic persistence.
         /// </summary>
         /// <param name="command">The image upload command carrying stream content, MIME type, file name, and actor audit identity.</param>
-        /// <param name="cancellationToken">A token to observe while streaming and persisting the image.</param>
-        /// <returns>The persisted <see cref="ImageMetadataResult"/> including generated picture reference and SHA-256 digest.</returns>
+        /// <param name="cancellationToken">Propagates caller cancellation while buffering the stream and writing to storage.</param>
+        /// <returns>The persisted <see cref="ImageMetadataResult"/> including its generated picture reference and SHA-256 digest.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="command"/> is <see langword="null"/>.</exception>
-        /// <exception cref="DomainValidationException">Thrown when stream, size, MIME allowlist, magic-byte signature, or entity invariants fail.</exception>
-        /// <exception cref="StorageQuotaExceededException">Thrown when the upload would exceed the storage node's configured byte quota.</exception>
+        /// <exception cref="DomainValidationException">Thrown when stream, size, MIME allowlist, file-header signature, or entity invariants fail.</exception>
+        /// <exception cref="StorageQuotaExceededException">Thrown when the upload would exceed the configured byte quota.</exception>
         public async Task<ImageMetadataResult> ExecuteAsync(
                 UploadImageCommand command,
                 CancellationToken cancellationToken)
         {
                 ArgumentNullException.ThrowIfNull(command);
 
-                // Run cheap metadata, stream-state, and declared-length checks first to avoid buffering megabytes for invalid requests.
+                // Reject invalid metadata, MIME types, and declared sizes before querying the database or allocating stream buffers.
                 long effectiveMaxSizeBytes = this.ValidatePreconditions(command: command);
 
                 long currentUsedBytes = await this._quotaMonitor.GetUsedBytesAsync(cancellationToken: cancellationToken);
+                // Short-circuit based on declared length first so obvious over-quota uploads fail before reading megabytes from the network.
                 this.EnsureWithinQuota(currentUsedBytes: currentUsedBytes, incomingBytes: command.DeclaredLengthBytes);
 
-                // Copy incrementally with a pooled buffer while hashing concurrently so spoofed Content-Length headers cannot cause unbounded reads.
-                (byte[] payload, string sha256Hash) = await ReadAndHashPayloadAsync(
+                // Enforce a hard read ceiling during streaming so spoofed Content-Length headers cannot trigger unbounded memory allocation.
+                byte[] payload = await ReadPayloadWithLimitAsync(
                         content: command.Content,
                         maxAllowedBytes: effectiveMaxSizeBytes,
                         cancellationToken: cancellationToken);
+                string sha256Hash = Convert.ToHexStringLower(SHA256.HashData(payload));
 
-                // Cap magic-byte inspection to MAX_MAGIC_HEADER_LENGTH after full buffering so short or truncated streams cannot bypass header checks.
-                int headerLength = Math.Min(val1: payload.Length, val2: ApplicationConstants.MAX_MAGIC_HEADER_LENGTH);
+                // Inspect only the leading header bytes (PNG/JPEG/WebP format markers) so renamed or spoofed files are caught even if their Content-Type claims an image.
+                int headerLength = Math.Min(val1: payload.Length, val2: this._signatureValidator.RequiredHeaderByteCount);
                 if (!this._signatureValidator.IsValidSignature(
-                        headerBytes: payload.AsSpan(start: 0, length: headerLength),
+                        headerBytes: payload[..headerLength],
                         declaredContentType: command.ContentType))
                 {
                         throw new DomainValidationException(
                                 $"Uploaded binary payload does not match declared content type '{command.ContentType}'.");
                 }
 
-                // Re-check quota using actual read bytes in case DeclaredLengthBytes understated the real stream length.
+                // Re-check quota using actual read bytes because callers can misdeclare Content-Length below the real stream length.
                 this.EnsureWithinQuota(currentUsedBytes: currentUsedBytes, incomingBytes: payload.Length);
 
                 ImageEntity image = ImageEntity.Create(
@@ -121,7 +122,7 @@ public sealed class UploadImageUseCase
         }
 
         /// <summary>
-        /// Validates cheap request preconditions and resolves the effective maximum permitted byte limit before buffering stream content.
+        /// Fails fast on cheap stream/size/text checks and caps configured upload limits at the domain ceiling before any buffering occurs.
         /// </summary>
         /// <param name="command">The upload command to validate.</param>
         /// <returns>The effective maximum upload size in bytes.</returns>
@@ -133,7 +134,7 @@ public sealed class UploadImageUseCase
                         throw new DomainValidationException("Upload content stream must be non-null and readable.");
                 }
 
-                // Domain enforces an absolute 10 MiB ceiling even if options are configured higher.
+                // Clamp to DomainConstants.MAX_IMAGE_SIZE_BYTES so misconfigured host options can tighten limits but never bypass the domain's 10 MiB safety ceiling.
                 long effectiveMaxSizeBytes = Math.Min(val1: this._options.MaxImageSizeBytes, val2: DomainConstants.MAX_IMAGE_SIZE_BYTES);
                 if (effectiveMaxSizeBytes < DomainConstants.MIN_IMAGE_SIZE_BYTES)
                 {
@@ -153,7 +154,7 @@ public sealed class UploadImageUseCase
         }
 
         /// <summary>
-        /// Validates lightweight metadata strings (file name, actor ID, MIME allowlist, alt text) prior to stream I/O.
+        /// Validates metadata strings prior to stream I/O so bad filenames, actors, or unsupported MIME types reject without wasting network or memory bandwidth.
         /// </summary>
         /// <param name="command">The upload command carrying metadata strings.</param>
         /// <exception cref="DomainValidationException">Thrown when any string metadata violates domain rules.</exception>
@@ -178,7 +179,7 @@ public sealed class UploadImageUseCase
                         throw new DomainValidationException("Content type cannot be null or whitespace.");
                 }
 
-                // Normalize case and surrounding whitespace before checking the domain MIME allowlist.
+                // Normalize casing and whitespace so clients sending uppercase media types still match the lowercase domain allowlist.
                 string normalizedContentType = command.ContentType.Trim().ToLowerInvariant();
                 if (!DomainConstants.ALLOWED_IMAGE_CONTENT_TYPES.Contains(normalizedContentType))
                 {
@@ -186,7 +187,7 @@ public sealed class UploadImageUseCase
                                 $"Content type '{normalizedContentType}' is not an allowed image content type.");
                 }
 
-                // AltText is optional, so enforce max length only when non-whitespace text is provided.
+                // Allow omitted/blank AltText while bounding non-empty descriptions to the database column limit.
                 if (!string.IsNullOrWhiteSpace(command.AltText)
                         && command.AltText.Trim().Length > DomainConstants.MAX_ALT_TEXT_LENGTH)
                 {
@@ -196,7 +197,7 @@ public sealed class UploadImageUseCase
         }
 
         /// <summary>
-        /// Verifies that adding <paramref name="incomingBytes"/> keeps total node consumption within the configured byte quota.
+        /// Prevents node disk exhaustion using overflow-safe subtraction instead of addition near <see cref="long.MaxValue"/>.
         /// </summary>
         /// <param name="currentUsedBytes">The current byte usage reported by <see cref="IStorageQuotaMonitor"/>.</param>
         /// <param name="incomingBytes">The byte size of the incoming image payload.</param>
@@ -206,7 +207,7 @@ public sealed class UploadImageUseCase
                 long safeUsedBytes = Math.Max(val1: 0L, val2: currentUsedBytes);
                 long safeQuotaBytes = Math.Max(val1: 0L, val2: this._options.TotalQuotaBytes);
 
-                // Subtract instead of adding (safeUsedBytes + incomingBytes) so values near long.MaxValue cannot wrap negative.
+                // Subtract instead of computing (safeUsedBytes + incomingBytes) so huge values near long.MaxValue cannot wrap negative and bypass quota checks.
                 bool exceedsQuota = this._options.TotalQuotaBytes <= 0
                         || safeUsedBytes >= safeQuotaBytes
                         || incomingBytes > safeQuotaBytes - safeUsedBytes;
@@ -219,7 +220,7 @@ public sealed class UploadImageUseCase
                         ? ApplicationConstants.DEFAULT_STORAGE_NODE_ID
                         : this._options.StorageNodeId.Trim();
 
-                // Saturate at long.MaxValue instead of overflowing when reporting projected usage in quota errors.
+                // Saturate projected usage at long.MaxValue so error reporting never throws OverflowException on extreme test values.
                 long safeAdditionalBytes = Math.Max(val1: 0L, val2: incomingBytes);
                 long projectedUsedBytes = safeAdditionalBytes > long.MaxValue - safeUsedBytes
                         ? long.MaxValue
@@ -232,81 +233,33 @@ public sealed class UploadImageUseCase
         }
 
         /// <summary>
-        /// Buffers the stream using an 80 KiB pooled buffer while enforcing <paramref name="maxAllowedBytes"/> and computing SHA-256 concurrently.
+        /// Buffers the stream in bounded memory chunks so misdeclared or maliciously oversized streams fail mid-read without exhausting server memory.
         /// </summary>
         /// <param name="content">The readable input stream.</param>
         /// <param name="maxAllowedBytes">The maximum permitted actual byte length.</param>
-        /// <param name="cancellationToken">A token to observe while reading stream chunks.</param>
-        /// <returns>The buffered payload byte array and lowercase 64-character hexadecimal SHA-256 digest.</returns>
+        /// <param name="cancellationToken">Propagates caller cancellation while reading stream chunks.</param>
+        /// <returns>The buffered payload byte array.</returns>
         /// <exception cref="DomainValidationException">Thrown when the actual byte count is zero or exceeds <paramref name="maxAllowedBytes"/>.</exception>
-        private static async Task<(byte[] Payload, string Sha256Hash)> ReadAndHashPayloadAsync(
+        private static async Task<byte[]> ReadPayloadWithLimitAsync(
                 Stream content,
                 long maxAllowedBytes,
                 CancellationToken cancellationToken)
         {
                 using MemoryStream payloadStream = new();
-                using IncrementalHash sha256 = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-                byte[] buffer = ArrayPool<byte>.Shared.Rent(ApplicationConstants.STREAM_BUFFER_SIZE_BYTES);
-                long totalBytesRead;
-
-                try
-                {
-                        totalBytesRead = await CopyAndHashChunksAsync(
-                                content: content,
-                                payloadStream: payloadStream,
-                                sha256: sha256,
-                                buffer: buffer,
-                                maxAllowedBytes: maxAllowedBytes,
-                                cancellationToken: cancellationToken);
-                }
-                finally
-                {
-                        // Always return the pooled buffer even if stream reading throws or exceeds size limits.
-                        ArrayPool<byte>.Shared.Return(buffer);
-                }
-
-                if (totalBytesRead < DomainConstants.MIN_IMAGE_SIZE_BYTES)
-                {
-                        throw new DomainValidationException(
-                                $"Image payload cannot be smaller than {DomainConstants.MIN_IMAGE_SIZE_BYTES} byte(s).");
-                }
-
-                return (payloadStream.ToArray(), Convert.ToHexStringLower(sha256.GetHashAndReset()));
-        }
-
-        /// <summary>
-        /// Streams chunks from <paramref name="content"/> into <paramref name="payloadStream"/> and <paramref name="sha256"/> until EOF or limit breach.
-        /// </summary>
-        /// <param name="content">The source stream.</param>
-        /// <param name="payloadStream">The destination memory buffer.</param>
-        /// <param name="sha256">The incremental SHA-256 hasher.</param>
-        /// <param name="buffer">The rented read buffer.</param>
-        /// <param name="maxAllowedBytes">The maximum permitted total byte count.</param>
-        /// <param name="cancellationToken">A token to observe between reads.</param>
-        /// <returns>The exact total number of bytes read from <paramref name="content"/>.</returns>
-        /// <exception cref="DomainValidationException">Thrown immediately when cumulative bytes exceed <paramref name="maxAllowedBytes"/>.</exception>
-        private static async Task<long> CopyAndHashChunksAsync(
-                Stream content,
-                MemoryStream payloadStream,
-                IncrementalHash sha256,
-                byte[] buffer,
-                long maxAllowedBytes,
-                CancellationToken cancellationToken)
-        {
+                byte[] buffer = new byte[ApplicationConstants.STREAM_BUFFER_SIZE_BYTES];
                 long totalBytesRead = 0;
 
                 while (true)
                 {
-                        // Bound the read slice to the configured buffer size because ArrayPool.Rent may return a larger array.
                         int bytesRead = await content.ReadAsync(
-                                buffer: buffer.AsMemory(start: 0, length: ApplicationConstants.STREAM_BUFFER_SIZE_BYTES),
+                                buffer: buffer,
                                 cancellationToken: cancellationToken);
                         if (bytesRead == 0)
                         {
-                                return totalBytesRead;
+                                break;
                         }
 
-                        // Abort streaming immediately on overflow so misdeclared or oversized streams cannot exhaust memory.
+                        // Abort immediately on overflow so streams lying about Content-Length cannot force gigabyte allocations.
                         totalBytesRead += bytesRead;
                         if (totalBytesRead > maxAllowedBytes)
                         {
@@ -314,11 +267,20 @@ public sealed class UploadImageUseCase
                                         $"Image upload exceeds the maximum allowed size of {maxAllowedBytes} bytes.");
                         }
 
-                        // Hash and buffer the exact slice read in one pass to avoid a second pass over the payload.
-                        ReadOnlySpan<byte> chunk = buffer.AsSpan(start: 0, length: bytesRead);
-                        sha256.AppendData(chunk);
-                        payloadStream.Write(chunk);
+                        await payloadStream.WriteAsync(
+                                buffer: buffer,
+                                offset: 0,
+                                count: bytesRead,
+                                cancellationToken: cancellationToken);
                 }
+
+                // Re-check actual bytes read because empty streams with spoofed non-zero Content-Length would otherwise pass precondition checks.
+                if (totalBytesRead < DomainConstants.MIN_IMAGE_SIZE_BYTES)
+                {
+                        throw new DomainValidationException(
+                                $"Image payload cannot be smaller than {DomainConstants.MIN_IMAGE_SIZE_BYTES} byte(s).");
+                }
+
+                return payloadStream.ToArray();
         }
 }
-
