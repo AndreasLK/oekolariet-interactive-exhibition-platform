@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace EditorService.Domain.Entities
+namespace EditorService.Infrastructure.Queries.Games
 {
-        internal class WasteItemEntity
+        internal class GameQueries
         {
         }
 }
