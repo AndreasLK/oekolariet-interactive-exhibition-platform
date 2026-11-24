@@ -1,10 +1,10 @@
-using EditorService.Domain.Entities;
+﻿using EditorService.Domain.Entities;
 using EditorService.Domain.Enums;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace EditorService.Tests.TestDoubles
+namespace EditorService.Domain.Tests.TestDoubles
 {
         /// <summary>
         /// A minimal game used only in tests, so the shared rules in <see cref="GameEntity"/>
