@@ -46,11 +46,11 @@ public sealed class ContentServiceImageDownloadTests
                         handler: handler,
                         baseAddress: new Uri(uriString: BASE_URL_WITH_SUBPATH, uriKind: UriKind.Absolute));
 
-                ContentImageDownload download = await client.DownloadImageAsync(imageId: imageId);
+                ContentImageDownload download = await client.DownloadImageAsync(imageId: imageId, cancellationToken: TestContext.Current.CancellationToken);
                 await using (download)
                 {
                         using MemoryStream copied = new();
-                        await download.Content.CopyToAsync(destination: copied);
+                        await download.Content.CopyToAsync(destination: copied, cancellationToken: TestContext.Current.CancellationToken);
 
                         Assert.Equal(expected: imageBytes, actual: copied.ToArray());
                         Assert.Equal(expected: PNG_MEDIA_TYPE, actual: download.ContentType);
@@ -89,7 +89,7 @@ public sealed class ContentServiceImageDownloadTests
                         baseAddress: new Uri(uriString: DEFAULT_BASE_URL, uriKind: UriKind.Absolute));
 
                 await Assert.ThrowsAsync<IOException>(
-                        testCode: () => client.DownloadImageAsync(imageId: Guid.NewGuid()));
+                        testCode: () => client.DownloadImageAsync(imageId: Guid.NewGuid(), cancellationToken: TestContext.Current.CancellationToken));
 
                 Assert.NotNull(trackedResponse);
                 Assert.Equal(expected: 1, actual: trackedResponse.DisposeCount);
@@ -107,7 +107,7 @@ public sealed class ContentServiceImageDownloadTests
                         baseAddress: new Uri(uriString: DEFAULT_BASE_URL, uriKind: UriKind.Absolute));
 
                 await Assert.ThrowsAsync<ArgumentException>(
-                        testCode: () => client.DownloadImageAsync(imageId: Guid.Empty));
+                        testCode: () => client.DownloadImageAsync(imageId: Guid.Empty, cancellationToken: TestContext.Current.CancellationToken));
                 Assert.Null(handler.LastRequest);
         }
 

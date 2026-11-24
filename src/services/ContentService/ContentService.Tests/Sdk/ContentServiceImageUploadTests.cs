@@ -48,7 +48,7 @@ public sealed class ContentServiceImageUploadTests
                         ActorId = EXPLICIT_ACTOR_ID
                 };
 
-                ContentImageMetadata actual = await client.UploadImageAsync(request: request);
+                ContentImageMetadata actual = await client.UploadImageAsync(request: request, cancellationToken: TestContext.Current.CancellationToken);
 
                 Assert.Equal(expected: expectedMetadata, actual: actual);
                 Assert.NotNull(handler.LastRequest);
@@ -95,7 +95,7 @@ public sealed class ContentServiceImageUploadTests
                         ActorId = "  "
                 };
 
-                _ = await client.UploadImageAsync(request: request);
+                _ = await client.UploadImageAsync(request: request, cancellationToken: TestContext.Current.CancellationToken);
 
                 Assert.NotNull(handler.LastRequest);
                 Assert.False(handler.LastRequest.Headers.Contains(name: "X-Actor-Id"));
@@ -128,7 +128,7 @@ public sealed class ContentServiceImageUploadTests
                                 Content = unreadableStream,
                                 FileName = "bad.png",
                                 ContentType = PNG_MEDIA_TYPE
-                        }));
+                        }, cancellationToken: TestContext.Current.CancellationToken));
 
                 await using MemoryStream readableStream = new(buffer: [1, 2]);
                 await Assert.ThrowsAsync<ArgumentException>(
@@ -137,7 +137,7 @@ public sealed class ContentServiceImageUploadTests
                                 Content = readableStream,
                                 FileName = "bad\"name.png",
                                 ContentType = PNG_MEDIA_TYPE
-                        }));
+                        }, cancellationToken: TestContext.Current.CancellationToken));
 
                 await Assert.ThrowsAsync<ArgumentException>(
                         testCode: () => client.UploadImageAsync(request: new UploadImageRequest
@@ -145,7 +145,7 @@ public sealed class ContentServiceImageUploadTests
                                 Content = readableStream,
                                 FileName = "valid.png",
                                 ContentType = "not-a-mime-type"
-                        }));
+                        }, cancellationToken: TestContext.Current.CancellationToken));
 
                 await Assert.ThrowsAsync<ArgumentException>(
                         testCode: () => client.UploadImageAsync(request: new UploadImageRequest
@@ -154,7 +154,7 @@ public sealed class ContentServiceImageUploadTests
                                 FileName = "valid.png",
                                 ContentType = PNG_MEDIA_TYPE,
                                 ActorId = "Søren"
-                        }));
+                        }, cancellationToken: TestContext.Current.CancellationToken));
 
                 Assert.Equal(expected: 0, actual: callCount);
         }
