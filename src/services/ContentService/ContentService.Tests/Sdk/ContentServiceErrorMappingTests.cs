@@ -36,7 +36,7 @@ public sealed class ContentServiceErrorMappingTests
                 ContentServiceImageClient client = CreateClient(handler: handler);
 
                 ContentServiceApiException exception = await Assert.ThrowsAsync<ContentServiceApiException>(
-                        testCode: () => client.GetImageMetadataAsync(imageId: Guid.NewGuid()));
+                        testCode: () => client.GetImageMetadataAsync(imageId: Guid.NewGuid(), cancellationToken: TestContext.Current.CancellationToken));
 
                 Assert.Equal(expected: HttpStatusCode.InsufficientStorage, actual: exception.StatusCode);
                 Assert.Equal(expected: "Quota full.", actual: exception.ProblemDetails?.Detail);
@@ -67,7 +67,7 @@ public sealed class ContentServiceErrorMappingTests
                 ContentServiceImageClient client = CreateClient(handler: handler);
 
                 ContentServiceApiException exception = await Assert.ThrowsAsync<ContentServiceApiException>(
-                        testCode: () => client.DownloadImageAsync(imageId: Guid.NewGuid()));
+                        testCode: () => client.DownloadImageAsync(imageId: Guid.NewGuid(), cancellationToken: TestContext.Current.CancellationToken));
 
                 Assert.Equal(expected: HttpStatusCode.BadGateway, actual: exception.StatusCode);
                 Assert.Null(exception.ProblemDetails);
@@ -88,7 +88,7 @@ public sealed class ContentServiceErrorMappingTests
                 ContentServiceImageClient client = CreateClient(handler: handler);
 
                 ContentServiceApiException exception = await Assert.ThrowsAsync<ContentServiceApiException>(
-                        testCode: () => client.GetImageMetadataAsync(imageId: Guid.NewGuid()));
+                        testCode: () => client.GetImageMetadataAsync(imageId: Guid.NewGuid(), cancellationToken: TestContext.Current.CancellationToken));
 
                 Assert.Equal(expected: HttpStatusCode.NotFound, actual: exception.StatusCode);
                 Assert.Null(exception.ProblemDetails);
