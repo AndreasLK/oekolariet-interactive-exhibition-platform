@@ -23,8 +23,11 @@ namespace EditorService.Tests.Domain
                 [Fact]
                 public void CreateSetsTitleAndDraftStatus()
                 {
+                        // Arrange
+                        string title = "Affaldsspil";
+
                         // Act
-                        TestGame game = TestGame.Create(title: "Affaldsspil", now: NOW);
+                        TestGame game = TestGame.Create(title: title, now: NOW);
 
                         // Assert
                         Assert.Equal(expected: "Affaldsspil", actual: game.Title);
@@ -36,8 +39,13 @@ namespace EditorService.Tests.Domain
                 [Fact]
                 public void CreateTrimsTitle()
                 {
-                        TestGame game = TestGame.Create(title: "  Affaldsspil  ", now: NOW);
+                        // Arrange
+                        string title = "  Affaldsspil  ";
 
+                        // Act
+                        TestGame game = TestGame.Create(title: title, now: NOW);
+
+                        // Assert
                         Assert.Equal(expected: "Affaldsspil", actual: game.Title);
                 }
 
@@ -48,16 +56,27 @@ namespace EditorService.Tests.Domain
                 [InlineData("   ")]
                 public void CreateThrowsWhenTitleIsEmpty(string title)
                 {
-                        Assert.Throws<DomainValidationException>(testCode: () => TestGame.Create(title: title, now: NOW));
+                        // Arrange: the empty title comes from InlineData
+
+                        // Act
+                        Action act = () => TestGame.Create(title: title, now: NOW);
+
+                        // Assert
+                        Assert.Throws<DomainValidationException>(testCode: act);
                 }
 
                 /// <summary>A title longer than 150 characters is not allowed.</summary>
                 [Fact]
                 public void CreateThrowsWhenTitleIsTooLong()
                 {
+                        // Arrange
                         string longTitle = new(c: 'a', count: 151);
 
-                        Assert.Throws<DomainValidationException>(testCode: () => TestGame.Create(title: longTitle, now: NOW));
+                        // Act
+                        Action act = () => TestGame.Create(title: longTitle, now: NOW);
+
+                        // Assert
+                        Assert.Throws<DomainValidationException>(testCode: act);
                 }
 
                 // ---------- Taking the lock ----------
@@ -83,12 +102,15 @@ namespace EditorService.Tests.Domain
                 [Fact]
                 public void AcquireLockThrowsWhenSomeoneElseHoldsTheLock()
                 {
+                        // Arrange
                         TestGame game = TestGame.Create(title: "Affaldsspil", now: NOW);
                         game.AcquireLock(holderName: "Lise", deviceName: "PC1", now: NOW);
 
-                        GameLockedException exception = Assert.Throws<GameLockedException>(
-                                testCode: () => game.AcquireLock(holderName: "Ole", deviceName: "PC2", now: NOW.AddMinutes(minutes: 5)));
+                        // Act
+                        Action act = () => game.AcquireLock(holderName: "Ole", deviceName: "PC2", now: NOW.AddMinutes(minutes: 5));
 
+                        // Assert
+                        GameLockedException exception = Assert.Throws<GameLockedException>(testCode: act);
                         Assert.Contains(expectedSubstring: "Lise", actualString: exception.Message);
                         Assert.Contains(expectedSubstring: "PC1", actualString: exception.Message);
                 }
@@ -97,11 +119,14 @@ namespace EditorService.Tests.Domain
                 [Fact]
                 public void AcquireLockRenewsWhenSameHolderAndDevice()
                 {
+                        // Arrange
                         TestGame game = TestGame.Create(title: "Affaldsspil", now: NOW);
                         Guid firstToken = game.AcquireLock(holderName: "Lise", deviceName: "PC1", now: NOW);
 
+                        // Act
                         Guid secondToken = game.AcquireLock(holderName: "lise", deviceName: "pc1", now: NOW.AddMinutes(minutes: 10));
 
+                        // Assert
                         Assert.Equal(expected: firstToken, actual: secondToken);
                         Assert.Equal(expected: NOW.AddMinutes(minutes: 25), actual: game.EditLock!.ExpiresAt);
                 }
@@ -110,11 +135,14 @@ namespace EditorService.Tests.Domain
                 [Fact]
                 public void AcquireLockSucceedsWhenOldLockHasExpired()
                 {
+                        // Arrange
                         TestGame game = TestGame.Create(title: "Affaldsspil", now: NOW);
                         Guid oldToken = game.AcquireLock(holderName: "Lise", deviceName: "PC1", now: NOW);
 
+                        // Act
                         Guid newToken = game.AcquireLock(holderName: "Ole", deviceName: "PC2", now: NOW.AddMinutes(minutes: 16));
 
+                        // Assert
                         Assert.NotEqual(expected: oldToken, actual: newToken);
                         Assert.Equal(expected: "Ole", actual: game.EditLock!.HolderName);
                 }
@@ -123,11 +151,14 @@ namespace EditorService.Tests.Domain
                 [Fact]
                 public void ReleaseLockRemovesLock()
                 {
+                        // Arrange
                         TestGame game = TestGame.Create(title: "Affaldsspil", now: NOW);
                         Guid token = game.AcquireLock(holderName: "Lise", deviceName: "PC1", now: NOW);
 
+                        // Act
                         game.ReleaseLock(lockToken: token);
 
+                        // Assert
                         Assert.False(condition: game.IsLocked(now: NOW));
                 }
 
@@ -137,43 +168,58 @@ namespace EditorService.Tests.Domain
                 [Fact]
                 public void RenameThrowsWithoutLock()
                 {
+                        // Arrange
                         TestGame game = TestGame.Create(title: "Affaldsspil", now: NOW);
 
-                        Assert.Throws<EditLockRequiredException>(
-                                testCode: () => game.Rename(title: "Nyt navn", lockToken: Guid.NewGuid(), actorId: ACTOR, now: NOW));
+                        // Act
+                        Action act = () => game.Rename(title: "Nyt navn", lockToken: Guid.NewGuid(), actorId: ACTOR, now: NOW);
+
+                        // Assert
+                        Assert.Throws<EditLockRequiredException>(testCode: act);
                 }
 
                 /// <summary>You cannot change the game with someone else's token.</summary>
                 [Fact]
                 public void RenameThrowsWithWrongToken()
                 {
+                        // Arrange
                         TestGame game = TestGame.Create(title: "Affaldsspil", now: NOW);
                         game.AcquireLock(holderName: "Lise", deviceName: "PC1", now: NOW);
 
-                        Assert.Throws<EditLockRequiredException>(
-                                testCode: () => game.Rename(title: "Nyt navn", lockToken: Guid.NewGuid(), actorId: ACTOR, now: NOW));
+                        // Act
+                        Action act = () => game.Rename(title: "Nyt navn", lockToken: Guid.NewGuid(), actorId: ACTOR, now: NOW);
+
+                        // Assert
+                        Assert.Throws<EditLockRequiredException>(testCode: act);
                 }
 
                 /// <summary>You cannot change the game when your lock has expired.</summary>
                 [Fact]
                 public void RenameThrowsWhenLockHasExpired()
                 {
+                        // Arrange
                         TestGame game = TestGame.Create(title: "Affaldsspil", now: NOW);
                         Guid token = game.AcquireLock(holderName: "Lise", deviceName: "PC1", now: NOW);
 
-                        Assert.Throws<EditLockRequiredException>(
-                                testCode: () => game.Rename(title: "Nyt navn", lockToken: token, actorId: ACTOR, now: NOW.AddMinutes(minutes: 16)));
+                        // Act
+                        Action act = () => game.Rename(title: "Nyt navn", lockToken: token, actorId: ACTOR, now: NOW.AddMinutes(minutes: 16));
+
+                        // Assert
+                        Assert.Throws<EditLockRequiredException>(testCode: act);
                 }
 
                 /// <summary>With a valid lock, the title is changed.</summary>
                 [Fact]
                 public void RenameChangesTitleWithValidLock()
                 {
+                        // Arrange
                         TestGame game = TestGame.Create(title: "Affaldsspil", now: NOW);
                         Guid token = game.AcquireLock(holderName: "Lise", deviceName: "PC1", now: NOW);
 
+                        // Act
                         game.Rename(title: "Sortér affaldet", lockToken: token, actorId: ACTOR, now: NOW);
 
+                        // Assert
                         Assert.Equal(expected: "Sortér affaldet", actual: game.Title);
                 }
 
@@ -183,23 +229,30 @@ namespace EditorService.Tests.Domain
                 [Fact]
                 public void PublishThrowsWithoutTemplate()
                 {
+                        // Arrange
                         TestGame game = TestGame.Create(title: "Affaldsspil", now: NOW);
                         Guid token = game.AcquireLock(holderName: "Lise", deviceName: "PC1", now: NOW);
 
-                        Assert.Throws<DomainValidationException>(
-                                testCode: () => game.Publish(lockToken: token, actorId: ACTOR, now: NOW));
+                        // Act
+                        Action act = () => game.Publish(lockToken: token, actorId: ACTOR, now: NOW);
+
+                        // Assert
+                        Assert.Throws<DomainValidationException>(testCode: act);
                 }
 
                 /// <summary>A complete game is published and gets a publish time.</summary>
                 [Fact]
                 public void PublishSetsStatusAndTime()
                 {
+                        // Arrange
                         TestGame game = TestGame.Create(title: "Affaldsspil", now: NOW);
                         Guid token = game.AcquireLock(holderName: "Lise", deviceName: "PC1", now: NOW);
                         game.ChangeTemplate(templateId: Guid.NewGuid(), lockToken: token, actorId: ACTOR, now: NOW);
 
+                        // Act
                         game.Publish(lockToken: token, actorId: ACTOR, now: NOW);
 
+                        // Assert
                         Assert.Equal(expected: GameStatus.Published, actual: game.Status);
                         Assert.Equal(expected: NOW, actual: game.PublishedAt);
                 }
@@ -208,13 +261,16 @@ namespace EditorService.Tests.Domain
                 [Fact]
                 public void ChangingPublishedGameMakesItDraftAgain()
                 {
+                        // Arrange
                         TestGame game = TestGame.Create(title: "Affaldsspil", now: NOW);
                         Guid token = game.AcquireLock(holderName: "Lise", deviceName: "PC1", now: NOW);
                         game.ChangeTemplate(templateId: Guid.NewGuid(), lockToken: token, actorId: ACTOR, now: NOW);
                         game.Publish(lockToken: token, actorId: ACTOR, now: NOW);
 
+                        // Act
                         game.Rename(title: "Ny titel", lockToken: token, actorId: ACTOR, now: NOW.AddMinutes(minutes: 1));
 
+                        // Assert
                         Assert.Equal(expected: GameStatus.Draft, actual: game.Status);
                         Assert.NotNull(@object: game.PublishedAt);
                 }
