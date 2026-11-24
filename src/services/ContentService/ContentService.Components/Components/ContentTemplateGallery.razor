@@ -1,0 +1,197 @@
+@* Embeddable exhibition template browser and editor with live ALKsPersonalUI JSON-to-Razor previews. *@
+<Column Gap="1.25rem" Modifier="@UIModifier.New.FillMaxWidth()">
+        <Row HorizontalArrangement="Arrangement.SpaceBetween"
+             VerticalAlignment="VerticalAlignment.Center"
+             Gap="0.75rem"
+             Wrap="true"
+             Modifier="@UIModifier.New.FillMaxWidth()">
+                <SearchInput Value="@this._searchTerm"
+                             ValueChanged="@this.HandleSearchChangedAsync"
+                             Placeholder="Søg efter skabelonnavn..."
+                             AriaLabel="Søg i skabeloner"
+                             Modifier="@ContentGalleryLayout.BuildSearchInputModifier()" />
+
+                <Row Gap="0.5rem" Wrap="true" VerticalAlignment="VerticalAlignment.Center">
+                        <Pill Text="@($"{this._totalCount} skabelon(er)")" Variant="Pill.PillVariant.Neutral" />
+                        <ActionButton Text="Opdater"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Size="ActionButton.ButtonSize.Small"
+                                      IsDisabled="@this._isLoading"
+                                      OnClick="@this.HandleRefreshClickedAsync" />
+                        @if (this.AllowManage)
+                        {
+                                <ActionButton Text="Ny skabelon"
+                                              Variant="ActionButton.ButtonVariant.Solid"
+                                              Size="ActionButton.ButtonSize.Small"
+                                              OnClick="@this.HandleOpenCreateModal" />
+                        }
+                </Row>
+        </Row>
+
+        <Row Gap="0.45rem" Wrap="true" VerticalAlignment="VerticalAlignment.Center">
+                <Pill Text="Alle typer"
+                      Variant="@(this._selectedType is null ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
+                      OnClick="@(() => this.HandleFilterTypeAsync(componentType: null))" />
+                @foreach (ContentTemplateComponentType componentType in Enum.GetValues<ContentTemplateComponentType>())
+                {
+                        <Pill @key="componentType"
+                              Text="@componentType.ToString()"
+                              Variant="@(this._selectedType == componentType ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
+                              OnClick="@(() => this.HandleFilterTypeAsync(componentType: componentType))" />
+                }
+        </Row>
+
+        @if (this._isLoading && this._templates.Count == 0)
+        {
+                <Box ContentAlignment="BoxAlignment.Center"
+                     Modifier="@ContentGalleryLayout.BuildLoaderBoxModifier()">
+                        <Column Gap="0.75rem" HorizontalAlignment="HorizontalAlignment.Center">
+                                <SimpleSpinner Size="2rem" />
+                                <Text Value="Indlæser layoutskabeloner..." Variant="TypographyVariant.Caption" Muted="true" />
+                        </Column>
+                </Box>
+        }
+        else if (this._templates.Count == 0)
+        {
+                <Box ContentAlignment="BoxAlignment.Center"
+                     Modifier="@ContentGalleryLayout.BuildEmptyStateBoxModifier()">
+                        <Column HorizontalAlignment="HorizontalAlignment.Center" Gap="0.75rem">
+                                <Text Value="Ingen layoutskabeloner fundet." Variant="TypographyVariant.Subtitle" Muted="true" />
+                                @if (this.AllowManage)
+                                {
+                                        <ActionButton Text="Opret skabelon"
+                                                      Variant="ActionButton.ButtonVariant.Solid"
+                                                      OnClick="@this.HandleOpenCreateModal" />
+                                }
+                        </Column>
+                </Box>
+        }
+        else
+        {
+                <Grid MinColumnWidth="@TEMPLATE_CARD_MIN_WIDTH" Gap="1rem" Modifier="@UIModifier.New.FillMaxWidth()">
+                        @foreach (ContentTemplateMetadata template in this._templates)
+                        {
+                                bool isSelectable = this.IsSelectionEnabled();
+                                bool isSelected = isSelectable && this._selectedTemplateId == template.Id;
+
+                                @* Pure ALKsPersonalUI card container for each template, avoiding raw HTML buttons and divs for the tile chrome. *@
+                                <Box @key="template.Id" Modifier="@this.BuildTemplateCardModifier(isSelected: isSelected)">
+                                        <Column Gap="0.75rem" Modifier="@UIModifier.New.FillMaxWidth()">
+                                                <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Gap="0.5rem" Modifier="@UIModifier.New.FillMaxWidth()">
+                                                        <Text Value="@template.Name" Variant="TypographyVariant.Title" />
+                                                        <Row Gap="0.45rem" VerticalAlignment="VerticalAlignment.Center">
+                                                                <Pill Text="@template.ComponentType.ToString()" Variant="Pill.PillVariant.Accent" />
+                                                                @if (isSelectable)
+                                                                {
+                                                                        <ActionButton Text="@(isSelected ? "✓" : "○")"
+                                                                                      Variant="@(isSelected ? ActionButton.ButtonVariant.Solid : ActionButton.ButtonVariant.Outline)"
+                                                                                      Size="ActionButton.ButtonSize.Small"
+                                                                                      OnClick="@(() => this.HandleTemplateSelectionToggledAsync(template: template))" />
+                                                                }
+                                                        </Row>
+                                                </Row>
+
+                                                @if (isSelectable)
+                                                {
+                                                        <div class="template-tile-preview template-tile-preview-clickable"
+                                                             @onclick="@(() => this.HandleTemplateSelectionToggledAsync(template: template))">
+                                                                <ContentTemplatePreview SchemaJson="@template.SchemaJson" />
+                                                        </div>
+                                                }
+                                                else
+                                                {
+                                                        <Box Modifier="@UIModifier.New.FillMaxWidth()">
+                                                                <ContentTemplatePreview SchemaJson="@template.SchemaJson" />
+                                                        </Box>
+                                                }
+
+                                                <Row HorizontalArrangement="Arrangement.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Gap="0.5rem" Modifier="@UIModifier.New.FillMaxWidth()">
+                                                        <Text Value="@($"v{template.SchemaVersion} · {template.UpdatedAt.ToLocalTime():yyyy-MM-dd HH:mm}")"
+                                                              Variant="TypographyVariant.Caption"
+                                                              Muted="true" />
+
+                                                        @if (this.AllowManage)
+                                                        {
+                                                                <Row Gap="0.45rem">
+                                                                        <ActionButton Text="Rediger"
+                                                                                      Variant="ActionButton.ButtonVariant.Outline"
+                                                                                      Size="ActionButton.ButtonSize.Small"
+                                                                                      OnClick="@(() => this.HandleOpenEditModal(template: template))" />
+                                                                        <ActionButton Text="Arkiver"
+                                                                                      Variant="ActionButton.ButtonVariant.Outline"
+                                                                                      Size="ActionButton.ButtonSize.Small"
+                                                                                      OnClick="@(() => this.HandleArchiveTemplateAsync(template: template))" />
+                                                                </Row>
+                                                        }
+                                                </Row>
+                                        </Column>
+                                </Box>
+                        }
+                </Grid>
+        }
+
+        <Modal IsOpen="@this._isEditorOpen"
+               IsOpenChanged="@this.HandleEditorVisibilityChanged"
+               Title="@(this._editingTemplate is null ? "Ny layoutskabelon" : $"Rediger {this._editingTemplate.Name}")"
+               CloseOnBackdropClick="@(!this._isSaving)"
+               Modifier="@this.BuildEditorModalModifier()">
+                <ChildContent>
+                        <Column Gap="1rem" Modifier="@this.BuildEditorBodyModifier()">
+                                <Row Gap="0.5rem" VerticalAlignment="VerticalAlignment.Center">
+                                        <Pill Text="Rediger skema"
+                                              Variant="@(!this._isPreviewTabActive ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
+                                              OnClick="@(() => this._isPreviewTabActive = false)" />
+                                        <Pill Text="Forhåndsvisning"
+                                              Variant="@(this._isPreviewTabActive ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
+                                              OnClick="@(() => this._isPreviewTabActive = true)" />
+                                </Row>
+
+                                @if (!this._isPreviewTabActive)
+                                {
+                                        <TextInput Label="Skabelonnavn"
+                                                   Value="@this._draftName"
+                                                   ValueChanged="@this.HandleDraftNameChanged"
+                                                   Placeholder="f.eks. Intro til affaldsquiz" />
+
+                                        @if (this._editingTemplate is null)
+                                        {
+                                                <Row Gap="0.45rem" Wrap="true" VerticalAlignment="VerticalAlignment.Center">
+                                                        <ALKsPersonalUI.Layout.Text Value="Komponenttype:" Variant="TypographyVariant.Caption" Muted="true" />
+                                                        @foreach (ContentTemplateComponentType componentType in Enum.GetValues<ContentTemplateComponentType>())
+                                                        {
+                                                                <Pill @key="componentType"
+                                                                      Text="@componentType.ToString()"
+                                                                      Variant="@(this._draftComponentType == componentType ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
+                                                                      OnClick="@(() => this._draftComponentType = componentType)" />
+                                                        }
+                                                </Row>
+                                        }
+
+                                        <TextArea Label="Layoutskema JSON (ALKsPersonalUI JsonUiNode)"
+                                                  Rows="@SCHEMA_TEXTAREA_ROWS"
+                                                  MaxLength="@SCHEMA_TEXTAREA_MAX_LENGTH"
+                                                  Value="@this._draftSchemaJson"
+                                                  ValueChanged="@this.HandleDraftSchemaChanged"
+                                                  Placeholder="{ &quot;Type&quot;: &quot;Column&quot;, ... }" />
+                                }
+                                else
+                                {
+                                        <ContentTemplatePreview SchemaJson="@this._draftSchemaJson" />
+                                }
+                        </Column>
+                </ChildContent>
+                <FooterContent>
+                        <Row HorizontalArrangement="Arrangement.End" Gap="0.5rem" Modifier="@UIModifier.New.FillMaxWidth()">
+                                <ActionButton Text="Annuller"
+                                              Variant="ActionButton.ButtonVariant.Outline"
+                                              IsDisabled="@this._isSaving"
+                                              OnClick="@this.HandleCloseEditor" />
+                                <ActionButton Text="@(this._editingTemplate is null ? "Opret skabelon" : "Gem ændringer")"
+                                              Variant="ActionButton.ButtonVariant.Solid"
+                                              IsLoading="@this._isSaving"
+                                              IsDisabled="@this._isSaving"
+                                              OnClick="@this.HandleSaveTemplateAsync" />
+                        </Row>
+                </FooterContent>
+        </Modal>
+</Column>
