@@ -138,7 +138,7 @@ public sealed class ContentImageGalleryTests : BunitContext
                 // Act
                 AngleSharp.Dom.IElement searchBox = cut.Find(cssSelector: "input[aria-label='Søg i billeder']");
                 await searchBox.InputAsync(eventArgs: new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = "whale" });
-                await Task.Delay(millisecondsDelay: SEARCH_DEBOUNCE_WAIT_MS, cancellationToken: TestContext.Current.CancellationToken);
+                await Task.Delay(millisecondsDelay: SEARCH_DEBOUNCE_WAIT_MS, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
                 // Assert
                 cut.WaitForAssertion(assertion: () =>
