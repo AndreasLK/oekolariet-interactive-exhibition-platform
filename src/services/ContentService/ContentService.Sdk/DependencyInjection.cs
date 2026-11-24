@@ -32,11 +32,12 @@ public static class DependencyInjection
                         .Bind(configuration.GetSection(SdkConstants.CONTENT_SERVICE_SECTION_NAME))
                         .ValidateOnStart();
 
+                RegisterTypedTemplateClient(services: services);
                 return RegisterTypedImageClient(services: services);
         }
 
         /// <summary>
-        /// Registers <see cref="IContentServiceImageClient"/> using an explicit <see cref="ContentServiceClientOptions"/> delegate.
+        /// Registers <see cref="IContentServiceImageClient"/> and <see cref="IContentServiceTemplateClient"/> using an explicit <see cref="ContentServiceClientOptions"/> delegate.
         /// </summary>
         /// <param name="services">The target service collection.</param>
         /// <param name="configureOptions">A delegate configuring <see cref="ContentServiceClientOptions"/>.</param>
@@ -55,28 +56,39 @@ public static class DependencyInjection
                         .Configure(configureOptions)
                         .ValidateOnStart();
 
+                RegisterTypedTemplateClient(services: services);
                 return RegisterTypedImageClient(services: services);
         }
 
         private static IHttpClientBuilder RegisterTypedImageClient(IServiceCollection services)
         {
                 return services.AddHttpClient<IContentServiceImageClient, ContentServiceImageClient>(
-                        configureClient: static (serviceProvider, httpClient) =>
-                        {
-                                ContentServiceClientOptions clientOptions = serviceProvider
-                                        .GetRequiredService<IOptions<ContentServiceClientOptions>>()
-                                        .Value;
+                        configureClient: ConfigureHttpClient);
+        }
 
-                                if (clientOptions.BaseAddress is not null)
-                                {
-                                        httpClient.BaseAddress = clientOptions.BaseAddress;
-                                }
+        private static IHttpClientBuilder RegisterTypedTemplateClient(IServiceCollection services)
+        {
+                return services.AddHttpClient<IContentServiceTemplateClient, ContentServiceTemplateClient>(
+                        configureClient: ConfigureHttpClient);
+        }
 
-                                if (clientOptions.RequestTimeout is not null)
-                                {
-                                        httpClient.Timeout = clientOptions.RequestTimeout.Value;
-                                }
-                        });
+        private static void ConfigureHttpClient(
+                IServiceProvider serviceProvider,
+                HttpClient httpClient)
+        {
+                ContentServiceClientOptions clientOptions = serviceProvider
+                        .GetRequiredService<IOptions<ContentServiceClientOptions>>()
+                        .Value;
+
+                if (clientOptions.BaseAddress is not null)
+                {
+                        httpClient.BaseAddress = clientOptions.BaseAddress;
+                }
+
+                if (clientOptions.RequestTimeout is not null)
+                {
+                        httpClient.Timeout = clientOptions.RequestTimeout.Value;
+                }
         }
 }
 
