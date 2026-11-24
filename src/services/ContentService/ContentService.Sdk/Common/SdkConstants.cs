@@ -19,6 +19,11 @@ internal static class SdkConstants
         public const string IMAGES_ROUTE_PREFIX = "api/images";
 
         /// <summary>
+        /// Relative route prefix for ContentService template endpoints (omits leading slash so subpath base URIs are preserved).
+        /// </summary>
+        public const string TEMPLATES_ROUTE_PREFIX = "api/templates";
+
+        /// <summary>
         /// Route suffix appended to an image resource path to retrieve its binary payload stream.
         /// </summary>
         public const string IMAGE_CONTENT_SUFFIX = "content";
@@ -72,6 +77,11 @@ internal static class SdkConstants
         /// Query string parameter name for the parent album path on <c>GET /api/images/albums</c>.
         /// </summary>
         public const string PARENT_PATH_QUERY_PARAM = "parentPath";
+
+        /// <summary>
+        /// Query string parameter name for component type filtering on <c>GET /api/templates</c>.
+        /// </summary>
+        public const string COMPONENT_TYPE_QUERY_PARAM = "componentType";
 
         /// <summary>
         /// Form field name bound by ContentService <c>IFormFile file</c> upload parameter.
