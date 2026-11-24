@@ -1,4 +1,4 @@
-﻿namespace ContentService.Domain.Exceptions;
+namespace ContentService.Domain.Exceptions;
 
 /// <summary>
 /// Serves as the abstract base class for all expected business-rule and invariant failures in ContentService.Domain.

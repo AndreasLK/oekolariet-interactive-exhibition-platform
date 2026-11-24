@@ -1,4 +1,4 @@
-﻿using ContentService.Domain.Exceptions;
+using ContentService.Domain.Exceptions;
 
 namespace ContentService.Domain.Common;
 
