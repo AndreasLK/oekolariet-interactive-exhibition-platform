@@ -1,0 +1,35 @@
+@* Renders a contained, non-interactive, scaled-down screenshot preview of an ALKsPersonalUI JsonUiNode layout. *@
+<div class="template-preview-frame" aria-hidden="true">
+        <div class="template-preview-viewport">
+                @if (!this._isPreviewLoaded)
+                {
+                        <div class="template-preview-empty">
+                                <Column Gap="0.75rem" HorizontalAlignment="HorizontalAlignment.Center">
+                                        <SimpleSpinner Size="1.75rem" />
+                                        <ALKsPersonalUI.Layout.Text Value="@this.LoadingMessage" Variant="TypographyVariant.Caption" Muted="true" />
+                                </Column>
+                        </div>
+                }
+                else if (!string.IsNullOrWhiteSpace(value: this._parseError))
+                {
+                        <div class="template-preview-empty">
+                                <Column Gap="0.35rem" HorizontalAlignment="HorizontalAlignment.Center">
+                                        <ALKsPersonalUI.Layout.Text Value="Invalid template layout JSON" Variant="TypographyVariant.Subtitle" />
+                                        <ALKsPersonalUI.Layout.Text Value="@this._parseError" Variant="TypographyVariant.Caption" Muted="true" Wrap="true" />
+                                </Column>
+                        </div>
+                }
+                else if (this._cachedNode is null)
+                {
+                        <div class="template-preview-empty">
+                                <ALKsPersonalUI.Layout.Text Value="@this.EmptyMessage" Variant="TypographyVariant.Caption" Muted="true" />
+                        </div>
+                }
+                else
+                {
+                        <div class="template-preview-canvas">
+                                <JsonUiRenderer Node="@this._cachedNode" />
+                        </div>
+                }
+        </div>
+</div>
