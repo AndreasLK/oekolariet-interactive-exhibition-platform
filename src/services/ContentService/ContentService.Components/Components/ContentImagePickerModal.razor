@@ -1,0 +1,37 @@
+@* Ready-to-use modal window for browsing and selecting an image from ContentService. *@
+<Modal IsOpen="@this.IsOpen"
+       IsOpenChanged="@this.IsOpenChanged"
+       Title="@this.Title"
+       CloseOnBackdropClick="true"
+       Modifier="@this.BuildModalModifier()">
+        <ChildContent>
+                @if (this.IsOpen)
+                {
+                        <Box Modifier="@this.BuildBodyModifier()">
+                                @* Use OnSelectionChanged so toggling the blue dot or preview updates pending selection without closing the modal. *@
+                                <ContentImageGallery SelectedImageId="@this._pendingSelectedImage?.Id"
+                                                     OnSelectionChanged="@this.HandlePendingSelectionChanged"
+                                                     DefaultAlbumPath="@this.DefaultAlbumPath"
+                                                     LockToDefaultAlbum="@this.LockToDefaultAlbum"
+                                                     AllowEditMetadata="@this.AllowEditMetadata"
+                                                     AllowDelete="@this.AllowDelete"
+                                                     PageSize="@this.PageSize" />
+                        </Box>
+                }
+        </ChildContent>
+        <FooterContent>
+                <Row HorizontalArrangement="Arrangement.End"
+                     VerticalAlignment="VerticalAlignment.Center"
+                     Gap="0.75rem"
+                     Modifier="@UIModifier.New.FillMaxWidth()">
+                        <ActionButton Text="Luk"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      OnClick="@this.HandleCloseAsync" />
+                        <ActionButton Text="Vælg"
+                                      Variant="ActionButton.ButtonVariant.Solid"
+                                      IsDisabled="@(this._pendingSelectedImage is null)"
+                                      OnClick="@this.HandleConfirmSelectionAsync" />
+                </Row>
+        </FooterContent>
+</Modal>
+
