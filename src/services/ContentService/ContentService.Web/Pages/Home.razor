@@ -1,7 +1,7 @@
 @page "/"
 
 @* Standalone test page exercising recursive albums, folder uploads, searchable tags/descriptions, and EditorService auto-assignment. *@
-<Column Gap="1.5rem" Modifier="@UIModifier.New.FillMaxWidth()">
+<Column Gap="1.5rem" Modifier="@this.BuildPageModifier()">
         <Column Gap="0.35rem">
                 <Text Value="Exhibition Image Library" Variant="TypographyVariant.H1" />
                 <Text Value="Browse recursive albums, upload folders with previews, tag/describe assets, and simulate EditorService auto-assigned locations."
@@ -10,17 +10,34 @@
         </Column>
 
         @* Simulate a host service (e.g. EditorService) auto-assigning a target album like Madaffald. *@
-        <Row Gap="0.5rem" Wrap="true" VerticalAlignment="VerticalAlignment.Center" Modifier="@UIModifier.New.FillMaxWidth()">
-                <Text Value="Host Context:" Variant="TypographyVariant.Caption" Muted="true" />
-                <Pill Text="All Albums (Unlocked)"
-                      Variant="@(this._activeHostAlbum is null ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
-                      OnClick="@(() => this.SelectHostContext(albumPath: null, lockAlbum: false))" />
-                <Pill Text="Editor: Madaffald (Auto-Assign)"
-                      Variant="@(this._activeHostAlbum == MADAFFALD_ALBUM ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
-                      OnClick="@(() => this.SelectHostContext(albumPath: MADAFFALD_ALBUM, lockAlbum: true))" />
-                <Pill Text="Editor: Genbrug/Plastik (Auto-Assign)"
-                      Variant="@(this._activeHostAlbum == PLASTIK_ALBUM ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
-                      OnClick="@(() => this.SelectHostContext(albumPath: PLASTIK_ALBUM, lockAlbum: true))" />
+        <Row HorizontalArrangement="Arrangement.SpaceBetween"
+             Gap="0.75rem"
+             Wrap="true"
+             VerticalAlignment="VerticalAlignment.Center"
+             Modifier="@UIModifier.New.FillMaxWidth()">
+                <Row Gap="0.5rem" Wrap="true" VerticalAlignment="VerticalAlignment.Center">
+                        <Text Value="Host Context:" Variant="TypographyVariant.Caption" Muted="true" />
+                        <Pill Text="All Albums (Unlocked)"
+                              Variant="@(this._activeHostAlbum is null ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
+                              OnClick="@(() => this.SelectHostContext(albumPath: null, lockAlbum: false))" />
+                        <Pill Text="Editor: Madaffald (Auto-Assign)"
+                              Variant="@(this._activeHostAlbum == MADAFFALD_ALBUM ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
+                              OnClick="@(() => this.SelectHostContext(albumPath: MADAFFALD_ALBUM, lockAlbum: true))" />
+                        <Pill Text="Editor: Genbrug/Plastik (Auto-Assign)"
+                              Variant="@(this._activeHostAlbum == PLASTIK_ALBUM ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
+                              OnClick="@(() => this.SelectHostContext(albumPath: PLASTIK_ALBUM, lockAlbum: true))" />
+                </Row>
+
+                <Row Gap="0.5rem" Wrap="true" VerticalAlignment="VerticalAlignment.Center">
+                        <ActionButton Text="Open Image Picker"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Size="ActionButton.ButtonSize.Small"
+                                      OnClick="@this.HandleOpenImagePicker" />
+                        <ActionButton Text="Open Template Picker"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Size="ActionButton.ButtonSize.Small"
+                                      OnClick="@this.HandleOpenTemplatePicker" />
+                </Row>
         </Row>
 
         <ContentImageGallery AllowDelete="true"
@@ -51,11 +68,12 @@
                 else
                 {
                         <Row Gap="1.25rem" Wrap="true" VerticalAlignment="VerticalAlignment.Top" Modifier="@UIModifier.New.FillMaxWidth()">
-                                <Box Modifier="@this.BuildPreviewBoxModifier()">
+                                <Box ContentAlignment="BoxAlignment.Center"
+                                     Modifier="@this.BuildPreviewBoxModifier()">
                                         <Image Source="@this.ResolveSelectedImageSource()"
                                                Alt="@this._selectedImage.FileName"
-                                               Fit="ImageFit.Cover"
-                                               Modifier="@UIModifier.New.FillMaxSize()" />
+                                               Fit="ImageFit.Contain"
+                                               Modifier="@this.BuildPreviewImageModifier()" />
                                 </Box>
 
                                 <Column Gap="0.5rem" Modifier="@this.BuildMetadataColumnModifier()">
@@ -82,4 +100,67 @@
                         </Row>
                 }
         </Column>
+
+        <Divider />
+
+        <Column Gap="0.35rem" Modifier="@UIModifier.New.FillMaxWidth()">
+                <Text Value="Exhibition Layout Templates" Variant="TypographyVariant.H1" />
+                <Text Value="Browse, create, and preview ALKsPersonalUI JsonUiNode layout templates."
+                      Variant="TypographyVariant.Body"
+                      Muted="true" />
+        </Column>
+
+        @if (this._isTemplateGalleryReady)
+        {
+                <ContentTemplateGallery OnTemplateSelected="@this.HandleTemplateSelectedAsync" />
+        }
+        else
+        {
+                <Row Gap="0.75rem"
+                     HorizontalArrangement="Arrangement.Center"
+                     VerticalAlignment="VerticalAlignment.Center"
+                     Modifier="@UIModifier.New.FillMaxWidth()">
+                        <ALKsPersonalUI.Loaders.SimpleSpinner Size="1.75rem" />
+                        <Text Value="Preparing layout templates..." Variant="TypographyVariant.Caption" Muted="true" />
+                </Row>
+        }
+
+        <Column Gap="0.75rem"
+                Modifier="@this.BuildTestPanelModifier()">
+                <Row HorizontalArrangement="Arrangement.SpaceBetween"
+                     VerticalAlignment="VerticalAlignment.Center"
+                     Wrap="true"
+                     Gap="0.5rem"
+                     Modifier="@UIModifier.New.FillMaxWidth()">
+                        <Text Value="Template Selection Showcase" Variant="TypographyVariant.Title" />
+                        <Pill Text="@(this._selectedTemplate is null ? "No template selected" : "Selection active")"
+                              Variant="@(this._selectedTemplate is null ? Pill.PillVariant.Neutral : Pill.PillVariant.Success)" />
+                </Row>
+
+                @if (this._selectedTemplate is null)
+                {
+                        <ALKsPersonalUI.Layout.Text Value="Click a template preview (or use 'Open Template Picker') to test selecting a layout template."
+                                                    Variant="TypographyVariant.Body"
+                                                    Muted="true" />
+                }
+                else
+                {
+                        <Column Gap="0.5rem" Modifier="@UIModifier.New.FillMaxWidth()">
+                                <Text Value="@($"Id: {this._selectedTemplate.Id:D}")" Variant="TypographyVariant.Mono" />
+                                <Text Value="@($"Name: {this._selectedTemplate.Name} | Type: {this._selectedTemplate.ComponentType} | v{this._selectedTemplate.SchemaVersion}")"
+                                      Variant="TypographyVariant.Caption" />
+                                <ContentTemplatePreview SchemaJson="@this._selectedTemplate.SchemaJson" />
+                        </Column>
+                }
+        </Column>
+
+        <ContentImagePickerModal IsOpen="@this._isImagePickerOpen"
+                                 IsOpenChanged="@this.HandleImagePickerVisibilityChanged"
+                                 DefaultAlbumPath="@this._activeHostAlbum"
+                                 LockToDefaultAlbum="@this._lockHostAlbum"
+                                 OnImageSelected="@this.HandleImageSelectedAsync" />
+
+        <ContentTemplatePickerModal IsOpen="@this._isTemplatePickerOpen"
+                                    IsOpenChanged="@this.HandleTemplatePickerVisibilityChanged"
+                                    OnTemplateSelected="@this.HandleTemplateSelectedAsync" />
 </Column>
