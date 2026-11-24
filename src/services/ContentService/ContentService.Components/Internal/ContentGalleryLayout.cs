@@ -54,12 +54,12 @@ internal static class ContentGalleryLayout
         {
                 if (!string.IsNullOrWhiteSpace(value: searchTerm))
                 {
-                        return $"No images match '{searchTerm.Trim()}'.";
+                        return $"Ingen billeder matcher '{searchTerm.Trim()}'.";
                 }
 
                 return string.IsNullOrWhiteSpace(value: currentAlbumPath)
-                        ? "No exhibition images have been uploaded yet."
-                        : $"No images in album '{currentAlbumPath}'.";
+                        ? "Der er ikke uploadet nogen udstillingsbilleder endnu."
+                        : $"Ingen billeder i albummet '{currentAlbumPath}'.";
         }
 
         /// <summary>

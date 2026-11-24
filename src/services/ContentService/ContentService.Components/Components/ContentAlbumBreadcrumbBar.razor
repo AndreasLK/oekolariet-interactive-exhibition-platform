@@ -6,12 +6,12 @@
              Gap="0.5rem"
              Modifier="@UIModifier.New.FillMaxWidth()">
                 <Breadcrumbs Items="@this.BuildBreadcrumbItems()"
-                             AriaLabel="Album path navigation"
+                             AriaLabel="Albumstinavigation"
                              OnItemClicked="@this.HandleBreadcrumbClickedAsync" />
 
                 @if (!string.IsNullOrWhiteSpace(value: this.CurrentAlbumPath))
                 {
-                        <Pill Text="@(this.IncludeSubalbums ? "Showing subfolders" : "Current folder only")"
+                        <Pill Text="@(this.IncludeSubalbums ? "Viser undermapper" : "Kun denne mappe")"
                               Variant="@(this.IncludeSubalbums ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
                               OnClick="@this.HandleToggleSubalbumsAsync" />
                 }
