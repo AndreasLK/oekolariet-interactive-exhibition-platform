@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using EditorService.Api.ExceptionHandling;
 using EditorService.Application.DependencyInjection;
 using EditorService.Infrastructure.DependencyInjection;
@@ -12,33 +13,74 @@ builder.Services
         .AddApplication()
         .AddInfrastructure(connectionString: connectionString);
 
-builder.Services.AddControllers();
-builder.Services.AddOpenApi();
+builder.Services.AddControllers(configure: options =>
+{
+        // Keep "Async" in action names, so nameof(GetGameAsync) works in CreatedAtAction.
+        options.SuppressAsyncSuffixInActionNames = false;
+});
 
-builder.Services.AddControllers();
+// API versioning: which version is used, and where it is read from.
+builder.Services
+        .AddApiVersioning(setupAction: options =>
+        {
+                // Version 1.0 is used when nothing else is specified.
+                options.DefaultApiVersion = new ApiVersion(majorVersion: 1, minorVersion: 0);
+
+                // A call without a version gets the default version instead of an error.
+                options.AssumeDefaultVersionWhenUnspecified = true;
+
+                // Every response gets the header "api-supported-versions", e.g. "1.0".
+                options.ReportApiVersions = true;
+
+                // The version is read from the URL, e.g. "v1" in /api/v1/games.
+                options.ApiVersionReader = new UrlSegmentApiVersionReader();
+        })
+        // Makes [ApiVersion] and {version:apiVersion} work on the controllers.
+        .AddMvc()
+        // Lets OpenAPI and Swagger show the versions correctly.
+        .AddApiExplorer(setupAction: options =>
+        {
+                // Groups the endpoints as "v1", "v2", ... These names must match the names in apiVersions.
+                options.GroupNameFormat = "'v'VVV";
+
+                // Shows /api/v1/games in Swagger instead of /api/v{version}/games.
+                options.SubstituteApiVersionInUrl = true;
+        });
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 
-builder.Services.AddOpenApi(documentName: "v1", configureOptions: options =>
+// All API versions the service exposes.
+// Add "v2" here when a controller with [ApiVersion(version: 2.0)] exists.
+// Each version gets its own document in Swagger, so v1 and v2 can be tested side by side. through swagger by typing ["v1", "v2"]
+string[] apiVersions = ["v1"];
+
+// Create one OpenAPI document per API version, e.g. /openapi/v1.json.
+// Each document only contains the endpoints in its version group ("v1"),
+// which comes from GroupNameFormat in AddApiExplorer.
+foreach (string apiVersion in apiVersions)
 {
-        // Use OpenAPI 3.0, as in the course material.
-        options.OpenApiVersion = Microsoft.OpenApi.OpenApiSpecVersion.OpenApi3_0;
-
-        // A document transformer can change the OpenAPI document before it is sent.
-        // Here it sets the information shown at the top of Swagger UI.
-        //Service version is read from the .csproj file, e.g. "0.1.0".
-        options.AddDocumentTransformer(transformer: (document, context, cancellationToken) =>
+        builder.Services.AddOpenApi(documentName: apiVersion, configureOptions: options =>
         {
-                document.Info = new()
-                {
-                        Title = "Editor Service API",
-                        Version = "v1",
-                        Description = $"Create and edit sorting games and quizzes. Service version {ServiceVersion()}."
-                };
+                // Format of the documentation file (the OpenAPI standard), not the API version.
+                options.OpenApiVersion = Microsoft.OpenApi.OpenApiSpecVersion.OpenApi3_0;
 
-                return Task.CompletedTask;
+                // Runs every time the document is requested and fills in the header shown in Swagger UI.
+                options.AddDocumentTransformer(transformer: (document, context, cancellationToken) =>
+                {
+                        document.Info = new()
+                        {
+                                Title = "Editor Service API",
+                                // The name of the document being built, e.g. "v1". Never hardcoded.
+                                Version = context.DocumentName,
+                                // Service version is read from <Version> in EditorService.Api.csproj.
+                                Description = $"Create and edit sorting games and quizzes. Service version {ServiceVersion()}."
+                        };
+
+                        // Nothing async happens here, so the transformer finishes right away.
+                        return Task.CompletedTask;
+                });
         });
-});
+}
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -53,10 +95,17 @@ if (app.Environment.IsDevelopment())
         // The OpenAPI document: /openapi/v1.json
         app.MapOpenApi();
 
-        // Interactive documentation that reads the document above: /swagger
+        // Swagger UI at /swagger. Reads the OpenAPI documents made above.
         app.UseSwaggerUI(setupAction: options =>
         {
-                options.SwaggerEndpoint(url: "/openapi/v1.json", name: "v1");
+                // Text shown in the browser tab.
+                options.DocumentTitle = "Editor Service API";
+
+                // One entry in the Swagger dropdown per API version.
+                foreach (string apiVersion in apiVersions)
+                {
+                        options.SwaggerEndpoint(url: $"/openapi/{apiVersion}.json", name: $"Editor Service {apiVersion}");
+                }
         });
 }
 
