@@ -12,6 +12,7 @@ using ContentService.Domain.Exceptions;
 using ContentService.Infrastructure.Persistence;
 using ContentService.Infrastructure.Repositories;
 using ContentService.Tests.Application.Persistence;
+using ContentService.Tests.Common;
 using MicrosoftOptions = Microsoft.Extensions.Options.Options;
 
 namespace ContentService.Tests.Application;
@@ -20,6 +21,7 @@ namespace ContentService.Tests.Application;
 /// Integration tests for all image lifecycle use cases executed against a real SQL Server container.
 /// </summary>
 [Collection(MsSqlContentDatabaseCollection.COLLECTION_NAME)]
+[Trait(TestTraits.CATEGORY_KEY, TestTraits.INTEGRATION)]
 public sealed class ImageUseCasesTests : IAsyncLifetime
 {
         /// <summary>

@@ -10,6 +10,7 @@ using ContentService.Application.Models;
 using ContentService.Domain.Common;
 using ContentService.Domain.Enums;
 using ContentService.Tests.Application.Persistence;
+using ContentService.Tests.Common;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
@@ -20,6 +21,7 @@ namespace ContentService.Tests.Api;
 /// End-to-end HTTP integration tests verifying <c>ContentService.Api</c> routes, streaming, immutable <c>Cache-Control</c> headers, ProblemDetails, and SQL Server persistence.
 /// </summary>
 [Collection(MsSqlContentDatabaseCollection.COLLECTION_NAME)]
+[Trait(TestTraits.CATEGORY_KEY, TestTraits.INTEGRATION)]
 public sealed class ContentApiIntegrationTests : IAsyncLifetime
 {
         /// <summary>
