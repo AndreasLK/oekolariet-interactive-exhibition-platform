@@ -41,24 +41,69 @@ internal static class ApiConstants
         public const long MULTIPART_ENVELOPE_OVERHEAD_BYTES = BYTES_PER_MEBIBYTE;
 
         /// <summary>
-        /// Shared base route for image endpoints so route registration and <c>201 Created</c> <c>Location</c> URIs never drift apart.
+        /// Major version number for the initial v1 ContentService HTTP API contract.
         /// </summary>
-        public const string IMAGES_ROUTE_PREFIX = "/api/images";
+        public const int API_VERSION_MAJOR = 1;
 
         /// <summary>
-        /// Shared base route for template endpoints so route registration and <c>201 Created</c> <c>Location</c> URIs never drift apart.
+        /// Minor version number for the initial v1 ContentService HTTP API contract.
         /// </summary>
-        public const string TEMPLATES_ROUTE_PREFIX = "/api/templates";
+        public const int API_VERSION_MINOR = 0;
 
         /// <summary>
-        /// Dedicated RPC-style route used by editors and publishers to assemble checksum-verified offline kiosk bundles.
+        /// ApiExplorer format string (<c>'v'VVV</c>) so OpenAPI documents and Swagger UI group endpoints under <c>v1</c>, <c>v2</c>, etc.
         /// </summary>
-        public const string PUBLISH_BUNDLES_ROUTE = "/api/publish-bundles/resolve";
+        public const string API_EXPLORER_GROUP_NAME_FORMAT = "'v'VVV";
 
         /// <summary>
-        /// Diagnostic route allowing admin UIs and health probes to surface quota warnings before uploads hit <c>507 Insufficient Storage</c>.
+        /// Versioned API root group template so all ContentService endpoints require an explicit URL segment version (e.g., <c>/api/v1/...</c>).
         /// </summary>
-        public const string STORAGE_HEALTH_ROUTE = "/api/health/storage";
+        public const string VERSIONED_API_ROUTE_PREFIX = "/api/v{version:apiVersion}";
+
+        /// <summary>
+        /// Concrete v1 base path for image resources used when emitting <c>201 Created</c> <c>Location</c> headers (never a route template).
+        /// </summary>
+        public const string V1_IMAGES_ROUTE_PREFIX = "/api/v1/images";
+
+        /// <summary>
+        /// Concrete v1 base path for template resources used when emitting <c>201 Created</c> <c>Location</c> headers (never a route template).
+        /// </summary>
+        public const string V1_TEMPLATES_ROUTE_PREFIX = "/api/v1/templates";
+
+        /// <summary>
+        /// Relative route segment for image endpoints under <see cref="VERSIONED_API_ROUTE_PREFIX"/>.
+        /// </summary>
+        public const string IMAGES_GROUP_RELATIVE_ROUTE = "/images";
+
+        /// <summary>
+        /// Relative route segment for template endpoints under <see cref="VERSIONED_API_ROUTE_PREFIX"/>.
+        /// </summary>
+        public const string TEMPLATES_GROUP_RELATIVE_ROUTE = "/templates";
+
+        /// <summary>
+        /// Dedicated RPC-style route under <see cref="VERSIONED_API_ROUTE_PREFIX"/> used by editors and publishers to assemble checksum-verified offline kiosk bundles.
+        /// </summary>
+        public const string PUBLISH_BUNDLES_RELATIVE_ROUTE = "/publish-bundles/resolve";
+
+        /// <summary>
+        /// Diagnostic route under <see cref="VERSIONED_API_ROUTE_PREFIX"/> allowing admin UIs and health probes to surface quota warnings before uploads hit <c>507 Insufficient Storage</c>.
+        /// </summary>
+        public const string STORAGE_HEALTH_RELATIVE_ROUTE = "/health/storage";
+
+        /// <summary>
+        /// Version-neutral process liveness/readiness probe route for Dapr sidecars and container orchestrators.
+        /// </summary>
+        public const string LIVENESS_HEALTH_ROUTE = "/healthz";
+
+        /// <summary>
+        /// Header attached to Dapr-forwarded cross-node requests so a misconfigured or stale node never creates an infinite forwarding loop.
+        /// </summary>
+        public const string NODE_FORWARDED_HEADER_NAME = "X-Node-Forwarded";
+
+        /// <summary>
+        /// Header value indicating a request has already been forwarded once across storage nodes.
+        /// </summary>
+        public const string NODE_FORWARDED_HEADER_VALUE = "true";
 
         /// <summary>
         /// Group-root route segment avoiding duplicated literal slashes across endpoint group mappings.
@@ -71,19 +116,29 @@ internal static class ApiConstants
         public const string RESOURCE_ID_ROUTE = "/{id:guid}";
 
         /// <summary>
-        /// Dedicated sub-resource route separating binary byte streaming from JSON metadata retrieval on <see cref="RESOURCE_ID_ROUTE"/>.
+        /// Shard-aware image route parameter accepting either a bare GUID or a <c>{node}_{guid}</c> external identifier.
         /// </summary>
-        public const string IMAGE_CONTENT_ROUTE = "/{id:guid}/content";
+        public const string IMAGE_IDENTIFIER_ROUTE = "/{imageIdentifier}";
+
+        /// <summary>
+        /// Batch metadata lookup route used by peer storage nodes to resolve multiple image IDs in one Dapr call.
+        /// </summary>
+        public const string IMAGE_BATCH_METADATA_ROUTE = "/batch-metadata";
+
+        /// <summary>
+        /// Dedicated sub-resource route separating binary byte streaming from JSON metadata retrieval on <see cref="IMAGE_IDENTIFIER_ROUTE"/>.
+        /// </summary>
+        public const string IMAGE_CONTENT_ROUTE = "/{imageIdentifier}/content";
 
         /// <summary>
         /// Sub-resource route serving the saved lightweight preview image for fast gallery rendering.
         /// </summary>
-        public const string IMAGE_PREVIEW_ROUTE = "/{id:guid}/preview";
+        public const string IMAGE_PREVIEW_ROUTE = "/{imageIdentifier}/preview";
 
         /// <summary>
         /// Sub-resource route for updating searchable image metadata (description, tags, and album path).
         /// </summary>
-        public const string IMAGE_METADATA_ROUTE = "/{id:guid}/metadata";
+        public const string IMAGE_METADATA_ROUTE = "/{imageIdentifier}/metadata";
 
         /// <summary>
         /// Route listing distinct child album paths under <c>/api/images</c>.
