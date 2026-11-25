@@ -17,6 +17,26 @@ public sealed class ContentStorageOptions
         public string StorageNodeId { get; set; } = ApplicationConstants.DEFAULT_STORAGE_NODE_ID;
 
         /// <summary>
+        /// Gets or sets the optional public HTTP base URL advertised by this node in Dapr pool offers (e.g., <c>http://localhost:5101</c>).
+        /// </summary>
+        public string? PublicBaseUrl { get; set; }
+
+        /// <summary>
+        /// Gets or sets the Dapr Pub/Sub component name used for stateless pool scatter-gather broadcasts.
+        /// </summary>
+        public string PubSubName { get; set; } = "contentservice-pubsub";
+
+        /// <summary>
+        /// Gets or sets the timeout in seconds when waiting for peer nodes to respond to a pool broadcast.
+        /// </summary>
+        public int PoolRequestTimeoutSeconds { get; set; } = 5;
+
+        /// <summary>
+        /// Gets or sets optional peer storage node identifiers for direct checks (e.g., cross-node delete reference checks).
+        /// </summary>
+        public IReadOnlyList<string> PeerStorageNodeIds { get; set; } = [];
+
+        /// <summary>
         /// Gets or sets the maximum permitted image upload size in bytes, bounded by <see cref="DomainConstants.MAX_IMAGE_SIZE_BYTES"/>.
         /// </summary>
         public long MaxImageSizeBytes { get; set; } = DomainConstants.MAX_IMAGE_SIZE_BYTES;
