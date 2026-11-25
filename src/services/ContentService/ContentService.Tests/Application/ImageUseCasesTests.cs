@@ -9,6 +9,8 @@ using ContentService.Domain.Common;
 using ContentService.Domain.Entities;
 using ContentService.Domain.Enums;
 using ContentService.Domain.Exceptions;
+using ContentService.Infrastructure.Persistence;
+using ContentService.Infrastructure.Repositories;
 using ContentService.Tests.Application.Persistence;
 using MicrosoftOptions = Microsoft.Extensions.Options.Options;
 
@@ -115,8 +117,9 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
         public async Task UploadImageUseCase_WhenValidPng_PersistsMetadataAndBinaryWithExactSha256Async()
         {
                 // Arrange
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
-                SqlServerStorageQuotaMonitor quotaMonitor = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
+                SqlServerStorageQuotaMonitor quotaMonitor = new(dbContext: dbContext);
                 UploadImageUseCase useCase = CreateUploadUseCase(
                         imageRepository: imageRepository,
                         quotaMonitor: quotaMonitor);
@@ -144,9 +147,9 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
                 Assert.Equal($"picture.{VALID_NODE_ID}.{result.Id:D}", result.PictureReference);
                 Assert.Equal($"{VALID_NODE_ID}_{result.Id:D}", result.ExternalId);
                 Assert.Equal("Exhibition mascot", result.AltText);
-                Assert.Equal(1, await imageRepository.CountStoredImagesAsync(cancellationToken: CancellationToken.None));
+                Assert.Equal(1, await this._fixture.CountStoredImagesAsync(cancellationToken: CancellationToken.None));
 
-                ImageBinaryEntity? storedBinary = await imageRepository.GetStoredBinaryAsync(
+                ImageBinaryEntity? storedBinary = await this._fixture.GetStoredBinaryAsync(
                         imageId: result.Id,
                         cancellationToken: CancellationToken.None);
                 Assert.NotNull(storedBinary);
@@ -161,8 +164,9 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
         public async Task UploadImageUseCase_WhenActualStreamExceedsMaxImageSizeDespiteSmallerDeclaredLength_ThrowsDomainValidationExceptionAsync()
         {
                 // Arrange
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
-                SqlServerStorageQuotaMonitor quotaMonitor = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
+                SqlServerStorageQuotaMonitor quotaMonitor = new(dbContext: dbContext);
                 UploadImageUseCase useCase = CreateUploadUseCase(
                         imageRepository: imageRepository,
                         quotaMonitor: quotaMonitor,
@@ -184,7 +188,7 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
                 // Actual byte count (128) exceeds MaxImageSizeBytes (64) and must be aborted while reading despite spoofed DeclaredLengthBytes (16).
                 await Assert.ThrowsAsync<DomainValidationException>(() =>
                         useCase.ExecuteAsync(command: command, cancellationToken: CancellationToken.None));
-                Assert.Equal(0, await imageRepository.CountStoredImagesAsync(cancellationToken: CancellationToken.None));
+                Assert.Equal(0, await this._fixture.CountStoredImagesAsync(cancellationToken: CancellationToken.None));
         }
 
         /// <summary>
@@ -195,8 +199,9 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
         public async Task UploadImageUseCase_WhenZeroBytesUnreadableOrStreamFaults_RejectsWithoutPersistingAsync()
         {
                 // Arrange
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
-                SqlServerStorageQuotaMonitor quotaMonitor = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
+                SqlServerStorageQuotaMonitor quotaMonitor = new(dbContext: dbContext);
                 UploadImageUseCase useCase = CreateUploadUseCase(
                         imageRepository: imageRepository,
                         quotaMonitor: quotaMonitor);
@@ -224,19 +229,20 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
                         useCase.ExecuteAsync(command: unreadableCommand, cancellationToken: CancellationToken.None));
                 await Assert.ThrowsAsync<IOException>(() =>
                         useCase.ExecuteAsync(command: faultingCommand, cancellationToken: CancellationToken.None));
-                Assert.Equal(0, await imageRepository.CountStoredImagesAsync(cancellationToken: CancellationToken.None));
+                Assert.Equal(0, await this._fixture.CountStoredImagesAsync(cancellationToken: CancellationToken.None));
         }
 
         /// <summary>
-        /// Verifies that spoofed magic bytes (e.g., SVG declaring <c>image/png</c>) throw <see cref="DomainValidationException"/> without persisting.
+        /// Verifies that spoofed file headers (e.g., SVG declaring <c>image/png</c>) throw <see cref="DomainValidationException"/> without persisting.
         /// </summary>
         /// <returns>A task representing the asynchronous test execution.</returns>
         [Fact]
-        public async Task UploadImageUseCase_WhenMagicBytesDoNotMatchDeclaredContentType_ThrowsDomainValidationExceptionAsync()
+        public async Task UploadImageUseCase_WhenFileHeaderDoesNotMatchDeclaredContentType_ThrowsDomainValidationExceptionAsync()
         {
                 // Arrange
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
-                SqlServerStorageQuotaMonitor quotaMonitor = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
+                SqlServerStorageQuotaMonitor quotaMonitor = new(dbContext: dbContext);
                 UploadImageUseCase useCase = CreateUploadUseCase(
                         imageRepository: imageRepository,
                         quotaMonitor: quotaMonitor);
@@ -255,7 +261,7 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
                 // Spoofing PNG ContentType on an SVG script payload must fail before anything reaches SQL Server.
                 await Assert.ThrowsAsync<DomainValidationException>(() =>
                         useCase.ExecuteAsync(command: command, cancellationToken: CancellationToken.None));
-                Assert.Equal(0, await imageRepository.CountStoredImagesAsync(cancellationToken: CancellationToken.None));
+                Assert.Equal(0, await this._fixture.CountStoredImagesAsync(cancellationToken: CancellationToken.None));
         }
 
         /// <summary>
@@ -267,8 +273,9 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
         {
                 // Arrange
                 const long TIGHT_QUOTA_BYTES = 20L;
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
-                SqlServerStorageQuotaMonitor quotaMonitor = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
+                SqlServerStorageQuotaMonitor quotaMonitor = new(dbContext: dbContext);
 
                 // Seed a 10-byte image so SQL Server SUM(FileSizeBytes) reports 10 used bytes out of 20.
                 byte[] existingBytes = new byte[SEED_TEN_BYTES_LENGTH];
@@ -314,7 +321,7 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
                         zeroQuotaUseCase.ExecuteAsync(command: normalCommand, cancellationToken: CancellationToken.None));
 
                 Assert.Equal(0L, zeroQuotaException.QuotaBytes);
-                Assert.Equal(1, await imageRepository.CountStoredImagesAsync(cancellationToken: CancellationToken.None));
+                Assert.Equal(1, await this._fixture.CountStoredImagesAsync(cancellationToken: CancellationToken.None));
         }
 
         /// <summary>
@@ -325,7 +332,8 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
         public async Task GetImageMetadataUseCase_WhenActiveOrDeletedOrMissing_BehavesAsExpectedAsync()
         {
                 // Arrange
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 ImageEntity activeImage = CreateSeededImage(payloadBytes: VALID_PNG_PAYLOAD);
                 ImageEntity deletedImage = CreateSeededImage(payloadBytes: VALID_PNG_PAYLOAD);
                 deletedImage.MarkDeleted(actorId: VALID_ACTOR_ID);
@@ -363,15 +371,16 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
         public async Task GetImageStreamUseCase_WhenActiveOrMissingBinary_StreamsBytesOrThrowsKeyNotFoundAsync()
         {
                 // Arrange
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
-                SqlServerImageBinaryStore binaryStore = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
+                CountingImageBinaryStore binaryStore = new(innerStore: new SqlServerImageBinaryStore(dbContext: dbContext));
                 ImageEntity image = CreateSeededImage(payloadBytes: VALID_PNG_PAYLOAD);
                 ImageBinaryEntity binary = ImageBinaryEntity.Create(imageId: image.Id, data: VALID_PNG_PAYLOAD);
                 await imageRepository.AddAsync(metadata: image, binary: binary, cancellationToken: CancellationToken.None);
 
                 // Seed an orphaned metadata row without ImageBinaries to exercise missing-stream KeyNotFoundException handling.
                 ImageEntity metadataOnlyImage = CreateSeededImage(payloadBytes: VALID_PNG_PAYLOAD);
-                await imageRepository.SeedImageMetadataOnlyAsync(image: metadataOnlyImage, cancellationToken: CancellationToken.None);
+                await this._fixture.SeedImageMetadataOnlyAsync(image: metadataOnlyImage, cancellationToken: CancellationToken.None);
 
                 GetImageStreamUseCase useCase = new(
                         imageRepository: imageRepository,
@@ -403,8 +412,9 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
         public async Task DeleteImageUseCase_WhenReferencedVsUnreferenced_EnforcesReferentialIntegrityAsync()
         {
                 // Arrange
-                SqlServerTemplateRepository templateRepository = new(fixture: this._fixture);
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 ImageEntity referencedImage = CreateSeededImage(payloadBytes: VALID_PNG_PAYLOAD);
                 ImageEntity freeImage = CreateSeededImage(payloadBytes: VALID_PNG_PAYLOAD);
 
@@ -453,7 +463,8 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
         public async Task ListImagesUseCase_WhenOutOfRangePagination_ClampsBoundsAndExcludesDeletedAsync()
         {
                 // Arrange
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 ImageEntity activeImage = CreateSeededImage(payloadBytes: VALID_PNG_PAYLOAD);
                 ImageEntity deletedImage = CreateSeededImage(payloadBytes: VALID_PNG_PAYLOAD);
                 deletedImage.MarkDeleted(actorId: VALID_ACTOR_ID);

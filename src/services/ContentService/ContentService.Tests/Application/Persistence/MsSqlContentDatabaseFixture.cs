@@ -1,3 +1,5 @@
+using ContentService.Domain.Entities;
+using ContentService.Infrastructure.Persistence;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.MsSql;
@@ -5,11 +7,8 @@ using Testcontainers.MsSql;
 namespace ContentService.Tests.Application.Persistence;
 
 /// <summary>
-/// Manages an ephemeral Docker SQL Server container and creates/resets the ContentService test database across the test collection.
+/// Manages an ephemeral Docker SQL Server container, applies EF Core migrations, and resets test data across the collection.
 /// </summary>
-/// <remarks>
-/// Shares one container across collection classes to amortize SQL Server startup cost while resetting rows between every test.
-/// </remarks>
 public sealed class MsSqlContentDatabaseFixture : IAsyncLifetime
 {
         /// <summary>
@@ -30,7 +29,7 @@ public sealed class MsSqlContentDatabaseFixture : IAsyncLifetime
         /// <summary>
         /// Cached DbContext options configured for the started container instance.
         /// </summary>
-        private DbContextOptions<TestContentDbContext>? _dbContextOptions;
+        private DbContextOptions<ContentDbContext>? _dbContextOptions;
 
         /// <summary>
         /// Cached connection string targeting <see cref="TEST_DATABASE_NAME"/>.
@@ -47,12 +46,12 @@ public sealed class MsSqlContentDatabaseFixture : IAsyncLifetime
         }
 
         /// <summary>
-        /// Gets the active SQL Server connection string for raw <see cref="SqlConnection"/> stream readers.
+        /// Gets the active SQL Server connection string targeting the migrated test database.
         /// </summary>
         public string ConnectionString => this._connectionString;
 
         /// <summary>
-        /// Starts the SQL Server Docker container and creates the schema via EF Core.
+        /// Starts the SQL Server Docker container and applies all EF Core migrations.
         /// </summary>
         /// <returns>A task representing asynchronous container and schema initialization.</returns>
         public async Task InitializeAsync()
@@ -66,13 +65,13 @@ public sealed class MsSqlContentDatabaseFixture : IAsyncLifetime
                 };
 
                 this._connectionString = connectionBuilder.ConnectionString;
-                this._dbContextOptions = new DbContextOptionsBuilder<TestContentDbContext>()
+                this._dbContextOptions = new DbContextOptionsBuilder<ContentDbContext>()
                         .UseSqlServer(this._connectionString)
                         .Options;
 
-                // Materialize all tables once per collection run; individual tests reset row data via ResetDatabaseAsync.
-                await using TestContentDbContext context = this.CreateDbContext();
-                await context.Database.EnsureCreatedAsync();
+                // Apply real production EF Core migrations once per collection run.
+                await using ContentDbContext context = this.CreateDbContext();
+                await context.Database.MigrateAsync();
         }
 
         /// <summary>
@@ -81,24 +80,22 @@ public sealed class MsSqlContentDatabaseFixture : IAsyncLifetime
         /// <returns>A task representing asynchronous container cleanup.</returns>
         public async Task DisposeAsync()
         {
-                // Tear down the shared container only after the entire xUnit collection completes.
                 await this._container.DisposeAsync();
         }
 
         /// <summary>
-        /// Creates a fresh <see cref="TestContentDbContext"/> connected to the running SQL Server test database.
+        /// Creates a fresh <see cref="ContentDbContext"/> connected to the running SQL Server test database.
         /// </summary>
-        /// <returns>A new <see cref="TestContentDbContext"/> instance.</returns>
+        /// <returns>A new <see cref="ContentDbContext"/> instance.</returns>
         /// <exception cref="InvalidOperationException">Thrown when called before <see cref="InitializeAsync"/> completes.</exception>
-        public TestContentDbContext CreateDbContext()
+        public ContentDbContext CreateDbContext()
         {
-                // Fail fast if a test or repository requests a DbContext before InitializeAsync has configured options.
                 if (this._dbContextOptions is null)
                 {
                         throw new InvalidOperationException("The MSSQL test fixture has not been initialized.");
                 }
 
-                return new TestContentDbContext(options: this._dbContextOptions);
+                return new ContentDbContext(options: this._dbContextOptions);
         }
 
         /// <summary>
@@ -107,7 +104,7 @@ public sealed class MsSqlContentDatabaseFixture : IAsyncLifetime
         /// <returns>A task representing the asynchronous cleanup operation.</returns>
         public async Task ResetDatabaseAsync()
         {
-                await using TestContentDbContext context = this.CreateDbContext();
+                await using ContentDbContext context = this.CreateDbContext();
 
                 // Delete child join/binary tables first to satisfy foreign-key constraints cleanly without dropping the database.
                 await context.TemplateImageReferences.ExecuteDeleteAsync();
@@ -115,5 +112,62 @@ public sealed class MsSqlContentDatabaseFixture : IAsyncLifetime
                 await context.ImageBinaries.ExecuteDeleteAsync();
                 await context.Images.ExecuteDeleteAsync();
         }
-}
 
+        /// <summary>
+        /// Counts all persisted image metadata rows (including soft-deleted records) for test verification.
+        /// </summary>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        /// <returns>The total row count in the <c>Images</c> table.</returns>
+        public async Task<int> CountStoredImagesAsync(CancellationToken cancellationToken)
+        {
+                await using ContentDbContext context = this.CreateDbContext();
+                return await context.Images.CountAsync(cancellationToken: cancellationToken);
+        }
+
+        /// <summary>
+        /// Loads a persisted <see cref="ImageBinaryEntity"/> row directly from SQL Server for upload verification.
+        /// </summary>
+        /// <param name="imageId">The image identifier.</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        /// <returns>The stored <see cref="ImageBinaryEntity"/>, or <see langword="null"/> if absent.</returns>
+        public async Task<ImageBinaryEntity?> GetStoredBinaryAsync(Guid imageId, CancellationToken cancellationToken)
+        {
+                await using ContentDbContext context = this.CreateDbContext();
+                return await context.ImageBinaries
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(binary => binary.ImageId == imageId, cancellationToken: cancellationToken);
+        }
+
+        /// <summary>
+        /// Seeds an <see cref="ImageEntity"/> metadata row without a corresponding <see cref="ImageBinaryEntity"/> row to test missing-stream handling.
+        /// </summary>
+        /// <param name="image">The image metadata entity to insert.</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        /// <returns>A task representing the asynchronous insert operation.</returns>
+        public async Task SeedImageMetadataOnlyAsync(ImageEntity image, CancellationToken cancellationToken)
+        {
+                await using ContentDbContext context = this.CreateDbContext();
+                context.Images.Add(image);
+                await context.SaveChangesAsync(cancellationToken: cancellationToken);
+        }
+
+        /// <summary>
+        /// Directly rotates the persisted <see cref="TemplateEntity.ConcurrencyStamp"/> in SQL Server to simulate a concurrent writer.
+        /// </summary>
+        /// <param name="templateId">The target template identifier.</param>
+        /// <param name="newConcurrencyStamp">The replacement concurrency stamp.</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        /// <returns>A task representing the asynchronous SQL update.</returns>
+        public async Task RotatePersistedConcurrencyStampAsync(
+                Guid templateId,
+                Guid newConcurrencyStamp,
+                CancellationToken cancellationToken)
+        {
+                await using ContentDbContext context = this.CreateDbContext();
+                await context.Templates
+                        .Where(template => template.Id == templateId)
+                        .ExecuteUpdateAsync(
+                                setters => setters.SetProperty(template => template.ConcurrencyStamp, newConcurrencyStamp),
+                                cancellationToken: cancellationToken);
+        }
+}

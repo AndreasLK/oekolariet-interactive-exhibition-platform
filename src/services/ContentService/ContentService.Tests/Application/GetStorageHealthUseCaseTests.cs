@@ -7,6 +7,8 @@ using ContentService.Application.UseCases.Health;
 using ContentService.Domain.Common;
 using ContentService.Domain.Entities;
 using ContentService.Domain.Enums;
+using ContentService.Infrastructure.Persistence;
+using ContentService.Infrastructure.Repositories;
 using ContentService.Tests.Application.Persistence;
 using MicrosoftOptions = Microsoft.Extensions.Options.Options;
 
@@ -105,7 +107,8 @@ public sealed class GetStorageHealthUseCaseTests : IAsyncLifetime
                         await this.SeedActiveImageOfSizeAsync(byteCount: usedBytes);
                 }
 
-                SqlServerStorageQuotaMonitor quotaMonitor = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerStorageQuotaMonitor quotaMonitor = new(dbContext: dbContext);
                 ContentStorageOptions options = new()
                 {
                         TotalQuotaBytes = QUOTA_ONE_THOUSAND_BYTES,
@@ -135,7 +138,8 @@ public sealed class GetStorageHealthUseCaseTests : IAsyncLifetime
                 // Arrange
                 // Seed 29 bytes out of 100 so decimal math avoids binary64 underflow at 28.999999999999996%.
                 await this.SeedActiveImageOfSizeAsync(byteCount: EXACT_29_BYTES);
-                SqlServerStorageQuotaMonitor quotaMonitor = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerStorageQuotaMonitor quotaMonitor = new(dbContext: dbContext);
                 ContentStorageOptions options = new()
                 {
                         TotalQuotaBytes = QUOTA_ONE_HUNDRED_BYTES,
@@ -165,7 +169,8 @@ public sealed class GetStorageHealthUseCaseTests : IAsyncLifetime
         public async Task ExecuteAsync_WhenQuotaZeroOrNegative_ReturnsFullReadOnlyWithoutDivideByZeroAsync(long quotaBytes)
         {
                 // Arrange
-                SqlServerStorageQuotaMonitor quotaMonitor = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerStorageQuotaMonitor quotaMonitor = new(dbContext: dbContext);
                 ContentStorageOptions options = new() { TotalQuotaBytes = quotaBytes };
                 GetStorageHealthUseCase useCase = new(
                         quotaMonitor: quotaMonitor,
@@ -246,7 +251,8 @@ public sealed class GetStorageHealthUseCaseTests : IAsyncLifetime
         private async Task SeedActiveImageOfSizeAsync(long byteCount)
         {
                 // Seed directly via SqlServerImageRepository to bypass UploadImageUseCase magic-byte/size validation for arbitrary byte counts.
-                SqlServerImageRepository imageRepository = new(fixture: this._fixture);
+                await using ContentDbContext dbContext = this._fixture.CreateDbContext();
+                SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 byte[] payload = new byte[byteCount];
                 string hash = Convert.ToHexStringLower(SHA256.HashData(payload));
                 ImageEntity image = ImageEntity.Create(
