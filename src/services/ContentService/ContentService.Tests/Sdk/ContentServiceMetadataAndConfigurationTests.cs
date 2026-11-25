@@ -62,7 +62,7 @@ public sealed class ContentServiceMetadataAndConfigurationTests
 
                 Assert.Equal(expected: expected, actual: actual);
                 Assert.Equal(
-                        expected: $"https://content.oekolariet.dk/content/api/images/{imageId:D}",
+                        expected: $"https://content.oekolariet.dk/content/api/v1/images/{imageId:D}",
                         actual: handler.LastRequest?.RequestUri?.AbsoluteUri);
         }
 
@@ -85,7 +85,7 @@ public sealed class ContentServiceMetadataAndConfigurationTests
 
                 Uri uri = subpathClient.GetImageContentUri(imageId: imageId);
                 Assert.Equal(
-                        expected: $"https://content.oekolariet.dk/content/api/images/{imageId:D}/content",
+                        expected: $"https://content.oekolariet.dk/content/api/v1/images/{imageId:D}/content",
                         actual: uri.AbsoluteUri);
 
                 Assert.Throws<ArgumentException>(testCode: () => subpathClient.GetImageContentUri(imageId: Guid.Empty));
@@ -118,7 +118,7 @@ public sealed class ContentServiceMetadataAndConfigurationTests
                 IContentServiceImageClient resolved = validProvider.GetRequiredService<IContentServiceImageClient>();
                 Guid imageId = Guid.NewGuid();
                 Assert.Equal(
-                        expected: $"https://content.oekolariet.dk/content/api/images/{imageId:D}/content",
+                        expected: $"https://content.oekolariet.dk/content/api/v1/images/{imageId:D}/content",
                         actual: resolved.GetImageContentUri(imageId: imageId).AbsoluteUri);
 
                 ServiceCollection invalidServices = new();

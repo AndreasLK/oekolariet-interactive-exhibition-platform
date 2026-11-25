@@ -53,7 +53,7 @@ public sealed class ContentServiceImageUploadTests
                 Assert.Equal(expected: expectedMetadata, actual: actual);
                 Assert.NotNull(handler.LastRequest);
                 Assert.Equal(
-                        expected: "https://content.oekolariet.dk/content/api/images",
+                        expected: "https://content.oekolariet.dk/content/api/v1/images",
                         actual: handler.LastRequest.RequestUri?.AbsoluteUri);
                 Assert.True(handler.LastRequest.Headers.TryGetValues(name: "X-Actor-Id", values: out IEnumerable<string>? actorHeaders));
                 Assert.Equal(expected: EXPLICIT_ACTOR_ID, actual: Assert.Single(actorHeaders));
