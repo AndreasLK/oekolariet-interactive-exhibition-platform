@@ -12,10 +12,10 @@ namespace ContentService.Tests.Api;
 /// </summary>
 internal static class ApiIntegrationTestFixtures
 {
-        public const string IMAGES_ROUTE = "/api/images";
-        public const string TEMPLATES_ROUTE = "/api/templates";
-        public const string PUBLISH_BUNDLES_ROUTE = "/api/publish-bundles/resolve";
-        public const string STORAGE_HEALTH_ROUTE = "/api/health/storage";
+        public const string IMAGES_ROUTE = "/api/v1/images";
+        public const string TEMPLATES_ROUTE = "/api/v1/templates";
+        public const string PUBLISH_BUNDLES_ROUTE = "/api/v1/publish-bundles/resolve";
+        public const string STORAGE_HEALTH_ROUTE = "/api/v1/health/storage";
         public const string MAX_IMAGE_SIZE_CONFIG_KEY = "ContentStorage:MaxImageSizeBytes";
         public const string TOTAL_QUOTA_CONFIG_KEY = "ContentStorage:TotalQuotaBytes";
         public const string WARNING_THRESHOLD_CONFIG_KEY = "ContentStorage:WarningThresholdPercent";
