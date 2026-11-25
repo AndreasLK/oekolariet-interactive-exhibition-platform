@@ -202,12 +202,6 @@ namespace ContentService.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("ContentService.Domain.Entities.TemplateImageReference", b =>
                 {
-                    b.HasOne("ContentService.Domain.Entities.ImageEntity", null)
-                        .WithMany()
-                        .HasForeignKey("ImageId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("ContentService.Domain.Entities.TemplateEntity", null)
                         .WithMany("ReferencedImages")
                         .HasForeignKey("TemplateId")

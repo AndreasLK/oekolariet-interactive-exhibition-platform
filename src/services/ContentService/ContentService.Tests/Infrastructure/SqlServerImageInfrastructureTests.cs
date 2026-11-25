@@ -79,20 +79,18 @@ public sealed class SqlServerImageInfrastructureTests : IAsyncLifetime
                         binary: ImageBinaryEntity.Create(imageId: unreferencedImage.Id, data: InfrastructureTestFixtures.PNG_HEADER_BYTES),
                         cancellationToken: CancellationToken.None);
 
-                TemplateEntity template = TemplateEntity.Create(
+                TemplateEntity crossNodeTemplate = TemplateEntity.Create(
                         storageNodeId: InfrastructureTestFixtures.VALID_NODE_ID,
-                        name: "FK Protected Template",
+                        name: "Cross Node Reference Template",
                         componentType: TemplateComponentType.InfoScreen,
-                        schemaJson: $"{{\"hero\":\"{referencedImage.Reference}\"}}",
+                        schemaJson: $"{{\"hero\":\"{referencedImage.Reference}\",\"remote\":\"picture.node-2.{Guid.NewGuid():D}\"}}",
                         actorId: InfrastructureTestFixtures.VALID_ACTOR_ID);
-                await templateRepository.AddAsync(template: template, cancellationToken: CancellationToken.None);
+                await templateRepository.AddAsync(template: crossNodeTemplate, cancellationToken: CancellationToken.None);
 
-                // Act & Assert
-                SqlException fkException = await Assert.ThrowsAsync<SqlException>(() =>
-                        dbContext.Images
-                                .Where(image => image.Id == referencedImage.Id)
-                                .ExecuteDeleteAsync(cancellationToken: TestContext.Current.CancellationToken));
-                Assert.Equal(SQL_ERROR_FOREIGN_KEY_CONFLICT, fkException.Number);
+                // Act & Assert: Cross-node template references persist without local FK errors, IsReferencedByAnyTemplateAsync protects referenced images, and binary delete cascades.
+                Assert.True(await imageRepository.IsReferencedByAnyTemplateAsync(
+                        imageId: referencedImage.Id,
+                        cancellationToken: TestContext.Current.CancellationToken));
 
                 await dbContext.Images
                         .Where(image => image.Id == unreferencedImage.Id)
