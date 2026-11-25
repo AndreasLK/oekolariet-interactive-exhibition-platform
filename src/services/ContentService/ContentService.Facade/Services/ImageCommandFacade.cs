@@ -83,6 +83,8 @@ internal sealed class ImageCommandFacade : IImageCommandFacade
                 UpdateImageMetadataCommand appCommand = new()
                 {
                         ImageId = command.ImageId,
+                        StorageNodeId = command.StorageNodeId,
+                        AllowPeerFallback = command.AllowPeerFallback,
                         AltText = command.AltText,
                         Tags = command.Tags,
                         AlbumPath = command.AlbumPath,
@@ -107,6 +109,8 @@ internal sealed class ImageCommandFacade : IImageCommandFacade
                 DeleteImageCommand appCommand = new()
                 {
                         ImageId = command.ImageId,
+                        StorageNodeId = command.StorageNodeId,
+                        AllowPeerFallback = command.AllowPeerFallback,
                         ActorId = command.ActorId
                 };
 

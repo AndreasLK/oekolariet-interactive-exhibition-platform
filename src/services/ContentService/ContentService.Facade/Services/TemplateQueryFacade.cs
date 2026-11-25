@@ -23,19 +23,28 @@ internal sealed class TemplateQueryFacade : ITemplateQueryFacade
         private readonly GetTemplateUseCase _getTemplateUseCase;
 
         /// <summary>
+        /// Application use case checking whether any local template references an image ID.
+        /// </summary>
+        private readonly CheckImageTemplateReferenceUseCase _checkImageTemplateReferenceUseCase;
+
+        /// <summary>
         /// Initializes a new instance of <see cref="TemplateQueryFacade"/>.
         /// </summary>
         /// <param name="listTemplatesUseCase">The list templates use case.</param>
         /// <param name="getTemplateUseCase">The get template use case.</param>
+        /// <param name="checkImageTemplateReferenceUseCase">The image template reference check use case.</param>
         public TemplateQueryFacade(
                 ListTemplatesUseCase listTemplatesUseCase,
-                GetTemplateUseCase getTemplateUseCase)
+                GetTemplateUseCase getTemplateUseCase,
+                CheckImageTemplateReferenceUseCase checkImageTemplateReferenceUseCase)
         {
                 ArgumentNullException.ThrowIfNull(listTemplatesUseCase);
                 ArgumentNullException.ThrowIfNull(getTemplateUseCase);
+                ArgumentNullException.ThrowIfNull(checkImageTemplateReferenceUseCase);
 
                 this._listTemplatesUseCase = listTemplatesUseCase;
                 this._getTemplateUseCase = getTemplateUseCase;
+                this._checkImageTemplateReferenceUseCase = checkImageTemplateReferenceUseCase;
         }
 
         /// <inheritdoc />
@@ -45,6 +54,7 @@ internal sealed class TemplateQueryFacade : ITemplateQueryFacade
         {
                 ArgumentNullException.ThrowIfNull(query);
 
+                // Translate the Facade DTO query into the Application-layer query model.
                 ListTemplatesQuery appQuery = new()
                 {
                         Page = query.Page,
@@ -55,6 +65,7 @@ internal sealed class TemplateQueryFacade : ITemplateQueryFacade
                         SearchTerm = query.SearchTerm
                 };
 
+                // Execute the paged template query and map results back to Facade DTOs.
                 PagedResult<TemplateResult> result = await this._listTemplatesUseCase.ExecuteAsync(
                         query: appQuery,
                         cancellationToken: cancellationToken);
@@ -69,11 +80,23 @@ internal sealed class TemplateQueryFacade : ITemplateQueryFacade
                 Guid templateId,
                 CancellationToken cancellationToken = default)
         {
+                // Fetch the single template from the Application layer and map to DTO.
                 TemplateResult result = await this._getTemplateUseCase.ExecuteAsync(
                         templateId: templateId,
                         cancellationToken: cancellationToken);
 
                 return FacadeMapper.ToDto(result: result);
+        }
+
+        /// <inheritdoc />
+        public Task<bool> IsImageReferencedByAnyTemplateAsync(
+                Guid imageId,
+                CancellationToken cancellationToken = default)
+        {
+                // Delegate local template-reference lookup for peer-node delete-protection checks.
+                return this._checkImageTemplateReferenceUseCase.ExecuteAsync(
+                        imageId: imageId,
+                        cancellationToken: cancellationToken);
         }
 }
 

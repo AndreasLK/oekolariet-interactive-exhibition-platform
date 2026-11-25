@@ -26,6 +26,7 @@ internal sealed class ImageQueryFacade : IImageQueryFacade
         /// Application use case retrieving image metadata without binary streaming.
         /// </summary>
         private readonly GetImageMetadataUseCase _getImageMetadataUseCase;
+        private readonly GetImagesMetadataBatchUseCase _getImagesMetadataBatchUseCase;
 
         /// <summary>
         /// Application use case opening raw binary image streams.
@@ -43,24 +44,28 @@ internal sealed class ImageQueryFacade : IImageQueryFacade
         /// <param name="listImagesUseCase">The list images use case.</param>
         /// <param name="listAlbumsUseCase">The list albums use case.</param>
         /// <param name="getImageMetadataUseCase">The get image metadata use case.</param>
+        /// <param name="getImagesMetadataBatchUseCase">The batch metadata use case used for peer-node verification.</param>
         /// <param name="getImageStreamUseCase">The get image stream use case.</param>
         /// <param name="getImagePreviewUseCase">The get image preview use case.</param>
         public ImageQueryFacade(
                 ListImagesUseCase listImagesUseCase,
                 ListAlbumsUseCase listAlbumsUseCase,
                 GetImageMetadataUseCase getImageMetadataUseCase,
+                GetImagesMetadataBatchUseCase getImagesMetadataBatchUseCase,
                 GetImageStreamUseCase getImageStreamUseCase,
                 GetImagePreviewUseCase getImagePreviewUseCase)
         {
                 ArgumentNullException.ThrowIfNull(listImagesUseCase);
                 ArgumentNullException.ThrowIfNull(listAlbumsUseCase);
                 ArgumentNullException.ThrowIfNull(getImageMetadataUseCase);
+                ArgumentNullException.ThrowIfNull(getImagesMetadataBatchUseCase);
                 ArgumentNullException.ThrowIfNull(getImageStreamUseCase);
                 ArgumentNullException.ThrowIfNull(getImagePreviewUseCase);
 
                 this._listImagesUseCase = listImagesUseCase;
                 this._listAlbumsUseCase = listAlbumsUseCase;
                 this._getImageMetadataUseCase = getImageMetadataUseCase;
+                this._getImagesMetadataBatchUseCase = getImagesMetadataBatchUseCase;
                 this._getImageStreamUseCase = getImageStreamUseCase;
                 this._getImagePreviewUseCase = getImagePreviewUseCase;
         }
@@ -103,22 +108,45 @@ internal sealed class ImageQueryFacade : IImageQueryFacade
         /// <inheritdoc />
         public async Task<ImageMetadataDto> GetImageMetadataAsync(
                 Guid imageId,
-                CancellationToken cancellationToken = default)
+                CancellationToken cancellationToken = default,
+                string? storageNodeId = null,
+                bool allowPeerFallback = true)
         {
                 ImageMetadataResult result = await this._getImageMetadataUseCase.ExecuteAsync(
                         imageId: imageId,
-                        cancellationToken: cancellationToken);
+                        cancellationToken: cancellationToken,
+                        storageNodeId: storageNodeId,
+                        allowPeerFallback: allowPeerFallback);
 
                 return FacadeMapper.ToDto(result: result);
         }
 
         /// <inheritdoc />
-        public async Task<ImageStreamDto> GetImageContentAsync(
-                Guid imageId,
+        public async Task<IReadOnlyList<ImageMetadataDto>> GetImagesMetadataBatchAsync(
+                IReadOnlyCollection<Guid> imageIds,
                 CancellationToken cancellationToken = default)
         {
+                IReadOnlyList<ImageMetadataResult> results = await this._getImagesMetadataBatchUseCase.ExecuteAsync(
+                        imageIds: imageIds,
+                        cancellationToken: cancellationToken);
+
+                return results.Select(FacadeMapper.ToDto).ToArray();
+        }
+
+        /// <inheritdoc />
+        public async Task<ImageStreamDto> GetImageContentAsync(
+                Guid imageId,
+                CancellationToken cancellationToken = default,
+                string? storageNodeId = null,
+                bool allowPeerFallback = true)
+        {
                 ImageStreamResult result = await this._getImageStreamUseCase.ExecuteAsync(
-                        query: new GetImageStreamQuery { ImageId = imageId },
+                        query: new GetImageStreamQuery
+                        {
+                                ImageId = imageId,
+                                StorageNodeId = storageNodeId,
+                                AllowPeerFallback = allowPeerFallback
+                        },
                         cancellationToken: cancellationToken);
 
                 // Transfer stream disposal ownership to the caller via ImageStreamDto.
@@ -128,10 +156,17 @@ internal sealed class ImageQueryFacade : IImageQueryFacade
         /// <inheritdoc />
         public async Task<ImageStreamDto> GetImagePreviewAsync(
                 Guid imageId,
-                CancellationToken cancellationToken = default)
+                CancellationToken cancellationToken = default,
+                string? storageNodeId = null,
+                bool allowPeerFallback = true)
         {
                 ImageStreamResult result = await this._getImagePreviewUseCase.ExecuteAsync(
-                        query: new GetImageStreamQuery { ImageId = imageId },
+                        query: new GetImageStreamQuery
+                        {
+                                ImageId = imageId,
+                                StorageNodeId = storageNodeId,
+                                AllowPeerFallback = allowPeerFallback
+                        },
                         cancellationToken: cancellationToken);
 
                 return FacadeMapper.ToDto(result: result);
