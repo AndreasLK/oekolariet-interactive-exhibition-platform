@@ -1,11 +1,11 @@
-using EditorService.Domain.Entities.SortingGames;
+﻿using EditorService.Domain.Entities.SortingGames;
 using EditorService.Domain.Enums;
 using EditorService.Domain.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace EditorService.Tests.Domain
+namespace EditorService.Domain.Tests.Entities.SortingGames
 {
         /// <summary>
         /// Tests the rules of the sorting game: category receivers, category items and publishing.

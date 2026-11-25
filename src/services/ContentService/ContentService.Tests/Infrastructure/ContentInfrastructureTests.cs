@@ -6,6 +6,9 @@ using ContentService.Infrastructure;
 using ContentService.Infrastructure.Persistence;
 using ContentService.Infrastructure.Repositories;
 using ContentService.Tests.Application.Persistence;
+using ContentService.Tests.Common;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -15,6 +18,7 @@ namespace ContentService.Tests.Infrastructure;
 /// Integration tests verifying <see cref="SqlServerTemplateRepository"/> constraints, join-row updates, quota monitoring, and DI wiring against real SQL Server.
 /// </summary>
 [Collection(MsSqlContentDatabaseCollection.COLLECTION_NAME)]
+[Trait(TestTraits.CATEGORY_KEY, TestTraits.INTEGRATION)]
 public sealed class ContentInfrastructureTests : IAsyncLifetime
 {
         private const long ACTIVE_SEEDED_IMAGE_COUNT = 2L;

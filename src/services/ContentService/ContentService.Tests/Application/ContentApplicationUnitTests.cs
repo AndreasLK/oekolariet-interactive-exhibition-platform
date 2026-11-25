@@ -5,6 +5,7 @@ using ContentService.Application.Common;
 using ContentService.Application.Interfaces;
 using ContentService.Application.Models;
 using ContentService.Application.Options;
+using ContentService.Application.UseCases.Health;
 using ContentService.Application.UseCases.Images;
 using ContentService.Application.UseCases.Publishing;
 using ContentService.Application.Validation;
@@ -253,7 +254,33 @@ public sealed class ContentApplicationUnitTests
         }
 
         /// <summary>
-        /// Verifies that <see cref="ContentStorageOptionsValidator"/> rejects invalid storage node IDs, bounds, and threshold orderings.
+        /// Verifies defensive clamping when an <see cref="IStorageQuotaMonitor"/> implementation returns a negative byte count.
+        /// </summary>
+        /// <returns>A task representing the asynchronous test execution.</returns>
+        [Fact]
+        public async Task GetStorageHealthUseCase_WhenMonitorReportsNegativeUsage_ClampsUsedBytesToZeroAsync()
+        {
+                // Arrange
+                // Inject a faulty monitor returning negative bytes to verify defensive clamping without touching SQL Server.
+                const long NEGATIVE_USAGE_BYTES = -10L;
+                const long QUOTA_BYTES = 1000L;
+                FixedQuotaMonitor negativeMonitor = new(usedBytes: NEGATIVE_USAGE_BYTES);
+                ContentStorageOptions options = new() { TotalQuotaBytes = QUOTA_BYTES };
+                GetStorageHealthUseCase useCase = new(
+                        quotaMonitor: negativeMonitor,
+                        options: Options.Create(options));
+
+                // Act
+                StorageHealthResult result = await useCase.ExecuteAsync(cancellationToken: CancellationToken.None);
+
+                // Assert
+                Assert.Equal(StorageHealthStatus.Healthy, result.Status);
+                Assert.Equal(0L, result.UsedBytes);
+                Assert.Equal(0.0, result.UtilizationPercent);
+        }
+
+        /// <summary>
+        /// Verifies that <see cref="ContentStorageOptionsValidator"/> rejects null options, invalid storage node IDs, bounds, and threshold orderings.
         /// </summary>
         [Fact]
         public void ContentStorageOptionsValidator_WhenOptionsInvalidOrValid_ReturnsExpectedValidationResult()
@@ -264,13 +291,16 @@ public sealed class ContentApplicationUnitTests
                 // Assert valid defaults pass.
                 Assert.True(validator.Validate(name: null, options: new ContentStorageOptions()).Succeeded);
 
-                // Assert invalid storage node ID, size, negative quota, and threshold configurations fail (0 quota is valid read-only mode).
+                // Assert null options, invalid storage node IDs, size limits, negative quota, and threshold configurations fail (0 quota is valid read-only mode).
+                Assert.True(validator.Validate(name: null, options: null!).Failed);
                 Assert.True(validator.Validate(name: null, options: new ContentStorageOptions { TotalQuotaBytes = 0L }).Succeeded);
                 Assert.True(validator.Validate(name: null, options: new ContentStorageOptions { StorageNodeId = "bad node!" }).Failed);
+                Assert.True(validator.Validate(name: null, options: new ContentStorageOptions { StorageNodeId = "Node_1" }).Failed);
                 Assert.True(validator.Validate(name: null, options: new ContentStorageOptions { MaxImageSizeBytes = 0L }).Failed);
                 Assert.True(validator.Validate(name: null, options: new ContentStorageOptions { MaxImageSizeBytes = DomainConstants.MAX_IMAGE_SIZE_BYTES + 1L }).Failed);
                 Assert.True(validator.Validate(name: null, options: new ContentStorageOptions { TotalQuotaBytes = -1L }).Failed);
                 Assert.True(validator.Validate(name: null, options: new ContentStorageOptions { WarningThresholdPercent = 95.0, CriticalThresholdPercent = 95.0 }).Failed);
+                Assert.True(validator.Validate(name: null, options: new ContentStorageOptions { WarningThresholdPercent = 95.0, CriticalThresholdPercent = 80.0 }).Failed);
                 Assert.True(validator.Validate(name: null, options: new ContentStorageOptions { WarningThresholdPercent = double.NaN }).Failed);
                 Assert.True(validator.Validate(name: null, options: new ContentStorageOptions { CriticalThresholdPercent = 101.0 }).Failed);
         }
