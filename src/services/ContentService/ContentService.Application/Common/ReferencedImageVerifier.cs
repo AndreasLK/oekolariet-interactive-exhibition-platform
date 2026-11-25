@@ -1,17 +1,14 @@
 using System.Text.Json;
 using ContentService.Application.Interfaces;
-using ContentService.Domain.Entities;
+using ContentService.Application.Models;
 using ContentService.Domain.Exceptions;
 using ContentService.Domain.ValueObjects;
 
 namespace ContentService.Application.Common;
 
 /// <summary>
-/// Centralizes JSON object validation and batch verification of referenced <see cref="PictureReference"/> assets.
+/// Centralizes JSON object validation and batch verification of referenced <see cref="PictureReference"/> assets across local and remote storage nodes.
 /// </summary>
-/// <remarks>
-/// Extracted into a shared helper because template creation, template updates, and publish-bundle resolution enforce identical JSON and cross-shard image checks.
-/// </remarks>
 internal static class ReferencedImageVerifier
 {
         /// <summary>
@@ -54,83 +51,56 @@ internal static class ReferencedImageVerifier
         }
 
         /// <summary>
-        /// Batch-loads referenced images and ensures every <see cref="PictureReference"/> exists on its expected storage node and is not soft-deleted.
+        /// Batch-loads referenced images from the local repository and any remote storage nodes, ensuring every <see cref="PictureReference"/> exists on its expected node and is active.
         /// </summary>
-        /// <param name="imageRepository">The image metadata repository used to resolve referenced IDs.</param>
+        /// <param name="imageRepository">The local image metadata repository.</param>
         /// <param name="references">The deduplicated collection of picture references to verify.</param>
-        /// <param name="cancellationToken">A token to observe while awaiting repository access.</param>
-        /// <returns>The deduplicated list of verified active <see cref="ImageEntity"/> instances.</returns>
+        /// <param name="cancellationToken">A token to observe while awaiting repository or peer-node access.</param>
+        /// <param name="storageNodeClient">Optional peer storage node client for resolving images hosted on other ContentService instances.</param>
+        /// <param name="localStorageNodeId">Optional local storage node identifier; when omitted, all lookups run against <paramref name="imageRepository"/>.</param>
+        /// <returns>The deduplicated list of verified active <see cref="ImageMetadataResult"/> projections.</returns>
         /// <exception cref="KeyNotFoundException">Thrown when one or more referenced images are missing, soft-deleted, or stored on a different shard.</exception>
-        public static async Task<IReadOnlyList<ImageEntity>> VerifyAndResolveAsync(
+        public static async Task<IReadOnlyList<ImageMetadataResult>> VerifyAndResolveAsync(
                 IImageRepository imageRepository,
                 IReadOnlyCollection<PictureReference> references,
-                CancellationToken cancellationToken)
+                CancellationToken cancellationToken,
+                IStorageNodeClient? storageNodeClient = null,
+                string? localStorageNodeId = null)
         {
-                // Skip unnecessary repository queries when a template or implementation references zero images.
+                // Skip unnecessary repository/Dapr queries when a template or implementation references zero images.
                 if (references.Count == 0)
                 {
                         return [];
                 }
 
-                // Deduplicate image IDs across shards so a single batch query fetches all candidate records.
-                HashSet<Guid> distinctIds = new(references.Count);
-                foreach (PictureReference reference in references)
-                {
-                        distinctIds.Add(reference.ImageId);
-                }
+                Dictionary<(string StorageNodeId, Guid ImageId), ImageMetadataResult> activeImagesByShardKey =
+                        await ReferencedImageNodeFetcher.FetchAllAsync(
+                                imageRepository: imageRepository,
+                                references: references,
+                                storageNodeClient: storageNodeClient,
+                                localStorageNodeId: localStorageNodeId,
+                                cancellationToken: cancellationToken);
 
-                IReadOnlyList<ImageEntity> fetchedImages = await imageRepository.GetByIdsAsync(
-                        ids: distinctIds,
-                        cancellationToken: cancellationToken);
-
-                // Index active records by (StorageNodeId, ImageId) to verify both existence and shard placement.
-                Dictionary<(string StorageNodeId, Guid ImageId), ImageEntity> activeImagesByShardKey = BuildActiveImageLookup(fetchedImages: fetchedImages);
-                return MatchReferencesOrThrow(references: references, activeImagesByShardKey: activeImagesByShardKey);
-        }
-
-        /// <summary>
-        /// Builds an active-image lookup keyed by composite <c>(StorageNodeId, ImageId)</c> shard identity.
-        /// </summary>
-        /// <param name="fetchedImages">The images returned from the repository batch query.</param>
-        /// <returns>A dictionary containing only active (non-deleted) images.</returns>
-        private static Dictionary<(string StorageNodeId, Guid ImageId), ImageEntity> BuildActiveImageLookup(
-                IReadOnlyList<ImageEntity> fetchedImages)
-        {
-                Dictionary<(string StorageNodeId, Guid ImageId), ImageEntity> lookup = new(fetchedImages.Count);
-                foreach (ImageEntity image in fetchedImages)
-                {
-                        // Exclude soft-deleted images so new templates and publish bundles cannot bind to deleted assets.
-                        if (image.IsDeleted)
-                        {
-                                continue;
-                        }
-
-                        // Uses TryAdd instead of ToDictionary so duplicate rows from a repository query cannot crash with ArgumentException.
-                        lookup.TryAdd(key: (image.StorageNodeId, image.Id), value: image);
-                }
-
-                return lookup;
+                return MatchReferencesOrThrow(
+                        references: references,
+                        activeImagesByShardKey: activeImagesByShardKey);
         }
 
         /// <summary>
         /// Resolves every requested <see cref="PictureReference"/> against the active lookup or throws listing all missing references.
         /// </summary>
-        /// <param name="references">The requested picture references.</param>
-        /// <param name="activeImagesByShardKey">The lookup of active images indexed by shard and ID.</param>
-        /// <returns>A deduplicated list of resolved <see cref="ImageEntity"/> objects.</returns>
-        /// <exception cref="KeyNotFoundException">Thrown when any picture reference cannot be matched to an active image on the expected shard.</exception>
-        private static List<ImageEntity> MatchReferencesOrThrow(
+        private static List<ImageMetadataResult> MatchReferencesOrThrow(
                 IReadOnlyCollection<PictureReference> references,
-                Dictionary<(string StorageNodeId, Guid ImageId), ImageEntity> activeImagesByShardKey)
+                Dictionary<(string StorageNodeId, Guid ImageId), ImageMetadataResult> activeImagesByShardKey)
         {
                 List<string> missingReferences = [];
-                List<ImageEntity> resolvedImages = new(references.Count);
+                List<ImageMetadataResult> resolvedImages = new(references.Count);
                 HashSet<(string StorageNodeId, Guid ImageId)> seenKeys = new(references.Count);
 
                 foreach (PictureReference reference in references)
                 {
                         (string StorageNodeId, Guid ImageId) shardKey = (reference.StorageNodeId, reference.ImageId);
-                        if (!activeImagesByShardKey.TryGetValue(key: shardKey, value: out ImageEntity? image))
+                        if (!activeImagesByShardKey.TryGetValue(key: shardKey, value: out ImageMetadataResult? image))
                         {
                                 // Collect all missing, deleted, or cross-shard references before throwing so callers can fix every broken reference in one pass.
                                 missingReferences.Add(reference.ToString());
@@ -155,4 +125,3 @@ internal static class ReferencedImageVerifier
                 return resolvedImages;
         }
 }
-

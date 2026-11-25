@@ -55,6 +55,24 @@ internal static class ContentResultMapper
         }
 
         /// <summary>
+        /// Projects an <see cref="ImageMetadataResult"/> (from local or remote Dapr resolution) to a <see cref="BundleAssetResult"/>.
+        /// </summary>
+        /// <param name="image">The resolved image metadata projection.</param>
+        /// <returns>An immutable <see cref="BundleAssetResult"/> describing the image asset.</returns>
+        public static BundleAssetResult ToBundleAssetResult(ImageMetadataResult image)
+        {
+                return new BundleAssetResult
+                {
+                        ImageId = image.Id,
+                        PictureReference = image.PictureReference,
+                        ExternalId = image.ExternalId,
+                        ContentType = image.ContentType,
+                        SizeBytes = image.SizeBytes,
+                        Sha256Hash = image.Sha256Hash
+                };
+        }
+
+        /// <summary>
         /// Projects a <see cref="TemplateEntity"/> to a <see cref="TemplateResult"/> with sorted picture references.
         /// </summary>
         /// <param name="template">The source template domain entity.</param>
