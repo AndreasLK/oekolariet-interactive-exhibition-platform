@@ -26,5 +26,15 @@ public interface ITemplateQueryFacade
         public Task<TemplateMetadataDto> GetTemplateAsync(
                 Guid templateId,
                 CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Checks whether any local template (active or archived) references <paramref name="imageId"/>.
+        /// </summary>
+        /// <param name="imageId">The image identifier to check.</param>
+        /// <param name="cancellationToken">Propagates caller cancellation during lookup.</param>
+        /// <returns><see langword="true"/> if referenced locally; otherwise <see langword="false"/>.</returns>
+        public Task<bool> IsImageReferencedByAnyTemplateAsync(
+                Guid imageId,
+                CancellationToken cancellationToken = default);
 }
 
