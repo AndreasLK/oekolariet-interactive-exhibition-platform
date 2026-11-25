@@ -16,6 +16,10 @@ using ContentService.Domain.Entities;
 using ContentService.Domain.Enums;
 using ContentService.Domain.Exceptions;
 using ContentService.Infrastructure;
+using ContentService.Sdk.Clients;
+using ContentService.Sdk.Exceptions;
+using ContentService.Sdk.Models;
+using ContentService.Sdk.Options;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -433,6 +437,64 @@ public sealed class ContentApiEndpointTests
                 Assert.Equal(HttpStatusCode.Created, authCreateResponse.StatusCode);
                 TemplateEntity savedTemplate = Assert.Single(authState.Templates.Values);
                 Assert.Equal("authenticated-curator", savedTemplate.CreatedBy);
+        }
+
+        /// <summary>
+        /// Smoke-tests <see cref="ContentServiceImageClient"/> end-to-end against <c>ContentService.Api</c> over an in-memory test server.
+        /// </summary>
+        [Fact]
+        public async Task ContentServiceSdk_RoundTripsUploadMetadataDownloadAndErrorsAgainstApiAsync()
+        {
+                InMemoryContentState state = new();
+                await using FakeApiFactory factory = new(state: state, environmentName: Environments.Development);
+                using HttpClient httpClient = factory.CreateClient();
+
+                ContentServiceImageClient sdkClient = new(
+                        httpClient: httpClient,
+                        options: Microsoft.Extensions.Options.Options.Create(
+                                options: new ContentServiceClientOptions
+                                {
+                                        BaseAddress = httpClient.BaseAddress,
+                                        DefaultActorId = "sdk-editor"
+                                }));
+
+                // Verify upload preserves Danish filename, altText, and actor attribution through Minimal API binding.
+                await using MemoryStream uploadStream = new(buffer: VALID_PNG_BYTES);
+                ContentImageMetadata uploaded = await sdkClient.UploadImageAsync(request: new UploadImageRequest
+                {
+                        Content = uploadStream,
+                        FileName = "økolariet æble.png",
+                        ContentType = DomainConstants.CONTENT_TYPE_PNG,
+                        AltText = "Økolariet logo"
+                });
+
+                Assert.Equal(expected: "økolariet æble.png", actual: uploaded.FileName);
+                Assert.Equal(expected: DomainConstants.CONTENT_TYPE_PNG, actual: uploaded.ContentType);
+                Assert.Equal(expected: VALID_PNG_BYTES.Length, actual: uploaded.SizeBytes);
+
+                // Verify metadata retrieval and content URI generation match the uploaded image.
+                ContentImageMetadata fetched = await sdkClient.GetImageMetadataAsync(imageId: uploaded.Id);
+                Assert.Equal(expected: uploaded.Id, actual: fetched.Id);
+                Assert.Equal(
+                        expected: new Uri(baseUri: httpClient.BaseAddress!, relativeUri: $"api/images/{uploaded.Id:D}/content"),
+                        actual: sdkClient.GetImageContentUri(imageId: uploaded.Id));
+
+                // Verify download extracts FileNameStar and streams exact PNG bytes.
+                await using ContentImageDownload downloaded = await sdkClient.DownloadImageAsync(imageId: uploaded.Id);
+                await using MemoryStream downloadedBytes = new();
+                await downloaded.Content.CopyToAsync(destination: downloadedBytes);
+                Assert.Equal(expected: VALID_PNG_BYTES, actual: downloadedBytes.ToArray());
+                Assert.Equal(expected: "økolariet æble.png", actual: downloaded.FileName);
+                Assert.Equal(expected: DomainConstants.CONTENT_TYPE_PNG, actual: downloaded.ContentType);
+
+                // Verify OpenAPI documents 415 on POST /api/images and SDK maps 404 ProblemDetails cleanly.
+                string openApiJson = await httpClient.GetStringAsync(requestUri: "/openapi/v1.json");
+                Assert.Contains(expectedSubstring: "\"415\"", actualString: openApiJson);
+
+                ContentServiceApiException notFound = await Assert.ThrowsAsync<ContentServiceApiException>(
+                        testCode: () => sdkClient.GetImageMetadataAsync(imageId: Guid.NewGuid()));
+                Assert.Equal(expected: HttpStatusCode.NotFound, actual: notFound.StatusCode);
+                Assert.NotNull(notFound.ProblemDetails);
         }
 
         /// <summary>
