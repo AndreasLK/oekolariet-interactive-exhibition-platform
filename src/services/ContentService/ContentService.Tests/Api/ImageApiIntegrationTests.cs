@@ -12,7 +12,7 @@ using Microsoft.Net.Http.Headers;
 namespace ContentService.Tests.Api;
 
 /// <summary>
-/// End-to-end HTTP integration tests verifying <c>/api/images</c> upload, streaming, caching headers, conflict guards, and SQL Server persistence.
+/// End-to-end HTTP integration tests verifying <c>/api/v1/images</c> upload, streaming, caching headers, conflict guards, and SQL Server persistence.
 /// </summary>
 [Collection(MsSqlContentDatabaseCollection.COLLECTION_NAME)]
 public sealed class ImageApiIntegrationTests : IAsyncLifetime
@@ -65,7 +65,7 @@ public sealed class ImageApiIntegrationTests : IAsyncLifetime
                 Assert.Equal(HttpStatusCode.Created, uploadResponse.StatusCode);
                 ImageMetadataResult? uploaded = await uploadResponse.Content.ReadFromJsonAsync<ImageMetadataResult>(options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.NotNull(uploaded);
-                Assert.Equal($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{uploaded.Id}", uploadResponse.Headers.Location?.ToString());
+                Assert.Equal($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{uploaded.ExternalId}", uploadResponse.Headers.Location?.ToString());
                 Assert.Equal("exhibit-hero.png", uploaded.FileName);
                 Assert.Equal(DomainConstants.CONTENT_TYPE_PNG, uploaded.ContentType);
                 Assert.Equal("Hero photo", uploaded.AltText);
