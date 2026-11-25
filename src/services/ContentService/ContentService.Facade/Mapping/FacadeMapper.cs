@@ -155,5 +155,37 @@ internal static class FacadeMapper
         /// <returns>The corresponding <see cref="TemplateComponentType"/>.</returns>
         public static TemplateComponentType ToDomain(TemplateComponentTypeDto componentType) =>
                 (TemplateComponentType)(int)componentType;
+
+        /// <summary>
+        /// Projects an Application <see cref="PoolNodeOffer"/> to a Facade <see cref="PoolNodeOfferDto"/>.
+        /// </summary>
+        /// <param name="offer">The application pool node offer.</param>
+        /// <returns>The mapped <see cref="PoolNodeOfferDto"/>.</returns>
+        public static PoolNodeOfferDto ToDto(PoolNodeOffer offer)
+        {
+                return new PoolNodeOfferDto
+                {
+                        StorageNodeId = offer.StorageNodeId,
+                        DaprAppId = offer.DaprAppId,
+                        PublicBaseUrl = offer.PublicBaseUrl,
+                        AvailableBytes = offer.AvailableBytes
+                };
+        }
+
+        /// <summary>
+        /// Maps a Facade <see cref="PoolNodeOfferDto"/> back to an Application <see cref="PoolNodeOffer"/>.
+        /// </summary>
+        /// <param name="offer">The facade pool node offer DTO.</param>
+        /// <returns>The mapped <see cref="PoolNodeOffer"/>.</returns>
+        public static PoolNodeOffer ToApplication(PoolNodeOfferDto offer)
+        {
+                return new PoolNodeOffer
+                {
+                        StorageNodeId = offer.StorageNodeId,
+                        DaprAppId = offer.DaprAppId,
+                        PublicBaseUrl = offer.PublicBaseUrl,
+                        AvailableBytes = offer.AvailableBytes
+                };
+        }
 }
 

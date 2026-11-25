@@ -33,6 +33,7 @@ public static class DependencyInjection
                 services.AddScoped<ITemplateCommandFacade, TemplateCommandFacade>();
                 services.AddScoped<ITemplateQueryFacade, TemplateQueryFacade>();
                 services.AddScoped<IContentPlatformQueryFacade, ContentPlatformQueryFacade>();
+                services.AddScoped<IPoolFacade, PoolFacade>();
 
                 return services;
         }
