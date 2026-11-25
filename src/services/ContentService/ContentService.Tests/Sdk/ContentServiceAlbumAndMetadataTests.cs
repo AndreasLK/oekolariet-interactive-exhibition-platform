@@ -51,7 +51,7 @@ public sealed class ContentServiceAlbumAndMetadataTests
 
                 // Assert
                 Assert.Equal(
-                        expected: "https://content.oekolariet.dk/content/api/images?page=1&pageSize=24&searchTerm=banana&albumPath=Madaffald%2FFrugt&includeSubalbums=false",
+                        expected: "https://content.oekolariet.dk/content/api/v1/images?page=1&pageSize=24&searchTerm=banana&albumPath=Madaffald%2FFrugt&includeSubalbums=false",
                         actual: handler.LastRequest?.RequestUri?.AbsoluteUri);
         }
 
@@ -78,7 +78,7 @@ public sealed class ContentServiceAlbumAndMetadataTests
                 // Assert
                 Assert.Equal(expected: expected, actual: actual);
                 Assert.Equal(
-                        expected: "https://content.oekolariet.dk/content/api/images/albums?parentPath=Madaffald",
+                        expected: "https://content.oekolariet.dk/content/api/v1/images/albums?parentPath=Madaffald",
                         actual: handler.LastRequest?.RequestUri?.AbsoluteUri);
         }
 
@@ -129,7 +129,7 @@ public sealed class ContentServiceAlbumAndMetadataTests
                 // Assert
                 Assert.Equal(expected: HttpMethod.Patch, actual: handler.LastRequest?.Method);
                 Assert.Equal(
-                        expected: $"https://content.oekolariet.dk/content/api/images/{imageId:D}/metadata",
+                        expected: $"https://content.oekolariet.dk/content/api/v1/images/{imageId:D}/metadata",
                         actual: handler.LastRequest?.RequestUri?.AbsoluteUri);
                 Assert.Equal(expected: rotatedStamp, actual: actual.ConcurrencyStamp);
                 Assert.Equal(expected: "Madaffald", actual: actual.AlbumPath);

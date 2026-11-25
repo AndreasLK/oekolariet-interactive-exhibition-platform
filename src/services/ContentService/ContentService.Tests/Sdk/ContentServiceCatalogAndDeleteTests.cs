@@ -67,7 +67,7 @@ public sealed class ContentServiceCatalogAndDeleteTests
                 Assert.Single(collection: actual.Items);
                 Assert.Equal(expected: imageId, actual: actual.Items[0].Id);
                 Assert.Equal(
-                        expected: "https://content.oekolariet.dk/content/api/images?page=2&pageSize=12&searchTerm=ocean%20exhibit",
+                        expected: "https://content.oekolariet.dk/content/api/v1/images?page=2&pageSize=12&searchTerm=ocean%20exhibit",
                         actual: handler.LastRequest?.RequestUri?.AbsoluteUri);
         }
 
@@ -88,7 +88,7 @@ public sealed class ContentServiceCatalogAndDeleteTests
                 // Assert
                 Assert.Equal(expected: HttpMethod.Delete, actual: successHandler.LastRequest?.Method);
                 Assert.Equal(
-                        expected: $"https://content.oekolariet.dk/content/api/images/{imageId:D}",
+                        expected: $"https://content.oekolariet.dk/content/api/v1/images/{imageId:D}",
                         actual: successHandler.LastRequest?.RequestUri?.AbsoluteUri);
                 Assert.True(
                         condition: successHandler.LastRequest?.Headers.TryGetValues(
