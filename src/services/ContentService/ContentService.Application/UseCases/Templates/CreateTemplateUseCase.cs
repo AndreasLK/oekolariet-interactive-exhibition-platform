@@ -31,16 +31,23 @@ public sealed class CreateTemplateUseCase
         private readonly ContentStorageOptions _options;
 
         /// <summary>
+        /// Optional peer storage node client used when templates reference images hosted on other ContentService nodes.
+        /// </summary>
+        private readonly IStorageNodeClient? _storageNodeClient;
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="CreateTemplateUseCase"/> class.
         /// </summary>
         /// <param name="templateRepository">The template persistence repository.</param>
         /// <param name="imageRepository">The image metadata repository.</param>
         /// <param name="options">The configured content storage options.</param>
+        /// <param name="storageNodeClient">Optional peer storage node client for cross-node image verification.</param>
         /// <exception cref="ArgumentNullException">Thrown when any required dependency is <see langword="null"/>.</exception>
         public CreateTemplateUseCase(
                 ITemplateRepository templateRepository,
                 IImageRepository imageRepository,
-                IOptions<ContentStorageOptions> options)
+                IOptions<ContentStorageOptions> options,
+                IStorageNodeClient? storageNodeClient = null)
         {
                 ArgumentNullException.ThrowIfNull(templateRepository);
                 ArgumentNullException.ThrowIfNull(imageRepository);
@@ -50,6 +57,7 @@ public sealed class CreateTemplateUseCase
                 this._templateRepository = templateRepository;
                 this._imageRepository = imageRepository;
                 this._options = options.Value;
+                this._storageNodeClient = storageNodeClient;
         }
 
         /// <summary>
@@ -83,7 +91,9 @@ public sealed class CreateTemplateUseCase
                 await ReferencedImageVerifier.VerifyAndResolveAsync(
                         imageRepository: this._imageRepository,
                         references: referencedPictures,
-                        cancellationToken: cancellationToken);
+                        cancellationToken: cancellationToken,
+                        storageNodeClient: this._storageNodeClient,
+                        localStorageNodeId: this._options.StorageNodeId);
 
                 // TemplateEntity.Create trims and normalizes Name internally; pass trimmedName to ExistsByNameAsync for an exact duplicate check.
                 TemplateEntity template = TemplateEntity.Create(
