@@ -1,8 +1,10 @@
+using EditorService.Application.Interfaces.Queries.Games;
 using EditorService.Application.Interfaces.Repositories.Games;
 using EditorService.Infrastructure.Persistence;
+using EditorService.Infrastructure.Queries.Games;
 using EditorService.Infrastructure.Repositories.Games;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -27,6 +29,9 @@ namespace EditorService.Infrastructure.DependencyInjection
 
                         // When a handler asks for IGameRepository, it gets the EF Core version.
                         services.AddScoped<IGameRepository, GameRepository>();
+
+                        // When the Api asks for IGameQueries, it gets the EF Core version.
+                        services.AddScoped<IGameQueries, GameQueries>();
 
                         return services;
                 }

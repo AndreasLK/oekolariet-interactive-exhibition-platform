@@ -26,5 +26,23 @@ namespace EditorService.Api.Mapper
                 {
                         return new GameResponse(Id: dto.Id, Title: dto.Title, Type: dto.Type, Status: dto.Status);
                 }
+
+                /// <summary>Turns a rename request into a command.</summary>
+                public static RenameGameCommand ToCommand(RenameGameRequest request, Guid gameId, Guid lockToken, string actorId)
+                {
+                        return new RenameGameCommand(GameId: gameId, LockToken: lockToken, Title: request.Title, ActorId: actorId);
+                }
+
+                /// <summary>Turns a template request into a command.</summary>
+                public static UpdateGameTemplateCommand ToCommand(UpdateGameTemplateRequest request, Guid gameId, Guid lockToken, string actorId)
+                {
+                        return new UpdateGameTemplateCommand(GameId: gameId, LockToken: lockToken, TemplateId: request.TemplateId, ActorId: actorId);
+                }
+
+                /// <summary>Turns a theme request into a command.</summary>
+                public static UpdateGameThemeCommand ToCommand(UpdateGameThemeRequest request, Guid gameId, Guid lockToken, string actorId)
+                {
+                        return new UpdateGameThemeCommand(GameId: gameId, LockToken: lockToken, ThemeId: request.ThemeId, ActorId: actorId);
+                }
         }
 }

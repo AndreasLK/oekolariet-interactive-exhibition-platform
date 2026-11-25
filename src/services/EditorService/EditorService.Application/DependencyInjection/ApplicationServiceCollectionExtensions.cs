@@ -27,6 +27,11 @@ namespace EditorService.Application.DependencyInjection
 
                         // One line per command handler.
                         services.AddScoped<ICreateSortingGameCommandHandler, CreateSortingGameCommandHandler>();
+                        services.AddScoped<IRenameGameCommandHandler, RenameGameCommandHandler>();
+                        services.AddScoped<IUpdateGameTemplateCommandHandler, UpdateGameTemplateCommandHandler>();
+                        services.AddScoped<IUpdateGameThemeCommandHandler, UpdateGameThemeCommandHandler>();
+                        services.AddScoped<IPublishGameCommandHandler, PublishGameCommandHandler>();
+                        services.AddScoped<IDeleteGameCommandHandler, DeleteGameCommandHandler>();
 
                         return services;
                 }
