@@ -63,7 +63,7 @@ public sealed class ImageApiEndpointTests
                         bytes: ApiEndpointTestFixtures.VALID_PNG_BYTES,
                         fileName: "actor.png",
                         contentType: DomainConstants.CONTENT_TYPE_PNG);
-                using HttpRequestMessage blankActorRequest = new(method: HttpMethod.Post, requestUri: "/api/images")
+                using HttpRequestMessage blankActorRequest = new(method: HttpMethod.Post, requestUri: "/api/v1/images")
                 {
                         Content = blankActorForm
                 };
@@ -74,7 +74,7 @@ public sealed class ImageApiEndpointTests
                 // Missing 'file' form field and 0-byte files both yield 400 ProblemDetails.
                 using MultipartFormDataContent missingFileForm = new();
                 missingFileForm.Add(content: new StringContent("alt"), name: "altText");
-                using HttpResponseMessage missingFileResponse = await client.PostAsync(requestUri: "/api/images", content: missingFileForm, cancellationToken: TestContext.Current.CancellationToken);
+                using HttpResponseMessage missingFileResponse = await client.PostAsync(requestUri: "/api/v1/images", content: missingFileForm, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.BadRequest, missingFileResponse.StatusCode);
 
                 using HttpResponseMessage emptyFileResponse = await ApiEndpointTestFixtures.UploadFileAsync(
@@ -93,7 +93,7 @@ public sealed class ImageApiEndpointTests
                 Assert.Equal(HttpStatusCode.BadRequest, spoofedResponse.StatusCode);
 
                 // Non-multipart request yields 415 UnsupportedMediaType.
-                using HttpResponseMessage nonMultipartResponse = await client.PostAsJsonAsync(requestUri: "/api/images", value: new { fileName = "a.png" }, cancellationToken: TestContext.Current.CancellationToken);
+                using HttpResponseMessage nonMultipartResponse = await client.PostAsJsonAsync(requestUri: "/api/v1/images", value: new { fileName = "a.png" }, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.UnsupportedMediaType, nonMultipartResponse.StatusCode);
 
                 // Payload exceeding MultipartBodyLengthLimit yields 413 PayloadTooLarge.
@@ -136,20 +136,20 @@ public sealed class ImageApiEndpointTests
                 using HttpClient client = factory.CreateClient();
 
                 // Act & Assert: Metadata, listing, invalid GUID routing, and Guid.Empty validation.
-                using HttpResponseMessage listResponse = await client.GetAsync(requestUri: "/api/images?page=1&pageSize=10&searchTerm=skov", cancellationToken: TestContext.Current.CancellationToken);
+                using HttpResponseMessage listResponse = await client.GetAsync(requestUri: "/api/v1/images?page=1&pageSize=10&searchTerm=skov", cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
 
-                using HttpResponseMessage metadataResponse = await client.GetAsync(requestUri: $"/api/images/{seeded.Id}", cancellationToken: TestContext.Current.CancellationToken);
+                using HttpResponseMessage metadataResponse = await client.GetAsync(requestUri: $"/api/v1/images/{seeded.Id}", cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.OK, metadataResponse.StatusCode);
 
-                using HttpResponseMessage emptyGuidResponse = await client.GetAsync(requestUri: $"/api/images/{Guid.Empty}", cancellationToken: TestContext.Current.CancellationToken);
+                using HttpResponseMessage emptyGuidResponse = await client.GetAsync(requestUri: $"/api/v1/images/{Guid.Empty}", cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.BadRequest, emptyGuidResponse.StatusCode);
 
-                using HttpResponseMessage malformedGuidResponse = await client.GetAsync(requestUri: "/api/images/not-a-guid", cancellationToken: TestContext.Current.CancellationToken);
-                Assert.Equal(HttpStatusCode.NotFound, malformedGuidResponse.StatusCode);
+                using HttpResponseMessage malformedGuidResponse = await client.GetAsync(requestUri: "/api/v1/images/not-a-guid", cancellationToken: TestContext.Current.CancellationToken);
+                Assert.Equal(HttpStatusCode.BadRequest, malformedGuidResponse.StatusCode);
 
                 // Act & Assert: Content response headers including UTF-8 FileNameStar, immutable Cache-Control, and security headers.
-                using HttpResponseMessage contentResponse = await client.GetAsync(requestUri: $"/api/images/{seeded.Id}/content", cancellationToken: TestContext.Current.CancellationToken);
+                using HttpResponseMessage contentResponse = await client.GetAsync(requestUri: $"/api/v1/images/{seeded.Id}/content", cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.OK, contentResponse.StatusCode);
                 Assert.Equal(ApiEndpointTestFixtures.VALID_PNG_BYTES, await contentResponse.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
                 Assert.True(contentResponse.Headers.CacheControl?.Public ?? false);
@@ -158,24 +158,24 @@ public sealed class ImageApiEndpointTests
                 Assert.NotNull(contentResponse.Content.Headers.ContentDisposition?.FileNameStar);
 
                 // Orphaned metadata without binary returns 404.
-                using HttpResponseMessage orphanedResponse = await client.GetAsync(requestUri: $"/api/images/{orphaned.Id}/content", cancellationToken: TestContext.Current.CancellationToken);
+                using HttpResponseMessage orphanedResponse = await client.GetAsync(requestUri: $"/api/v1/images/{orphaned.Id}/content", cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.NotFound, orphanedResponse.StatusCode);
 
                 // Deleting an image referenced by a template returns 409 Conflict; unreferenced returns 204.
                 state.ReferencedImageIds.Add(seeded.Id);
-                using HttpResponseMessage conflictDeleteResponse = await client.DeleteAsync(requestUri: $"/api/images/{seeded.Id}", cancellationToken: TestContext.Current.CancellationToken);
+                using HttpResponseMessage conflictDeleteResponse = await client.DeleteAsync(requestUri: $"/api/v1/images/{seeded.Id}", cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.Conflict, conflictDeleteResponse.StatusCode);
 
                 state.ReferencedImageIds.Remove(seeded.Id);
-                using HttpResponseMessage deleteResponse = await client.DeleteAsync(requestUri: $"/api/images/{seeded.Id}", cancellationToken: TestContext.Current.CancellationToken);
+                using HttpResponseMessage deleteResponse = await client.DeleteAsync(requestUri: $"/api/v1/images/{seeded.Id}", cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
 
-                using HttpResponseMessage deleteMissingResponse = await client.DeleteAsync(requestUri: $"/api/images/{seeded.Id}", cancellationToken: TestContext.Current.CancellationToken);
+                using HttpResponseMessage deleteMissingResponse = await client.DeleteAsync(requestUri: $"/api/v1/images/{seeded.Id}", cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.NotFound, deleteMissingResponse.StatusCode);
         }
 
         /// <summary>
-        /// Verifies that <c>GET /api/images/{id}/content</c> emits <c>Vary: Origin</c> without an <c>Origin</c> header and emits non-duplicated CORS headers when an allowed <c>Origin</c> is sent.
+        /// Verifies that <c>GET /api/v1/images/{id}/content</c> emits <c>Vary: Origin</c> without an <c>Origin</c> header and emits non-duplicated CORS headers when an allowed <c>Origin</c> is sent.
         /// </summary>
         [Fact]
         public async Task GetImageContent_SetsVaryOriginWithoutOriginHeaderAndDoesNotDuplicateOnCorsRequestsAsync()
@@ -197,7 +197,7 @@ public sealed class ImageApiEndpointTests
                 using HttpClient client = factory.CreateClient();
 
                 // Act 1: Request content without an Origin header (simulating a plain <img> tag).
-                using HttpResponseMessage noOriginResponse = await client.GetAsync(requestUri: $"/api/images/{seeded.Id}/content", cancellationToken: TestContext.Current.CancellationToken);
+                using HttpResponseMessage noOriginResponse = await client.GetAsync(requestUri: $"/api/v1/images/{seeded.Id}/content", cancellationToken: TestContext.Current.CancellationToken);
 
                 // Assert 1: Vary: Origin must still be returned so the browser cache separates <img> responses from fetch() responses.
                 Assert.Equal(expected: HttpStatusCode.OK, actual: noOriginResponse.StatusCode);
@@ -206,7 +206,7 @@ public sealed class ImageApiEndpointTests
                 Assert.Single(collection: noOriginVaryValues, expected: HeaderNames.Origin);
 
                 // Act 2: Request content with an allowed Origin header (simulating Blazor WASM DownloadImageAsync fetch()).
-                using HttpRequestMessage corsRequest = new(method: HttpMethod.Get, requestUri: $"/api/images/{seeded.Id}/content");
+                using HttpRequestMessage corsRequest = new(method: HttpMethod.Get, requestUri: $"/api/v1/images/{seeded.Id}/content");
                 corsRequest.Headers.Add(name: HeaderNames.Origin, value: ApiEndpointTestFixtures.ALLOWED_ORIGIN);
                 using HttpResponseMessage corsResponse = await client.SendAsync(request: corsRequest, cancellationToken: TestContext.Current.CancellationToken);
 
