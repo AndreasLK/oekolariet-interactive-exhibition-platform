@@ -58,7 +58,7 @@ public sealed class ContentServiceMetadataAndConfigurationTests
                                 BaseAddress = baseAddress
                         }));
 
-                ContentImageMetadata actual = await client.GetImageMetadataAsync(imageId: imageId);
+                ContentImageMetadata actual = await client.GetImageMetadataAsync(imageId: imageId, cancellationToken: TestContext.Current.CancellationToken);
 
                 Assert.Equal(expected: expected, actual: actual);
                 Assert.Equal(

@@ -61,29 +61,22 @@ public sealed class ContentApiIntegrationTests : IAsyncLifetime
                         SchemaJson: "{}");
 
                 // Act 1: Create -> 201
-                using HttpResponseMessage createResponse = await client.PostAsJsonAsync(
-                        requestUri: ApiIntegrationTestFixtures.TEMPLATES_ROUTE,
-                        value: createRequest,
-                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
+                using HttpResponseMessage createResponse = await client.PostAsJsonAsync(requestUri: ApiIntegrationTestFixtures.TEMPLATES_ROUTE, value: createRequest, options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
-                TemplateResult? created = await createResponse.Content.ReadFromJsonAsync<TemplateResult>(
-                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
+                TemplateResult? created = await createResponse.Content.ReadFromJsonAsync<TemplateResult>(options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.NotNull(created);
                 Assert.Equal($"{ApiIntegrationTestFixtures.TEMPLATES_ROUTE}/{created.Id}", createResponse.Headers.Location?.ToString());
 
                 // Act 2: Duplicate name -> 400 ProblemDetails
-                using HttpResponseMessage duplicateResponse = await client.PostAsJsonAsync(
-                        requestUri: ApiIntegrationTestFixtures.TEMPLATES_ROUTE,
-                        value: createRequest with { Name = "  water exhibit " },
-                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
+                using HttpResponseMessage duplicateResponse = await client.PostAsJsonAsync(requestUri: ApiIntegrationTestFixtures.TEMPLATES_ROUTE, value: createRequest with { Name = "  water exhibit " }, options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 await ApiIntegrationTestFixtures.AssertProblemDetailsStatusAsync(
                         response: duplicateResponse,
                         expectedStatusCode: HttpStatusCode.BadRequest);
 
                 // Act 3: Get & List -> 200, Missing -> 404
-                using HttpResponseMessage getResponse = await client.GetAsync($"{ApiIntegrationTestFixtures.TEMPLATES_ROUTE}/{created.Id}");
-                using HttpResponseMessage missingResponse = await client.GetAsync($"{ApiIntegrationTestFixtures.TEMPLATES_ROUTE}/{Guid.NewGuid()}");
-                using HttpResponseMessage listResponse = await client.GetAsync($"{ApiIntegrationTestFixtures.TEMPLATES_ROUTE}?componentType=InfoScreen&searchTerm=water");
+                using HttpResponseMessage getResponse = await client.GetAsync($"{ApiIntegrationTestFixtures.TEMPLATES_ROUTE}/{created.Id}", TestContext.Current.CancellationToken);
+                using HttpResponseMessage missingResponse = await client.GetAsync($"{ApiIntegrationTestFixtures.TEMPLATES_ROUTE}/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
+                using HttpResponseMessage listResponse = await client.GetAsync($"{ApiIntegrationTestFixtures.TEMPLATES_ROUTE}?componentType=InfoScreen&searchTerm=water", TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
                 Assert.Equal(HttpStatusCode.NotFound, missingResponse.StatusCode);
                 Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
@@ -93,32 +86,24 @@ public sealed class ContentApiIntegrationTests : IAsyncLifetime
                         Name: "Water Exhibit V2",
                         SchemaJson: "{\"version\":2}",
                         ExpectedConcurrencyStamp: created.ConcurrencyStamp);
-                using HttpResponseMessage updateResponse = await client.PutAsJsonAsync(
-                        requestUri: $"{ApiIntegrationTestFixtures.TEMPLATES_ROUTE}/{created.Id}",
-                        value: updateRequest,
-                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
+                using HttpResponseMessage updateResponse = await client.PutAsJsonAsync(requestUri: $"{ApiIntegrationTestFixtures.TEMPLATES_ROUTE}/{created.Id}", value: updateRequest, options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
-                TemplateResult? updated = await updateResponse.Content.ReadFromJsonAsync<TemplateResult>(
-                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
+                TemplateResult? updated = await updateResponse.Content.ReadFromJsonAsync<TemplateResult>(options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.NotNull(updated);
                 Assert.Equal(DomainConstants.INITIAL_VERSION + 1, updated.SchemaVersion);
 
-                using HttpResponseMessage staleUpdateResponse = await client.PutAsJsonAsync(
-                        requestUri: $"{ApiIntegrationTestFixtures.TEMPLATES_ROUTE}/{created.Id}",
-                        value: updateRequest,
-                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
+                using HttpResponseMessage staleUpdateResponse = await client.PutAsJsonAsync(requestUri: $"{ApiIntegrationTestFixtures.TEMPLATES_ROUTE}/{created.Id}", value: updateRequest, options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 await ApiIntegrationTestFixtures.AssertProblemDetailsStatusAsync(
                         response: staleUpdateResponse,
                         expectedStatusCode: HttpStatusCode.Conflict);
 
                 // Act 5: Delete (archive) -> 204, archived GET -> 200 (IsArchived == true), second delete -> 404
-                using HttpResponseMessage deleteResponse = await client.DeleteAsync($"{ApiIntegrationTestFixtures.TEMPLATES_ROUTE}/{created.Id}");
-                using HttpResponseMessage archivedGetResponse = await client.GetAsync($"{ApiIntegrationTestFixtures.TEMPLATES_ROUTE}/{created.Id}");
-                using HttpResponseMessage secondDeleteResponse = await client.DeleteAsync($"{ApiIntegrationTestFixtures.TEMPLATES_ROUTE}/{created.Id}");
+                using HttpResponseMessage deleteResponse = await client.DeleteAsync($"{ApiIntegrationTestFixtures.TEMPLATES_ROUTE}/{created.Id}", TestContext.Current.CancellationToken);
+                using HttpResponseMessage archivedGetResponse = await client.GetAsync($"{ApiIntegrationTestFixtures.TEMPLATES_ROUTE}/{created.Id}", TestContext.Current.CancellationToken);
+                using HttpResponseMessage secondDeleteResponse = await client.DeleteAsync($"{ApiIntegrationTestFixtures.TEMPLATES_ROUTE}/{created.Id}", TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
                 Assert.Equal(HttpStatusCode.OK, archivedGetResponse.StatusCode);
-                TemplateResult? archivedTemplate = await archivedGetResponse.Content.ReadFromJsonAsync<TemplateResult>(
-                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
+                TemplateResult? archivedTemplate = await archivedGetResponse.Content.ReadFromJsonAsync<TemplateResult>(options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.NotNull(archivedTemplate);
                 Assert.True(archivedTemplate.IsArchived);
                 Assert.Equal(HttpStatusCode.NotFound, secondDeleteResponse.StatusCode);
@@ -143,10 +128,9 @@ public sealed class ContentApiIntegrationTests : IAsyncLifetime
                 using HttpClient client = factory.CreateClient();
 
                 // Health when empty -> Healthy, 0 bytes
-                using HttpResponseMessage emptyHealthResponse = await client.GetAsync(ApiIntegrationTestFixtures.STORAGE_HEALTH_ROUTE);
+                using HttpResponseMessage emptyHealthResponse = await client.GetAsync(ApiIntegrationTestFixtures.STORAGE_HEALTH_ROUTE, TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.OK, emptyHealthResponse.StatusCode);
-                StorageHealthResult? emptyHealth = await emptyHealthResponse.Content.ReadFromJsonAsync<StorageHealthResult>(
-                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
+                StorageHealthResult? emptyHealth = await emptyHealthResponse.Content.ReadFromJsonAsync<StorageHealthResult>(options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.NotNull(emptyHealth);
                 Assert.Equal(StorageHealthStatus.Healthy, emptyHealth.Status);
                 Assert.Equal(0L, emptyHealth.UsedBytes);
@@ -157,13 +141,11 @@ public sealed class ContentApiIntegrationTests : IAsyncLifetime
                         payload: ApiIntegrationTestFixtures.VALID_PNG_PAYLOAD,
                         fileName: "bundle.png",
                         contentType: DomainConstants.CONTENT_TYPE_PNG);
-                ImageMetadataResult? image = await uploadResponse.Content.ReadFromJsonAsync<ImageMetadataResult>(
-                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
+                ImageMetadataResult? image = await uploadResponse.Content.ReadFromJsonAsync<ImageMetadataResult>(options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.NotNull(image);
 
-                using HttpResponseMessage warningHealthResponse = await client.GetAsync(ApiIntegrationTestFixtures.STORAGE_HEALTH_ROUTE);
-                StorageHealthResult? warningHealth = await warningHealthResponse.Content.ReadFromJsonAsync<StorageHealthResult>(
-                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
+                using HttpResponseMessage warningHealthResponse = await client.GetAsync(ApiIntegrationTestFixtures.STORAGE_HEALTH_ROUTE, TestContext.Current.CancellationToken);
+                StorageHealthResult? warningHealth = await warningHealthResponse.Content.ReadFromJsonAsync<StorageHealthResult>(options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.NotNull(warningHealth);
                 Assert.Equal(StorageHealthStatus.Warning, warningHealth.Status);
                 Assert.Equal(ApiIntegrationTestFixtures.VALID_PNG_PAYLOAD.Length, warningHealth.UsedBytes);
@@ -174,50 +156,34 @@ public sealed class ContentApiIntegrationTests : IAsyncLifetime
                         TemplateId = null,
                         ImplementationJson = $"{{\"bg\":\"{image.PictureReference}\"}}"
                 };
-                using HttpResponseMessage bundleResponse = await client.PostAsJsonAsync(
-                        requestUri: ApiIntegrationTestFixtures.PUBLISH_BUNDLES_ROUTE,
-                        value: validBundleCommand,
-                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
+                using HttpResponseMessage bundleResponse = await client.PostAsJsonAsync(requestUri: ApiIntegrationTestFixtures.PUBLISH_BUNDLES_ROUTE, value: validBundleCommand, options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.OK, bundleResponse.StatusCode);
-                PublishBundleResult? bundle = await bundleResponse.Content.ReadFromJsonAsync<PublishBundleResult>(
-                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
+                PublishBundleResult? bundle = await bundleResponse.Content.ReadFromJsonAsync<PublishBundleResult>(options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.NotNull(bundle);
                 Assert.Equal(DomainConstants.SHA256_HEX_LENGTH, bundle.BundleChecksum.Length);
                 BundleAssetResult asset = Assert.Single(bundle.Assets);
                 Assert.Equal(image.Id, asset.ImageId);
 
                 // Missing template -> 404 & Missing image -> 404
-                using HttpResponseMessage missingTemplateResponse = await client.PostAsJsonAsync(
-                        requestUri: ApiIntegrationTestFixtures.PUBLISH_BUNDLES_ROUTE,
-                        value: new ResolvePublishBundleCommand { TemplateId = Guid.NewGuid(), ImplementationJson = "{}" },
-                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
+                using HttpResponseMessage missingTemplateResponse = await client.PostAsJsonAsync(requestUri: ApiIntegrationTestFixtures.PUBLISH_BUNDLES_ROUTE, value: new ResolvePublishBundleCommand { TemplateId = Guid.NewGuid(), ImplementationJson = "{}" }, options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.NotFound, missingTemplateResponse.StatusCode);
 
-                using HttpResponseMessage missingImageResponse = await client.PostAsJsonAsync(
-                        requestUri: ApiIntegrationTestFixtures.PUBLISH_BUNDLES_ROUTE,
-                        value: new ResolvePublishBundleCommand
-                        {
-                                TemplateId = null,
-                                ImplementationJson = $"{{\"missing\":\"picture.node-1.{Guid.NewGuid():D}\"}}"
-                        },
-                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
+                using HttpResponseMessage missingImageResponse = await client.PostAsJsonAsync(requestUri: ApiIntegrationTestFixtures.PUBLISH_BUNDLES_ROUTE, value: new ResolvePublishBundleCommand
+                {
+                        TemplateId = null,
+                        ImplementationJson = $"{{\"missing\":\"picture.node-1.{Guid.NewGuid():D}\"}}"
+                }, options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.NotFound, missingImageResponse.StatusCode);
 
                 // Malformed JSON -> 400 & Base64 data URI -> 400
-                using HttpResponseMessage malformedJsonResponse = await client.PostAsJsonAsync(
-                        requestUri: ApiIntegrationTestFixtures.PUBLISH_BUNDLES_ROUTE,
-                        value: new ResolvePublishBundleCommand { TemplateId = null, ImplementationJson = "{bad-json" },
-                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
+                using HttpResponseMessage malformedJsonResponse = await client.PostAsJsonAsync(requestUri: ApiIntegrationTestFixtures.PUBLISH_BUNDLES_ROUTE, value: new ResolvePublishBundleCommand { TemplateId = null, ImplementationJson = "{bad-json" }, options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.BadRequest, malformedJsonResponse.StatusCode);
 
-                using HttpResponseMessage base64Response = await client.PostAsJsonAsync(
-                        requestUri: ApiIntegrationTestFixtures.PUBLISH_BUNDLES_ROUTE,
-                        value: new ResolvePublishBundleCommand
-                        {
-                                TemplateId = null,
-                                ImplementationJson = "{\"img\":\"data:image/png;base64,AAAA\"}"
-                        },
-                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
+                using HttpResponseMessage base64Response = await client.PostAsJsonAsync(requestUri: ApiIntegrationTestFixtures.PUBLISH_BUNDLES_ROUTE, value: new ResolvePublishBundleCommand
+                {
+                        TemplateId = null,
+                        ImplementationJson = "{\"img\":\"data:image/png;base64,AAAA\"}"
+                }, options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.BadRequest, base64Response.StatusCode);
         }
 
@@ -242,7 +208,7 @@ public sealed class ContentApiIntegrationTests : IAsyncLifetime
                 using HttpRequestMessage preflight = new(HttpMethod.Options, ApiIntegrationTestFixtures.IMAGES_ROUTE);
                 preflight.Headers.Add(HeaderNames.Origin, ALLOWED_ORIGIN);
                 preflight.Headers.Add(HeaderNames.AccessControlRequestMethod, HttpMethod.Post.Method);
-                using HttpResponseMessage preflightResponse = await client.SendAsync(preflight);
+                using HttpResponseMessage preflightResponse = await client.SendAsync(preflight, TestContext.Current.CancellationToken);
 
                 // Assert 1
                 Assert.Equal(HttpStatusCode.NoContent, preflightResponse.StatusCode);
@@ -255,7 +221,7 @@ public sealed class ContentApiIntegrationTests : IAsyncLifetime
                         Content = new StringContent("{not-valid-json", Encoding.UTF8, MediaTypeNames.Application.Json)
                 };
                 badCrossOriginRequest.Headers.Add(HeaderNames.Origin, ALLOWED_ORIGIN);
-                using HttpResponseMessage badBodyResponse = await client.SendAsync(badCrossOriginRequest);
+                using HttpResponseMessage badBodyResponse = await client.SendAsync(badCrossOriginRequest, TestContext.Current.CancellationToken);
 
                 // Assert 2
                 Assert.True(badBodyResponse.Headers.TryGetValues(HeaderNames.AccessControlAllowOrigin, out IEnumerable<string>? errorOrigins));
@@ -266,7 +232,7 @@ public sealed class ContentApiIntegrationTests : IAsyncLifetime
 
                 // Act 3: Non-multipart JSON sent to POST /api/images -> 415 Unsupported Media Type
                 using StringContent jsonUploadBody = new("{}", Encoding.UTF8, MediaTypeNames.Application.Json);
-                using HttpResponseMessage unsupportedMediaResponse = await client.PostAsync(ApiIntegrationTestFixtures.IMAGES_ROUTE, jsonUploadBody);
+                using HttpResponseMessage unsupportedMediaResponse = await client.PostAsync(ApiIntegrationTestFixtures.IMAGES_ROUTE, jsonUploadBody, TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.UnsupportedMediaType, unsupportedMediaResponse.StatusCode);
 
                 // Act 4: Payload exceeding MultipartBodyLengthLimit -> 413 Request Entity Too Large

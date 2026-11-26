@@ -47,7 +47,7 @@ public sealed class ContentServiceAlbumAndMetadataTests
                         SearchTerm = "banana",
                         AlbumPath = "Madaffald/Frugt",
                         IncludeSubalbums = false
-                });
+                }, cancellationToken: TestContext.Current.CancellationToken);
 
                 // Assert
                 Assert.Equal(
@@ -73,7 +73,7 @@ public sealed class ContentServiceAlbumAndMetadataTests
                 ContentServiceImageClient client = CreateClient(handler: handler);
 
                 // Act
-                IReadOnlyList<string> actual = await client.ListAlbumsAsync(parentPath: "Madaffald");
+                IReadOnlyList<string> actual = await client.ListAlbumsAsync(parentPath: "Madaffald", cancellationToken: TestContext.Current.CancellationToken);
 
                 // Assert
                 Assert.Equal(expected: expected, actual: actual);
@@ -118,15 +118,13 @@ public sealed class ContentServiceAlbumAndMetadataTests
                 ContentServiceImageClient client = CreateClient(handler: handler);
 
                 // Act
-                ContentImageMetadata actual = await client.UpdateImageMetadataAsync(
-                        imageId: imageId,
-                        request: new UpdateImageMetadataRequest
-                        {
-                                AltText = "Yellow banana",
-                                Tags = "banana, fruit",
-                                AlbumPath = "Madaffald",
-                                ExpectedConcurrencyStamp = originalStamp
-                        });
+                ContentImageMetadata actual = await client.UpdateImageMetadataAsync(imageId: imageId, request: new UpdateImageMetadataRequest
+                {
+                        AltText = "Yellow banana",
+                        Tags = "banana, fruit",
+                        AlbumPath = "Madaffald",
+                        ExpectedConcurrencyStamp = originalStamp
+                }, cancellationToken: TestContext.Current.CancellationToken);
 
                 // Assert
                 Assert.Equal(expected: HttpMethod.Patch, actual: handler.LastRequest?.Method);

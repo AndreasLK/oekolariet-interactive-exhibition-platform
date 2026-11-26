@@ -60,10 +60,7 @@ public sealed class ContentServiceCatalogAndDeleteTests
                 ContentServiceImageClient client = CreateClient(handler: handler);
 
                 // Act
-                ContentPagedResult<ContentImageMetadata> actual = await client.ListImagesAsync(
-                        page: 2,
-                        pageSize: 12,
-                        searchTerm: "  ocean exhibit  ");
+                ContentPagedResult<ContentImageMetadata> actual = await client.ListImagesAsync(page: 2, pageSize: 12, searchTerm: "  ocean exhibit  ", cancellationToken: TestContext.Current.CancellationToken);
 
                 // Assert
                 Assert.Equal(expected: expected.TotalCount, actual: actual.TotalCount);
@@ -86,7 +83,7 @@ public sealed class ContentServiceCatalogAndDeleteTests
                 ContentServiceImageClient successClient = CreateClient(handler: successHandler);
 
                 // Act
-                await successClient.DeleteImageAsync(imageId: imageId);
+                await successClient.DeleteImageAsync(imageId: imageId, cancellationToken: TestContext.Current.CancellationToken);
 
                 // Assert
                 Assert.Equal(expected: HttpMethod.Delete, actual: successHandler.LastRequest?.Method);
@@ -112,7 +109,7 @@ public sealed class ContentServiceCatalogAndDeleteTests
 
                 // Act & Assert
                 ContentServiceApiException exception = await Assert.ThrowsAsync<ContentServiceApiException>(
-                        testCode: () => conflictClient.DeleteImageAsync(imageId: imageId));
+                        testCode: () => conflictClient.DeleteImageAsync(imageId: imageId, cancellationToken: TestContext.Current.CancellationToken));
                 Assert.Equal(expected: HttpStatusCode.Conflict, actual: exception.StatusCode);
         }
 

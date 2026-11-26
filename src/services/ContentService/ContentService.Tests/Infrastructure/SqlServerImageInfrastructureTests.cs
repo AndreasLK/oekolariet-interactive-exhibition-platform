@@ -49,8 +49,8 @@ public sealed class SqlServerImageInfrastructureTests : IAsyncLifetime
                 await using ContentDbContext dbContext = this._fixture.CreateDbContext();
 
                 // Act
-                IEnumerable<string> applied = await dbContext.Database.GetAppliedMigrationsAsync();
-                IEnumerable<string> pending = await dbContext.Database.GetPendingMigrationsAsync();
+                IEnumerable<string> applied = await dbContext.Database.GetAppliedMigrationsAsync(cancellationToken: TestContext.Current.CancellationToken);
+                IEnumerable<string> pending = await dbContext.Database.GetPendingMigrationsAsync(cancellationToken: TestContext.Current.CancellationToken);
 
                 // Assert
                 Assert.Contains(applied, migration => migration.EndsWith("_InitialCreate", StringComparison.Ordinal));
@@ -91,12 +91,12 @@ public sealed class SqlServerImageInfrastructureTests : IAsyncLifetime
                 SqlException fkException = await Assert.ThrowsAsync<SqlException>(() =>
                         dbContext.Images
                                 .Where(image => image.Id == referencedImage.Id)
-                                .ExecuteDeleteAsync());
+                                .ExecuteDeleteAsync(cancellationToken: TestContext.Current.CancellationToken));
                 Assert.Equal(SQL_ERROR_FOREIGN_KEY_CONFLICT, fkException.Number);
 
                 await dbContext.Images
                         .Where(image => image.Id == unreferencedImage.Id)
-                        .ExecuteDeleteAsync();
+                        .ExecuteDeleteAsync(cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Null(await this._fixture.GetStoredBinaryAsync(imageId: unreferencedImage.Id, cancellationToken: CancellationToken.None));
         }
 

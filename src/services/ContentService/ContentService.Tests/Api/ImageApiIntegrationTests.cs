@@ -63,8 +63,7 @@ public sealed class ImageApiIntegrationTests : IAsyncLifetime
 
                 // Assert 1
                 Assert.Equal(HttpStatusCode.Created, uploadResponse.StatusCode);
-                ImageMetadataResult? uploaded = await uploadResponse.Content.ReadFromJsonAsync<ImageMetadataResult>(
-                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
+                ImageMetadataResult? uploaded = await uploadResponse.Content.ReadFromJsonAsync<ImageMetadataResult>(options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.NotNull(uploaded);
                 Assert.Equal($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{uploaded.Id}", uploadResponse.Headers.Location?.ToString());
                 Assert.Equal("exhibit-hero.png", uploaded.FileName);
@@ -73,20 +72,19 @@ public sealed class ImageApiIntegrationTests : IAsyncLifetime
                 Assert.Equal(ApiIntegrationTestFixtures.VALID_PNG_PAYLOAD.Length, uploaded.SizeBytes);
 
                 // Act 2: Metadata + List
-                using HttpResponseMessage metadataResponse = await client.GetAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{uploaded.Id}");
-                using HttpResponseMessage listResponse = await client.GetAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}?page=1&pageSize=10&searchTerm=hero");
+                using HttpResponseMessage metadataResponse = await client.GetAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{uploaded.Id}", TestContext.Current.CancellationToken);
+                using HttpResponseMessage listResponse = await client.GetAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}?page=1&pageSize=10&searchTerm=hero", TestContext.Current.CancellationToken);
 
                 // Assert 2
                 Assert.Equal(HttpStatusCode.OK, metadataResponse.StatusCode);
                 Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
-                PagedResult<ImageMetadataResult>? listed = await listResponse.Content.ReadFromJsonAsync<PagedResult<ImageMetadataResult>>(
-                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
+                PagedResult<ImageMetadataResult>? listed = await listResponse.Content.ReadFromJsonAsync<PagedResult<ImageMetadataResult>>(options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.NotNull(listed);
                 Assert.Single(listed.Items);
 
                 // Act 3: Stream content
-                using HttpResponseMessage contentResponse = await client.GetAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{uploaded.Id}/content");
-                byte[] downloadedBytes = await contentResponse.Content.ReadAsByteArrayAsync();
+                using HttpResponseMessage contentResponse = await client.GetAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{uploaded.Id}/content", TestContext.Current.CancellationToken);
+                byte[] downloadedBytes = await contentResponse.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
 
                 // Assert 3
                 Assert.Equal(HttpStatusCode.OK, contentResponse.StatusCode);
@@ -101,9 +99,9 @@ public sealed class ImageApiIntegrationTests : IAsyncLifetime
                 Assert.Equal(ApiIntegrationTestFixtures.VALID_PNG_PAYLOAD, downloadedBytes);
 
                 // Act 4: Delete unreferenced image -> 204 -> 404
-                using HttpResponseMessage deleteResponse = await client.DeleteAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{uploaded.Id}");
-                using HttpResponseMessage afterDeleteMetadata = await client.GetAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{uploaded.Id}");
-                using HttpResponseMessage afterDeleteContent = await client.GetAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{uploaded.Id}/content");
+                using HttpResponseMessage deleteResponse = await client.DeleteAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{uploaded.Id}", TestContext.Current.CancellationToken);
+                using HttpResponseMessage afterDeleteMetadata = await client.GetAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{uploaded.Id}", TestContext.Current.CancellationToken);
+                using HttpResponseMessage afterDeleteContent = await client.GetAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{uploaded.Id}/content", TestContext.Current.CancellationToken);
 
                 // Assert 4
                 Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
@@ -192,22 +190,18 @@ public sealed class ImageApiIntegrationTests : IAsyncLifetime
                         payload: ApiIntegrationTestFixtures.VALID_PNG_PAYLOAD,
                         fileName: "linked.png",
                         contentType: DomainConstants.CONTENT_TYPE_PNG);
-                ImageMetadataResult? image = await uploadResponse.Content.ReadFromJsonAsync<ImageMetadataResult>(
-                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
+                ImageMetadataResult? image = await uploadResponse.Content.ReadFromJsonAsync<ImageMetadataResult>(options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.NotNull(image);
 
                 CreateTemplateRequest createTemplate = new(
                         Name: "Referencing Template",
                         ComponentType: ContentService.Facade.Dtos.TemplateComponentTypeDto.QuizTemplate,
                         SchemaJson: $"{{\"hero\":\"{image.PictureReference}\"}}");
-                using HttpResponseMessage templateResponse = await client.PostAsJsonAsync(
-                        requestUri: ApiIntegrationTestFixtures.TEMPLATES_ROUTE,
-                        value: createTemplate,
-                        options: ApiIntegrationTestFixtures.API_JSON_OPTIONS);
+                using HttpResponseMessage templateResponse = await client.PostAsJsonAsync(requestUri: ApiIntegrationTestFixtures.TEMPLATES_ROUTE, value: createTemplate, options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.Created, templateResponse.StatusCode);
 
                 // Act
-                using HttpResponseMessage deleteResponse = await client.DeleteAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{image.Id}");
+                using HttpResponseMessage deleteResponse = await client.DeleteAsync($"{ApiIntegrationTestFixtures.IMAGES_ROUTE}/{image.Id}", TestContext.Current.CancellationToken);
 
                 // Assert
                 await ApiIntegrationTestFixtures.AssertProblemDetailsStatusAsync(
