@@ -39,7 +39,7 @@ public sealed class TemplateAndHealthEndpointTests
                 // Act & Assert: Create template -> 201; duplicate name -> 400; invalid componentType query -> 400.
                 CreateTemplateRequest createRequest = new(
                         Name: "Quiz Card",
-                        ComponentType: TemplateComponentType.QuizTemplate,
+                        ComponentType: ContentService.Facade.Dtos.TemplateComponentTypeDto.QuizTemplate,
                         SchemaJson: $"{{\"img\":\"{image.Reference}\"}}");
                 using HttpResponseMessage createResponse = await client.PostAsJsonAsync(
                         requestUri: "/api/templates",

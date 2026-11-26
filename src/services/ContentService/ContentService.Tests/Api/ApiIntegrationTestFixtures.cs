@@ -10,7 +10,7 @@ namespace ContentService.Tests.Api;
 /// <summary>
 /// Shared constants, multipart upload helpers, and ProblemDetails assertions for SQL Server API integration tests.
 /// </summary>
-internal static class ApiIntegrationTestHelpers
+internal static class ApiIntegrationTestFixtures
 {
         public const string IMAGES_ROUTE = "/api/images";
         public const string TEMPLATES_ROUTE = "/api/templates";

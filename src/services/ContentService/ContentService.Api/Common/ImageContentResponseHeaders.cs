@@ -1,4 +1,4 @@
-using ContentService.Application.Models;
+using ContentService.Facade.Dtos;
 using Microsoft.Net.Http.Headers;
 
 namespace ContentService.Api.Common;
@@ -32,11 +32,16 @@ internal static class ImageContentResponseHeaders
         /// <param name="metadata">The image metadata describing size and file name.</param>
         public static void Configure(
                 HttpResponse response,
-                ImageMetadataResult metadata)
+                ImageMetadataDto metadata)
         {
+                // Image bytes are immutable per ID (metadata edits do not alter bytes; replacements get a new ID), so 1-year immutable caching avoids 304 revalidation round-trips on kiosks.
                 response.Headers.CacheControl = ApiConstants.IMAGE_CACHE_CONTROL_HEADER_VALUE;
                 response.ContentLength = metadata.SizeBytes;
+
+                // Advertise no byte-range support because images are served as full blobs rather than random-access range streams.
                 response.Headers[HeaderNames.AcceptRanges] = ApiConstants.ACCEPT_RANGES_NONE;
+
+                // Prevent browsers from MIME-sniffing binary image responses into executable HTML or script.
                 response.Headers[HeaderNames.XContentTypeOptions] = ApiConstants.CONTENT_TYPE_OPTIONS_NOSNIFF;
 
                 // Use FileNameStar so RFC 6266 UTF-8 percent-encoding preserves spaces and Danish/non-ASCII characters safely in HTTP headers.

@@ -82,7 +82,7 @@ public sealed class ContentApiEndpointTests
                         Content = JsonContent.Create(
                                 inputValue: new CreateTemplateRequest(
                                         Name: "Auth Precedence",
-                                        ComponentType: TemplateComponentType.Custom,
+                                        ComponentType: ContentService.Facade.Dtos.TemplateComponentTypeDto.Custom,
                                         SchemaJson: "{}",
                                         ActorId: "spoofed-body-actor"),
                                 options: ApiEndpointTestFixtures.API_JSON_OPTIONS)
