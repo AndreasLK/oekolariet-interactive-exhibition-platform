@@ -25,11 +25,11 @@ public sealed class ContentImageGalleryTests : BunitContext
         public void InitialRender_WhenImagesExist_DisplaysMediaTilesAndCount()
         {
                 // Arrange
-                ContentImageMetadata first = CreateMetadata(fileName: "forest.png");
-                ContentImageMetadata second = CreateMetadata(fileName: "ocean.jpg");
+                ContentImageResponse first = CreateMetadata(fileName: "forest.png");
+                ContentImageResponse second = CreateMetadata(fileName: "ocean.jpg");
                 StubContentImageClient stubClient = new()
                 {
-                        OnListImagesQueryAsync = (query, _) => Task.FromResult(result: new ContentPagedResult<ContentImageMetadata>
+                        OnListImagesQueryAsync = (query, _) => Task.FromResult(result: new ContentPagedResponse<ContentImageResponse>
                         {
                                 Items = [first, second],
                                 Page = query.Page,
@@ -57,13 +57,13 @@ public sealed class ContentImageGalleryTests : BunitContext
         {
                 // Arrange
                 List<string?> queriedAlbums = [];
-                ContentImageMetadata banana = CreateMetadata(fileName: "banana.png", albumPath: "Madaffald");
+                ContentImageResponse banana = CreateMetadata(fileName: "banana.png", albumPath: "Madaffald");
                 StubContentImageClient stubClient = new()
                 {
                         OnListImagesQueryAsync = (query, _) =>
                         {
                                 queriedAlbums.Add(item: query.AlbumPath);
-                                return Task.FromResult(result: new ContentPagedResult<ContentImageMetadata>
+                                return Task.FromResult(result: new ContentPagedResponse<ContentImageResponse>
                                 {
                                         Items = [banana],
                                         Page = 1,
@@ -114,14 +114,14 @@ public sealed class ContentImageGalleryTests : BunitContext
         {
                 // Arrange
                 List<string?> recordedSearches = [];
-                ContentImageMetadata match = CreateMetadata(fileName: "whale.webp");
+                ContentImageResponse match = CreateMetadata(fileName: "whale.webp");
                 StubContentImageClient stubClient = new()
                 {
                         OnListImagesQueryAsync = (query, _) =>
                         {
                                 recordedSearches.Add(item: query.SearchTerm);
-                                IReadOnlyList<ContentImageMetadata> items = string.IsNullOrEmpty(value: query.SearchTerm) ? [] : [match];
-                                return Task.FromResult(result: new ContentPagedResult<ContentImageMetadata>
+                                IReadOnlyList<ContentImageResponse> items = string.IsNullOrEmpty(value: query.SearchTerm) ? [] : [match];
+                                return Task.FromResult(result: new ContentPagedResponse<ContentImageResponse>
                                 {
                                         Items = items,
                                         Page = 1,
@@ -188,8 +188,8 @@ public sealed class ContentImageGalleryTests : BunitContext
                         OnListImagesQueryAsync = (query, _) =>
                         {
                                 requestedPages.Add(item: query.Page);
-                                ContentImageMetadata item = CreateMetadata(fileName: $"page-{query.Page}.png");
-                                return Task.FromResult(result: new ContentPagedResult<ContentImageMetadata>
+                                ContentImageResponse item = CreateMetadata(fileName: $"page-{query.Page}.png");
+                                return Task.FromResult(result: new ContentPagedResponse<ContentImageResponse>
                                 {
                                         Items = [item],
                                         Page = query.Page,
@@ -223,12 +223,12 @@ public sealed class ContentImageGalleryTests : BunitContext
                 this.Services.AddSingleton<IContentServiceImageClient>(implementationInstance: imageClient);
         }
 
-        private static ContentImageMetadata CreateMetadata(
+        private static ContentImageResponse CreateMetadata(
                 string fileName,
                 string? albumPath = null)
         {
                 Guid id = Guid.NewGuid();
-                return new ContentImageMetadata
+                return new ContentImageResponse
                 {
                         Id = id,
                         PictureReference = $"picture.node-1.{id:D}",
