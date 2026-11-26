@@ -13,6 +13,7 @@ using ContentService.Domain.Common;
 using ContentService.Domain.Entities;
 using ContentService.Domain.Enums;
 using ContentService.Domain.Exceptions;
+using ContentService.Tests.TestDoubles;
 using Microsoft.Extensions.Options;
 
 namespace ContentService.Tests.Application;
@@ -43,17 +44,18 @@ public sealed class ContentApplicationUnitTests
         private const int SPOOFED_ACTUAL_PAYLOAD_BYTES = 128;
 
         /// <summary>
-        /// Valid 8-byte PNG signature prefix followed by minimal data.
+        /// Official 8-byte PNG magic header (<c>0x89</c> + <c>"PNG"</c> + <c>CRLF</c> + <c>Ctrl+Z</c> + <c>LF</c>) plus 1 dummy byte (<c>0x01</c>)
+        /// so mocked uploads pass magic-byte validation.
         /// </summary>
         private static readonly byte[] VALID_PNG_BYTES = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x01];
 
         /// <summary>
-        /// Valid JPEG header bytes followed by minimal data.
+        /// Official JPEG Start-of-Image (<c>0xFF 0xD8</c>) + APP0/JFIF marker (<c>0xFF 0xE0</c>) + segment length (<c>0x00 0x10</c>).
         /// </summary>
         private static readonly byte[] VALID_JPEG_BYTES = [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10];
 
         /// <summary>
-        /// Valid WebP header bytes followed by minimal data.
+        /// Official WebP RIFF container header: <c>"RIFF"</c> (<c>52 49 46 46</c>), dummy 4-byte size, <c>"WEBP"</c> at offset 8 (<c>57 45 42 50</c>), and <c>'V'</c>.
         /// </summary>
         private static readonly byte[] VALID_WEBP_BYTES = [0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56];
 
@@ -336,184 +338,5 @@ public sealed class ContentApplicationUnitTests
                         fileSizeBytes: bytes.Length,
                         sha256Hash: hash,
                         actorId: ACTOR_ID);
-        }
-
-        /// <summary>
-        /// Minimal in-memory <see cref="IImageRepository"/> test double for unit tests.
-        /// </summary>
-        private sealed class FakeImageRepository : IImageRepository
-        {
-                private readonly Dictionary<Guid, ImageEntity> _images = [];
-                private readonly Dictionary<Guid, byte[]> _binaries = [];
-
-                public void Seed(ImageEntity image, byte[]? binaryBytes)
-                {
-                        this._images[image.Id] = image;
-                        if (binaryBytes is not null)
-                        {
-                                this._binaries[image.Id] = binaryBytes;
-                        }
-                }
-
-                public byte[]? GetBinary(Guid imageId) =>
-                        this._binaries.TryGetValue(key: imageId, value: out byte[]? data) ? data : null;
-
-                public Task<ImageEntity?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
-                        Task.FromResult(this._images.TryGetValue(key: id, value: out ImageEntity? image) ? image : null);
-
-                public Task<IReadOnlyList<ImageEntity>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken) =>
-                        Task.FromResult<IReadOnlyList<ImageEntity>>(
-                                ids.Where(id => this._images.ContainsKey(id)).Select(id => this._images[id]).ToList());
-
-                public Task<ImageEntity?> GetBySha256Async(string sha256Hash, CancellationToken cancellationToken) =>
-                        Task.FromResult(this._images.Values.FirstOrDefault(image => !image.IsDeleted && image.Sha256Hash == sha256Hash));
-
-                public Task<PagedResult<ImageEntity>> ListAsync(int page, int pageSize, string? searchTerm, CancellationToken cancellationToken) =>
-                        Task.FromResult(new PagedResult<ImageEntity>
-                        {
-                                Items = this._images.Values.Where(image => !image.IsDeleted).ToList(),
-                                Page = page,
-                                PageSize = pageSize,
-                                TotalCount = this._images.Values.Count(image => !image.IsDeleted)
-                        });
-
-                public Task<bool> IsReferencedByAnyTemplateAsync(Guid imageId, CancellationToken cancellationToken) =>
-                        Task.FromResult(false);
-
-                public Task AddAsync(ImageEntity metadata, ImageBinaryEntity binary, CancellationToken cancellationToken)
-                {
-                        this._images[metadata.Id] = metadata;
-                        this._binaries[metadata.Id] = binary.Data;
-                        return Task.CompletedTask;
-                }
-
-                public Task DeleteAsync(ImageEntity image, Guid expectedConcurrencyStamp, CancellationToken cancellationToken) =>
-                        Task.CompletedTask;
-        }
-
-        /// <summary>
-        /// Spy <see cref="IImageBinaryStore"/> counting <see cref="OpenReadAsync"/> invocations.
-        /// </summary>
-        private sealed class SpyImageBinaryStore : IImageBinaryStore
-        {
-                private readonly FakeImageRepository? _backingRepository;
-
-                public SpyImageBinaryStore(FakeImageRepository? backingRepository = null)
-                {
-                        this._backingRepository = backingRepository;
-                }
-
-                public int OpenReadCalls { get; private set; }
-
-                public Task<Stream?> OpenReadAsync(Guid imageId, CancellationToken cancellationToken)
-                {
-                        this.OpenReadCalls++;
-                        byte[]? data = this._backingRepository?.GetBinary(imageId: imageId);
-                        Stream? stream = data is null ? null : new MemoryStream(buffer: data, writable: false);
-                        return Task.FromResult(stream);
-                }
-        }
-
-        /// <summary>
-        /// Minimal in-memory <see cref="ITemplateRepository"/> test double.
-        /// </summary>
-        private sealed class FakeTemplateRepository : ITemplateRepository
-        {
-                private readonly Dictionary<Guid, TemplateEntity> _templates = [];
-
-                public void Seed(TemplateEntity template) => this._templates[template.Id] = template;
-
-                public Task<TemplateEntity?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
-                        Task.FromResult(this._templates.TryGetValue(key: id, value: out TemplateEntity? template) ? template : null);
-
-                public Task<bool> ExistsByNameAsync(string name, Guid? excludeTemplateId, CancellationToken cancellationToken) =>
-                        Task.FromResult(false);
-
-                public Task<PagedResult<TemplateEntity>> ListAsync(
-                        int page,
-                        int pageSize,
-                        TemplateComponentType? componentType,
-                        string? searchTerm,
-                        CancellationToken cancellationToken) =>
-                        Task.FromResult(new PagedResult<TemplateEntity>
-                        {
-                                Items = this._templates.Values.ToList(),
-                                Page = page,
-                                PageSize = pageSize,
-                                TotalCount = this._templates.Count
-                        });
-
-                public Task AddAsync(TemplateEntity template, CancellationToken cancellationToken)
-                {
-                        this._templates[template.Id] = template;
-                        return Task.CompletedTask;
-                }
-
-                public Task UpdateAsync(TemplateEntity template, Guid expectedConcurrencyStamp, CancellationToken cancellationToken) =>
-                        Task.CompletedTask;
-
-                public Task DeleteAsync(TemplateEntity template, Guid expectedConcurrencyStamp, CancellationToken cancellationToken) =>
-                        Task.CompletedTask;
-        }
-
-        /// <summary>
-        /// Fixed quota monitor returning a constant byte usage value.
-        /// </summary>
-        private sealed class FixedQuotaMonitor : IStorageQuotaMonitor
-        {
-                private readonly long _usedBytes;
-
-                public FixedQuotaMonitor(long usedBytes) => this._usedBytes = usedBytes;
-
-                public Task<long> GetUsedBytesAsync(CancellationToken cancellationToken) => Task.FromResult(this._usedBytes);
-        }
-
-        /// <summary>
-        /// Non-seekable stream emitting deterministic bytes in small chunks to verify streaming overflow protection.
-        /// </summary>
-        private sealed class NonSeekableChunkStream : Stream
-        {
-                private readonly int _totalBytes;
-                private int _bytesEmitted;
-
-                public NonSeekableChunkStream(int totalBytes) => this._totalBytes = totalBytes;
-
-                public override bool CanRead => true;
-
-                public override bool CanSeek => false;
-
-                public override bool CanWrite => false;
-
-                public override long Length => throw new NotSupportedException();
-
-                public override long Position
-                {
-                        get => throw new NotSupportedException();
-                        set => throw new NotSupportedException();
-                }
-
-                public override void Flush()
-                {
-                }
-
-                public override int Read(byte[] buffer, int offset, int count)
-                {
-                        int remaining = this._totalBytes - this._bytesEmitted;
-                        if (remaining <= 0)
-                        {
-                                return 0;
-                        }
-
-                        int toCopy = Math.Min(val1: count, val2: remaining);
-                        Array.Fill(array: buffer, value: (byte)0x89, startIndex: offset, count: toCopy);
-                        this._bytesEmitted += toCopy;
-                        return toCopy;
-                }
-
-                public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-
-                public override void SetLength(long value) => throw new NotSupportedException();
-
-                public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
         }
 }
