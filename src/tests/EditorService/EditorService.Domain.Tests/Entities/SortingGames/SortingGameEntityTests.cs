@@ -1,4 +1,4 @@
-﻿using EditorService.Domain.Entities.SortingGames;
+using EditorService.Domain.Entities.SortingGames;
 using EditorService.Domain.Enums;
 using EditorService.Domain.Exceptions;
 using System;
@@ -254,15 +254,16 @@ namespace EditorService.Domain.Tests.Entities.SortingGames
                 {
                         // Arrange
                         SortingGameEntity game = CreateLockedGame(lockToken: out Guid token);
-                        CategoryReceiverEntity receiver = game.AddCategoryReceiver(name: "Pap", color: COLOR, imageId: null, lockToken: token, actorId: ACTOR, now: NOW);
-                        CategoryItemEntity item = game.AddCategoryItem(name: "Karton", explanation: "Pap.", imageId: Guid.NewGuid(), categoryReceiverId: receiver.Id, lockToken: token, actorId: ACTOR, now: NOW);
+                        CategoryReceiverEntity receiver = game.AddCategoryReceiver(name: "Mad- og drikkekartoner", color: COLOR, imageId: null, lockToken: token, actorId: ACTOR, now: NOW);
+                        CategoryItemEntity item = game.AddCategoryItem(name: "Karton", explanation: "Kartoner.", imageId: Guid.NewGuid(), categoryReceiverId: receiver.Id, lockToken: token, actorId: ACTOR, now: NOW);
+                        string explanation = "Mælkekartoner har et tyndt lag plast indeni, så de skal i mad- og drikkekartoner og ikke i pap.";
 
                         // Act
-                        game.UpdateCategoryItem(categoryItemId: item.Id, name: "Mælkekarton", explanation: "Skyl den først.", imageId: item.ImageId, categoryReceiverId: receiver.Id, lockToken: token, actorId: ACTOR, now: NOW);
+                        game.UpdateCategoryItem(categoryItemId: item.Id, name: "Mælkekarton", explanation: explanation, imageId: item.ImageId, lockToken: token, actorId: ACTOR, now: NOW);
 
                         // Assert
                         Assert.Equal(expected: "Mælkekarton", actual: item.Name);
-                        Assert.Equal(expected: "Skyl den først.", actual: item.Explanation);
+                        Assert.Equal(expected: explanation, actual: item.Explanation);
                         Assert.Equal(expected: receiver.Id, actual: item.CategoryReceiverId);
                 }
 
