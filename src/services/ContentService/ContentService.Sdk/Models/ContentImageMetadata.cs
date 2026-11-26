@@ -41,9 +41,19 @@ public sealed record class ContentImageMetadata
         public required string Sha256Hash { get; init; }
 
         /// <summary>
-        /// Gets the optional accessibility alternative text, or <see langword="null"/> when none was provided.
+        /// Gets the optional accessibility alternative text / description, or <see langword="null"/> when none was provided.
         /// </summary>
         public string? AltText { get; init; }
+
+        /// <summary>
+        /// Gets the optional normalized recursive album path, or <see langword="null"/> when stored at root.
+        /// </summary>
+        public string? AlbumPath { get; init; }
+
+        /// <summary>
+        /// Gets the normalized search tags associated with this image.
+        /// </summary>
+        public IReadOnlyList<string> Tags { get; init; } = [];
 
         /// <summary>
         /// Gets the UTC timestamp when the image was uploaded.
@@ -54,5 +64,59 @@ public sealed record class ContentImageMetadata
         /// Gets the domain-managed optimistic edit-lock stamp for this image record.
         /// </summary>
         public required Guid ConcurrencyStamp { get; init; }
+
+        /// <summary>
+        /// Compares two <see cref="ContentImageMetadata"/> instances using sequence equality for <see cref="Tags"/>.
+        /// </summary>
+        /// <param name="other">The other metadata record to compare against.</param>
+        /// <returns><see langword="true"/> when all fields and tag sequences match; otherwise, <see langword="false"/>.</returns>
+        public bool Equals(ContentImageMetadata? other)
+        {
+                if (ReferenceEquals(objA: this, objB: other))
+                {
+                        return true;
+                }
+
+                if (other is null)
+                {
+                        return false;
+                }
+
+                return this.Id == other.Id
+                        && string.Equals(a: this.PictureReference, b: other.PictureReference, comparisonType: StringComparison.Ordinal)
+                        && string.Equals(a: this.ExternalId, b: other.ExternalId, comparisonType: StringComparison.Ordinal)
+                        && string.Equals(a: this.FileName, b: other.FileName, comparisonType: StringComparison.Ordinal)
+                        && string.Equals(a: this.ContentType, b: other.ContentType, comparisonType: StringComparison.Ordinal)
+                        && this.SizeBytes == other.SizeBytes
+                        && string.Equals(a: this.Sha256Hash, b: other.Sha256Hash, comparisonType: StringComparison.Ordinal)
+                        && string.Equals(a: this.AltText, b: other.AltText, comparisonType: StringComparison.Ordinal)
+                        && string.Equals(a: this.AlbumPath, b: other.AlbumPath, comparisonType: StringComparison.Ordinal)
+                        && this.Tags.SequenceEqual(second: other.Tags, comparer: StringComparer.Ordinal)
+                        && this.CreatedAt == other.CreatedAt
+                        && this.ConcurrencyStamp == other.ConcurrencyStamp;
+        }
+
+        /// <inheritdoc />
+        public override int GetHashCode()
+        {
+                HashCode hash = new();
+                hash.Add(value: this.Id);
+                hash.Add(value: this.PictureReference);
+                hash.Add(value: this.ExternalId);
+                hash.Add(value: this.FileName);
+                hash.Add(value: this.ContentType);
+                hash.Add(value: this.SizeBytes);
+                hash.Add(value: this.Sha256Hash);
+                hash.Add(value: this.AltText);
+                hash.Add(value: this.AlbumPath);
+                foreach (string tag in this.Tags)
+                {
+                        hash.Add(value: tag);
+                }
+
+                hash.Add(value: this.CreatedAt);
+                hash.Add(value: this.ConcurrencyStamp);
+                return hash.ToHashCode();
+        }
 }
 

@@ -24,6 +24,56 @@ internal static class SdkConstants
         public const string IMAGE_CONTENT_SUFFIX = "content";
 
         /// <summary>
+        /// Route suffix appended to an image resource path to update searchable metadata.
+        /// </summary>
+        public const string IMAGE_METADATA_SUFFIX = "metadata";
+
+        /// <summary>
+        /// Route suffix appended to <c>api/images</c> to list immediate child album paths.
+        /// </summary>
+        public const string IMAGE_ALBUMS_SUFFIX = "albums";
+
+        /// <summary>
+        /// Default 1-based page index requested when listing exhibition images.
+        /// </summary>
+        public const int DEFAULT_PAGE = 1;
+
+        /// <summary>
+        /// Default number of image records requested per catalog page.
+        /// </summary>
+        public const int DEFAULT_PAGE_SIZE = 25;
+
+        /// <summary>
+        /// Query string parameter name for the 1-based page index on <c>GET /api/images</c>.
+        /// </summary>
+        public const string PAGE_QUERY_PARAM = "page";
+
+        /// <summary>
+        /// Query string parameter name for the page size on <c>GET /api/images</c>.
+        /// </summary>
+        public const string PAGE_SIZE_QUERY_PARAM = "pageSize";
+
+        /// <summary>
+        /// Query string parameter name for search text on <c>GET /api/images</c>.
+        /// </summary>
+        public const string SEARCH_TERM_QUERY_PARAM = "searchTerm";
+
+        /// <summary>
+        /// Query string parameter name for album path filtering on <c>GET /api/images</c>.
+        /// </summary>
+        public const string ALBUM_PATH_QUERY_PARAM = "albumPath";
+
+        /// <summary>
+        /// Query string parameter name controlling recursive sub-album inclusion on <c>GET /api/images</c>.
+        /// </summary>
+        public const string INCLUDE_SUBALBUMS_QUERY_PARAM = "includeSubalbums";
+
+        /// <summary>
+        /// Query string parameter name for the parent album path on <c>GET /api/images/albums</c>.
+        /// </summary>
+        public const string PARENT_PATH_QUERY_PARAM = "parentPath";
+
+        /// <summary>
         /// Form field name bound by ContentService <c>IFormFile file</c> upload parameter.
         /// </summary>
         public const string MULTIPART_FILE_FIELD_NAME = "file";
@@ -32,6 +82,16 @@ internal static class SdkConstants
         /// Form field name bound by ContentService <c>[FromForm] string? altText</c> upload parameter.
         /// </summary>
         public const string MULTIPART_ALT_TEXT_FIELD_NAME = "altText";
+
+        /// <summary>
+        /// Form field name bound by ContentService <c>[FromForm] string? albumPath</c> upload parameter.
+        /// </summary>
+        public const string MULTIPART_ALBUM_PATH_FIELD_NAME = "albumPath";
+
+        /// <summary>
+        /// Form field name bound by ContentService <c>[FromForm] string? tags</c> upload parameter.
+        /// </summary>
+        public const string MULTIPART_TAGS_FIELD_NAME = "tags";
 
         /// <summary>
         /// Header name used to attribute image uploads to an internal editor actor.

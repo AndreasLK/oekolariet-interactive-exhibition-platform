@@ -27,6 +27,7 @@ public sealed class ContentServiceImageUploadTests
         [Fact]
         public async Task UploadImageAsync_WhenNonSeekableDanishFileWithAltText_SendsMultipartFieldsAndDeserializesMetadataAsync()
         {
+                // Official 8-byte PNG magic header (0x89 + ASCII "PNG" + CRLF + Ctrl+Z + LF) simulating a valid PNG upload stream.
                 byte[] payloadBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
                 Guid expectedId = Guid.NewGuid();
                 ContentImageMetadata expectedMetadata = CreateSampleMetadata(id: expectedId, fileName: DANISH_FILE_NAME);
