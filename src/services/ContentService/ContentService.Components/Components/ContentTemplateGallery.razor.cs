@@ -12,7 +12,7 @@ namespace ContentService.Components.Components;
 /// </summary>
 public sealed partial class ContentTemplateGallery : ComponentBase
 {
-        private const int DEFAULT_PAGE = 1;
+        private const int FIRST_PAGE = 1;
         private const int MIN_PAGE_SIZE = 1;
         private const int DEFAULT_PAGE_SIZE = 12;
         private const double EDITOR_MODAL_MAX_WIDTH_PX = 960;
@@ -33,6 +33,8 @@ public sealed partial class ContentTemplateGallery : ComponentBase
 
         private readonly List<ContentTemplateMetadata> _templates = [];
         private int _totalCount;
+        private int _currentPage = FIRST_PAGE;
+        private int _totalPages;
         private string? _searchTerm;
         private ContentTemplateComponentType? _selectedType;
         private ContentTemplateComponentType? _appliedDefaultComponentType;
@@ -123,6 +125,8 @@ public sealed partial class ContentTemplateGallery : ComponentBase
 
                 this._appliedDefaultComponentType = this.DefaultComponentType;
                 this._selectedType = this.DefaultComponentType;
+                // Reset to page 1 when the host changes the default component type filter.
+                this._currentPage = FIRST_PAGE;
                 return this.LoadTemplatesAsync();
         }
 
@@ -135,7 +139,7 @@ public sealed partial class ContentTemplateGallery : ComponentBase
                         ContentPagedResult<ContentTemplateMetadata> page = await this.TemplateClient.ListTemplatesAsync(
                                 query: new ContentTemplateQuery
                                 {
-                                        Page = DEFAULT_PAGE,
+                                        Page = this._currentPage,
                                         PageSize = clampedPageSize,
                                         ComponentType = this._selectedType,
                                         SearchTerm = this._searchTerm
@@ -144,6 +148,9 @@ public sealed partial class ContentTemplateGallery : ComponentBase
                         this._templates.Clear();
                         this._templates.AddRange(collection: page.Items);
                         this._totalCount = page.TotalCount;
+                        this._totalPages = page.TotalPages;
+                        // Clamp the active page if archiving or filtering reduces the total page count below it.
+                        this._currentPage = Math.Min(val1: this._currentPage, val2: Math.Max(val1: FIRST_PAGE, val2: this._totalPages));
                 }
                 catch (Exception ex) when (ex is ContentServiceApiException or HttpRequestException or InvalidOperationException)
                 {
@@ -158,16 +165,42 @@ public sealed partial class ContentTemplateGallery : ComponentBase
         private Task HandleSearchChangedAsync(string? value)
         {
                 this._searchTerm = value;
+                // Reset to page 1 so a narrowed search never stays on an out-of-range page.
+                this._currentPage = FIRST_PAGE;
                 return this.LoadTemplatesAsync();
         }
 
         private Task HandleFilterTypeAsync(ContentTemplateComponentType? componentType)
         {
                 this._selectedType = componentType;
+                // Reset to page 1 so switching component types starts from the beginning of the filtered list.
+                this._currentPage = FIRST_PAGE;
                 return this.LoadTemplatesAsync();
         }
 
         private Task HandleRefreshClickedAsync() => this.LoadTemplatesAsync();
+
+        private Task HandlePreviousPageClickedAsync()
+        {
+                if (this._isLoading || this._currentPage <= FIRST_PAGE)
+                {
+                        return Task.CompletedTask;
+                }
+
+                this._currentPage--;
+                return this.LoadTemplatesAsync();
+        }
+
+        private Task HandleNextPageClickedAsync()
+        {
+                if (this._isLoading || this._currentPage >= this._totalPages)
+                {
+                        return Task.CompletedTask;
+                }
+
+                this._currentPage++;
+                return this.LoadTemplatesAsync();
+        }
 
         private void HandleOpenCreateModal()
         {

@@ -128,6 +128,30 @@
                                 </Box>
                         }
                 </Grid>
+
+                @if (this._totalPages > FIRST_PAGE)
+                {
+                        <Row HorizontalArrangement="Arrangement.Center"
+                             VerticalAlignment="VerticalAlignment.Center"
+                             Gap="0.75rem"
+                             Modifier="@ContentGalleryLayout.BuildPaginationRowModifier()">
+                                <ActionButton Text="Forrige"
+                                              Variant="ActionButton.ButtonVariant.Outline"
+                                              Size="ActionButton.ButtonSize.Small"
+                                              IsDisabled="@(this._isLoading || this._currentPage <= FIRST_PAGE)"
+                                              OnClick="@this.HandlePreviousPageClickedAsync" />
+
+                                <Text Value="@($"Side {this._currentPage} af {this._totalPages}")"
+                                      Variant="TypographyVariant.Caption"
+                                      Muted="true" />
+
+                                <ActionButton Text="Næste"
+                                              Variant="ActionButton.ButtonVariant.Outline"
+                                              Size="ActionButton.ButtonSize.Small"
+                                              IsDisabled="@(this._isLoading || this._currentPage >= this._totalPages)"
+                                              OnClick="@this.HandleNextPageClickedAsync" />
+                        </Row>
+                }
         }
 
         <Modal IsOpen="@this._isEditorOpen"
