@@ -26,8 +26,8 @@ public sealed class ContentImageUploadModalTests : BunitContext
         public void UploadBatch_WhenOneFileFailsWithNetworkError_ReportsWarningAndForwardsAlbumAndTags()
         {
                 // Arrange
-                List<ContentImageMetadata> completedUploads = [];
-                List<UploadImageRequest> capturedRequests = [];
+                List<ContentImageResponse> completedUploads = [];
+                List<ContentUploadImageRequest> capturedRequests = [];
                 bool closedRequested = false;
                 StubContentImageClient stubClient = new()
                 {
@@ -40,7 +40,7 @@ public sealed class ContentImageUploadModalTests : BunitContext
                                 }
 
                                 Guid id = Guid.NewGuid();
-                                return Task.FromResult(result: new ContentImageMetadata
+                                return Task.FromResult(result: new ContentImageResponse
                                 {
                                         Id = id,
                                         PictureReference = $"picture.node-1.{id:D}",
@@ -69,7 +69,7 @@ public sealed class ContentImageUploadModalTests : BunitContext
                                         value: EventCallback.Factory.Create<bool>(receiver: this, callback: isOpen => closedRequested = !isOpen))
                                 .Add(
                                         parameterSelector: component => component.OnUploadCompleted,
-                                        value: EventCallback.Factory.Create<IReadOnlyList<ContentImageMetadata>>(
+                                        value: EventCallback.Factory.Create<IReadOnlyList<ContentImageResponse>>(
                                                 receiver: this,
                                                 callback: items => completedUploads.AddRange(collection: items))));
 
@@ -109,7 +109,7 @@ public sealed class ContentImageUploadModalTests : BunitContext
         public async Task CancelButton_WhileUploadInProgress_DoesNotCloseModalAsync()
         {
                 // Arrange
-                TaskCompletionSource<ContentImageMetadata> uploadGate = new();
+                TaskCompletionSource<ContentImageResponse> uploadGate = new();
                 bool isOpen = true;
                 StubContentImageClient stubClient = new()
                 {
@@ -143,7 +143,7 @@ public sealed class ContentImageUploadModalTests : BunitContext
                 Assert.True(condition: isOpen);
 
                 Guid id = Guid.NewGuid();
-                uploadGate.SetResult(result: new ContentImageMetadata
+                uploadGate.SetResult(result: new ContentImageResponse
                 {
                         Id = id,
                         PictureReference = $"picture.node-1.{id:D}",

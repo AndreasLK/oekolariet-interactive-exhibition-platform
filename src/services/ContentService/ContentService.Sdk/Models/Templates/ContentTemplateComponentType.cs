@@ -1,7 +1,7 @@
 namespace ContentService.Sdk.Models;
 
 /// <summary>
-/// Identifies the Blazor UI component category responsible for rendering a template.
+/// Identifies the Blazor UI component category targeted by a ContentService template.
 /// </summary>
 public enum ContentTemplateComponentType
 {

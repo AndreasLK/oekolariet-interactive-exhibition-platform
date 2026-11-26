@@ -3,7 +3,7 @@ using ContentService.Sdk.Common;
 namespace ContentService.Sdk.Models;
 
 /// <summary>
-/// Query criteria for browsing, searching, and album-filtering exhibition images via <see cref="Clients.IContentServiceImageClient"/>.
+/// Query criteria for browsing, searching, and filtering exhibition images via <c>IContentServiceImageClient</c>.
 /// </summary>
 public sealed record class ContentImageQuery
 {
@@ -13,17 +13,17 @@ public sealed record class ContentImageQuery
         public int Page { get; init; } = SdkConstants.DEFAULT_PAGE;
 
         /// <summary>
-        /// Gets the maximum number of items per page.
+        /// Gets the maximum number of image records per page.
         /// </summary>
         public int PageSize { get; init; } = SdkConstants.DEFAULT_PAGE_SIZE;
 
         /// <summary>
-        /// Gets optional search text matched across file names, alt text, and tags.
+        /// Gets the optional case-insensitive search filter across file name, alt text, and tags.
         /// </summary>
         public string? SearchTerm { get; init; }
 
         /// <summary>
-        /// Gets an optional recursive album path filter (e.g., <c>Madaffald</c>).
+        /// Gets the optional normalized recursive album path filter.
         /// </summary>
         public string? AlbumPath { get; init; }
 

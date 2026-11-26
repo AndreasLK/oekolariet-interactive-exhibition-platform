@@ -26,11 +26,11 @@ public sealed class ContentTemplateGalleryTests : BunitContext
         [Fact]
         public void ContentTemplateGallery_ClickPreviewWhenSelectable_InvokesOnTemplateSelected()
         {
-                ContentTemplateMetadata template = CreateTemplate(name: "Waste Quiz");
+                ContentTemplateResponse template = CreateTemplate(name: "Waste Quiz");
                 this.Services.AddSingleton<IContentServiceTemplateClient>(implementationInstance: new StubTemplateClient(templates: [template]));
                 this.Services.AddPersonalUILibrary();
 
-                ContentTemplateMetadata? selected = null;
+                ContentTemplateResponse? selected = null;
                 IRenderedComponent<ContentTemplateGallery> cut = this.Render<ContentTemplateGallery>(
                         parameters => parameters.Add(p => p.OnTemplateSelected, item => selected = item));
 
@@ -54,7 +54,7 @@ public sealed class ContentTemplateGalleryTests : BunitContext
         [Fact]
         public void ContentTemplateGallery_AllowManageFalse_HidesCreateEditAndArchiveButtons()
         {
-                ContentTemplateMetadata template = CreateTemplate(name: "Read-Only Template");
+                ContentTemplateResponse template = CreateTemplate(name: "Read-Only Template");
                 this.Services.AddSingleton<IContentServiceTemplateClient>(implementationInstance: new StubTemplateClient(templates: [template]));
                 this.Services.AddPersonalUILibrary();
 
@@ -71,10 +71,10 @@ public sealed class ContentTemplateGalleryTests : BunitContext
                 Assert.DoesNotContain(expectedSubstring: ">Archive<", actualString: cut.Markup, comparisonType: StringComparison.Ordinal);
         }
 
-        private static ContentTemplateMetadata CreateTemplate(string name)
+        private static ContentTemplateResponse CreateTemplate(string name)
         {
                 DateTimeOffset now = DateTimeOffset.UtcNow;
-                return new ContentTemplateMetadata
+                return new ContentTemplateResponse
                 {
                         Id = Guid.NewGuid(),
                         ExternalId = $"template_{Guid.NewGuid():N}",
@@ -90,13 +90,23 @@ public sealed class ContentTemplateGalleryTests : BunitContext
                 };
         }
 
-        private sealed class StubTemplateClient(IReadOnlyList<ContentTemplateMetadata> templates) : IContentServiceTemplateClient
+        private sealed class StubTemplateClient(IReadOnlyList<ContentTemplateResponse> templates) : IContentServiceTemplateClient
         {
-                public Task<ContentPagedResult<ContentTemplateMetadata>> ListTemplatesAsync(
-                        ContentTemplateQuery? query = null,
+                public Task<ContentPagedResponse<ContentTemplateResponse>> ListTemplatesAsync(
+                        int page = 1,
+                        int pageSize = 25,
+                        ContentTemplateComponentType? componentType = null,
+                        string? searchTerm = null,
+                        CancellationToken cancellationToken = default) =>
+                        this.ListTemplatesAsync(
+                                query: new ContentTemplateQuery { Page = page, PageSize = pageSize, ComponentType = componentType, SearchTerm = searchTerm },
+                                cancellationToken: cancellationToken);
+
+                public Task<ContentPagedResponse<ContentTemplateResponse>> ListTemplatesAsync(
+                        ContentTemplateQuery query,
                         CancellationToken cancellationToken = default)
                 {
-                        return Task.FromResult(result: new ContentPagedResult<ContentTemplateMetadata>
+                        return Task.FromResult(result: new ContentPagedResponse<ContentTemplateResponse>
                         {
                                 Items = templates,
                                 Page = 1,
@@ -105,16 +115,19 @@ public sealed class ContentTemplateGalleryTests : BunitContext
                         });
                 }
 
-                public Task<ContentTemplateMetadata> GetTemplateAsync(Guid templateId, CancellationToken cancellationToken = default) =>
+                public Task<ContentTemplateResponse> GetTemplateAsync(Guid templateId, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
 
-                public Task<ContentTemplateMetadata> CreateTemplateAsync(CreateContentTemplateRequest request, CancellationToken cancellationToken = default) =>
+                public Task<ContentTemplateResponse> CreateTemplateAsync(ContentCreateTemplateRequest command, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
 
-                public Task<ContentTemplateMetadata> UpdateTemplateAsync(Guid templateId, UpdateContentTemplateRequest request, CancellationToken cancellationToken = default) =>
+                public Task<ContentTemplateResponse> UpdateTemplateAsync(Guid templateId, ContentUpdateTemplateRequest command, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
 
                 public Task DeleteTemplateAsync(Guid templateId, string? actorId = null, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
+
+                public Task<ContentImageTemplateReferenceResponse> IsImageReferencedByTemplateAsync(Guid imageId, CancellationToken cancellationToken = default) =>
+                        Task.FromResult(result: new ContentImageTemplateReferenceResponse(IsReferenced: false));
         }
 }

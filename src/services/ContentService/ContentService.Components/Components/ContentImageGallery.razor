@@ -61,7 +61,7 @@
         {
                 @* Responsive photo grid using ALKsPersonalUI MediaTile with @key so Blazor preserves tile selection across reloads. *@
                 <Grid MinColumnWidth="@GRID_MIN_COLUMN_WIDTH" Gap="1rem" Modifier="@UIModifier.New.FillMaxWidth()">
-                        @foreach (ContentImageMetadata image in this._images)
+                        @foreach (ContentImageResponse image in this._images)
                         {
                                 <MediaTile @key="image.Id"
                                            ImageSource="@this.ResolveImagePreviewSource(imageId: image.Id)"

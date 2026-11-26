@@ -36,7 +36,7 @@ public sealed partial class ContentImagePickerModal : ComponentBase
         /// Gets or sets the callback invoked when the user selects an image.
         /// </summary>
         [Parameter]
-        public EventCallback<ContentImageMetadata> OnImageSelected { get; set; }
+        public EventCallback<ContentImageResponse> OnImageSelected { get; set; }
 
         /// <summary>
         /// Gets or sets the optional default recursive album path opened by the embedded gallery.
@@ -74,7 +74,7 @@ public sealed partial class ContentImagePickerModal : ComponentBase
         [Parameter]
         public bool CloseOnSelect { get; set; } = true;
 
-        private async Task HandleImageSelectedAsync(ContentImageMetadata image)
+        private async Task HandleImageSelectedAsync(ContentImageResponse image)
         {
                 await this.OnImageSelected.InvokeAsync(arg: image);
                 if (this.CloseOnSelect)

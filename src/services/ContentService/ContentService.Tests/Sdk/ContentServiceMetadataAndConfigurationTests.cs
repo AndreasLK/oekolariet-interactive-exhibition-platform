@@ -27,7 +27,7 @@ public sealed class ContentServiceMetadataAndConfigurationTests
         public async Task GetImageMetadataAsync_WhenValid_RequestsNormalizedRouteAndDeserializesMetadataAsync()
         {
                 Guid imageId = Guid.NewGuid();
-                ContentImageMetadata expected = new()
+                ContentImageResponse expected = new()
                 {
                         Id = imageId,
                         PictureReference = $"picture.node-1.{imageId:D}",
@@ -58,7 +58,7 @@ public sealed class ContentServiceMetadataAndConfigurationTests
                                 BaseAddress = baseAddress
                         }));
 
-                ContentImageMetadata actual = await client.GetImageMetadataAsync(imageId: imageId, cancellationToken: TestContext.Current.CancellationToken);
+                ContentImageResponse actual = await client.GetImageMetadataAsync(imageId: imageId, cancellationToken: TestContext.Current.CancellationToken);
 
                 Assert.Equal(expected: expected, actual: actual);
                 Assert.Equal(

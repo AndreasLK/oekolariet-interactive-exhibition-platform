@@ -38,7 +38,7 @@ internal static class ContentImageDisplayFormatter
         /// <param name="image">The image metadata record.</param>
         /// <returns>A compact summary displaying file size, upload date, and optional album badge.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="image"/> is <see langword="null"/>.</exception>
-        public static string FormatTileSubtitle(ContentImageMetadata image)
+        public static string FormatTileSubtitle(ContentImageResponse image)
         {
                 ArgumentNullException.ThrowIfNull(argument: image);
                 string formattedSize = FormatByteSize(sizeBytes: image.SizeBytes);
