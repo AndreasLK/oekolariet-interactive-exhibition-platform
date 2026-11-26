@@ -38,7 +38,7 @@ public sealed partial class ContentImageDetailModal : ComponentBase
         /// Gets or sets the image metadata displayed inside the modal.
         /// </summary>
         [Parameter]
-        public ContentImageMetadata? Image { get; set; }
+        public ContentImageResponse? Image { get; set; }
 
         /// <summary>
         /// Gets or sets the direct ContentService HTTP image URL used for preview rendering.
@@ -80,19 +80,19 @@ public sealed partial class ContentImageDetailModal : ComponentBase
         /// Gets or sets the callback invoked when the user confirms selecting the displayed image.
         /// </summary>
         [Parameter]
-        public EventCallback<ContentImageMetadata> OnSelectRequested { get; set; }
+        public EventCallback<ContentImageResponse> OnSelectRequested { get; set; }
 
         /// <summary>
         /// Gets or sets the callback invoked when the user completes hold-to-confirm deletion.
         /// </summary>
         [Parameter]
-        public EventCallback<ContentImageMetadata> OnDeleteRequested { get; set; }
+        public EventCallback<ContentImageResponse> OnDeleteRequested { get; set; }
 
         /// <summary>
         /// Gets or sets the callback invoked when the user saves updated description, tags, or album path.
         /// </summary>
         [Parameter]
-        public EventCallback<UpdateImageMetadataRequest> OnSaveMetadataRequested { get; set; }
+        public EventCallback<ContentUpdateImageMetadataCommand> OnSaveMetadataRequested { get; set; }
 
         /// <inheritdoc />
         protected override void OnParametersSet()
@@ -134,7 +134,7 @@ public sealed partial class ContentImageDetailModal : ComponentBase
                 this._isEditing = false;
         }
 
-        private Task HandleSaveMetadataRequestedAsync(UpdateImageMetadataRequest request) =>
+        private Task HandleSaveMetadataRequestedAsync(ContentUpdateImageMetadataCommand request) =>
                 this.OnSaveMetadataRequested.InvokeAsync(arg: request);
 
         private Task HandleCloseClickedAsync() =>

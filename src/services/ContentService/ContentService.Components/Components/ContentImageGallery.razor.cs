@@ -24,7 +24,7 @@ public sealed partial class ContentImageGallery : ComponentBase, IDisposable
         private const int SEARCH_DEBOUNCE_MILLISECONDS = 250;
         private const string GRID_MIN_COLUMN_WIDTH = "220px";
 
-        private readonly List<ContentImageMetadata> _images = [];
+        private readonly List<ContentImageResponse> _images = [];
         private readonly GalleryLoadCoordinator _loadCoordinator = new();
         private IReadOnlyList<string> _childAlbumPaths = [];
         private string _searchTerm = string.Empty;
@@ -41,7 +41,7 @@ public sealed partial class ContentImageGallery : ComponentBase, IDisposable
         private bool _isUploadModalOpen;
         private bool _isDetailModalOpen;
         private Guid? _selectedImageId;
-        private ContentImageMetadata? _inspectedImage;
+        private ContentImageResponse? _inspectedImage;
 
         [Inject]
         private IContentServiceImageClient ImageClient { get; set; } = default!;
@@ -57,7 +57,7 @@ public sealed partial class ContentImageGallery : ComponentBase, IDisposable
         /// select action button inside <see cref="ContentImageDetailModal"/>. Leave unset for browse/manage-only mode.
         /// </remarks>
         [Parameter]
-        public EventCallback<ContentImageMetadata> OnImageSelected { get; set; }
+        public EventCallback<ContentImageResponse> OnImageSelected { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether hold-to-confirm soft deletion is enabled inside the detail modal.
@@ -170,7 +170,7 @@ public sealed partial class ContentImageGallery : ComponentBase, IDisposable
                                 IncludeSubalbums = this._includeSubalbums
                         };
 
-                        (ContentPagedResult<ContentImageMetadata> result, IReadOnlyList<string> albums) =
+                        (ContentPagedResponse<ContentImageResponse> result, IReadOnlyList<string> albums) =
                                 await GalleryLoadCoordinator.FetchCatalogAsync(
                                         imageClient: this.ImageClient,
                                         query: query,
@@ -279,7 +279,7 @@ public sealed partial class ContentImageGallery : ComponentBase, IDisposable
 
         private void HandleUploadModalVisibilityChanged(bool isOpen) => this._isUploadModalOpen = isOpen;
 
-        private async Task HandleUploadCompletedAsync(IReadOnlyList<ContentImageMetadata> uploaded)
+        private async Task HandleUploadCompletedAsync(IReadOnlyList<ContentImageResponse> uploaded)
         {
                 if (uploaded.Count > 0)
                 {
@@ -289,14 +289,14 @@ public sealed partial class ContentImageGallery : ComponentBase, IDisposable
                 await this.LoadCurrentSelectionAsync(page: FIRST_PAGE);
         }
 
-        private void HandleTileClicked(ContentImageMetadata image)
+        private void HandleTileClicked(ContentImageResponse image)
         {
                 this._inspectedImage = image;
                 this._isDetailModalOpen = true;
         }
 
         private async Task HandleTileSelectionToggledAsync(
-                ContentImageMetadata image,
+                ContentImageResponse image,
                 bool isSelected)
         {
                 if (!this.OnImageSelected.HasDelegate)
@@ -320,7 +320,7 @@ public sealed partial class ContentImageGallery : ComponentBase, IDisposable
                 }
         }
 
-        private async Task HandleDetailSelectRequestedAsync(ContentImageMetadata image)
+        private async Task HandleDetailSelectRequestedAsync(ContentImageResponse image)
         {
                 this._selectedImageId = image.Id;
                 this._isDetailModalOpen = false;
@@ -330,7 +330,7 @@ public sealed partial class ContentImageGallery : ComponentBase, IDisposable
         /// <summary>
         /// Sends a metadata PATCH using the inspected image's optimistic concurrency stamp and reloads the page on success or conflict.
         /// </summary>
-        private async Task HandleDetailSaveMetadataRequestedAsync(UpdateImageMetadataRequest request)
+        private async Task HandleDetailSaveMetadataRequestedAsync(ContentUpdateImageMetadataCommand request)
         {
                 // Guard against double-clicks while the PATCH request is still in flight.
                 if (this._inspectedImage is null || this._isSavingMetadata)
@@ -341,9 +341,9 @@ public sealed partial class ContentImageGallery : ComponentBase, IDisposable
                 this._isSavingMetadata = true;
                 try
                 {
-                        ContentImageMetadata updated = await this.ImageClient.UpdateImageMetadataAsync(
+                        ContentImageResponse updated = await this.ImageClient.UpdateImageMetadataAsync(
                                 imageId: this._inspectedImage.Id,
-                                request: request);
+                                command: request);
 
                         // Updating _inspectedImage rotates its ConcurrencyStamp so the child detail modal exits edit mode cleanly.
                         this._inspectedImage = updated;
@@ -366,7 +366,7 @@ public sealed partial class ContentImageGallery : ComponentBase, IDisposable
         /// <summary>
         /// Soft-deletes the inspected image and adjusts the active page index if the last tile on a later page was removed.
         /// </summary>
-        private async Task HandleDetailDeleteRequestedAsync(ContentImageMetadata image)
+        private async Task HandleDetailDeleteRequestedAsync(ContentImageResponse image)
         {
                 if (!this.AllowDelete || this._isDeleting)
                 {
@@ -452,6 +452,6 @@ public sealed partial class ContentImageGallery : ComponentBase, IDisposable
                         ? string.Empty
                         : this.ResolveImageContentSource(imageId: this._inspectedImage.Id);
 
-        private string ResolveImageAlt(ContentImageMetadata image) =>
+        private string ResolveImageAlt(ContentImageResponse image) =>
                 string.IsNullOrWhiteSpace(value: image.AltText) ? image.FileName : image.AltText;
 }
