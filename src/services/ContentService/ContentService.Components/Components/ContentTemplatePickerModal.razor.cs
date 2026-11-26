@@ -36,7 +36,7 @@ public sealed partial class ContentTemplatePickerModal : ComponentBase
         /// Gets or sets the callback invoked when the user selects a template.
         /// </summary>
         [Parameter]
-        public EventCallback<ContentTemplateMetadata> OnTemplateSelected { get; set; }
+        public EventCallback<ContentTemplateResponse> OnTemplateSelected { get; set; }
 
         /// <summary>
         /// Gets or sets the optional default component type filter applied when the picker opens.
@@ -62,7 +62,7 @@ public sealed partial class ContentTemplatePickerModal : ComponentBase
         [Parameter]
         public bool CloseOnSelect { get; set; } = true;
 
-        private async Task HandleTemplateSelectedAsync(ContentTemplateMetadata template)
+        private async Task HandleTemplateSelectedAsync(ContentTemplateResponse template)
         {
                 await this.OnTemplateSelected.InvokeAsync(arg: template);
                 if (this.CloseOnSelect)
