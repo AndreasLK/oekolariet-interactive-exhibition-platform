@@ -41,6 +41,10 @@ namespace ContentService.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AlbumPath")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
                     b.Property<string>("AltText")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -84,6 +88,10 @@ namespace ContentService.Infrastructure.Persistence.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
 
+                    b.Property<string>("Tags")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("datetimeoffset");
 
@@ -93,6 +101,8 @@ namespace ContentService.Infrastructure.Persistence.Migrations
                         .HasColumnType("nvarchar(128)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AlbumPath");
 
                     b.HasIndex("Sha256Hash");
 

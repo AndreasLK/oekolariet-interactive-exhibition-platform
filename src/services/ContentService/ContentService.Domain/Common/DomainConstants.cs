@@ -51,6 +51,46 @@ public static class DomainConstants
         public const int MAX_ALT_TEXT_LENGTH = 500;
 
         /// <summary>
+        /// Maximum character length permitted for a normalized recursive album path (e.g., <c>Madaffald/Frugt</c>).
+        /// </summary>
+        public const int MAX_ALBUM_PATH_LENGTH = 256;
+
+        /// <summary>
+        /// Maximum character length permitted for a single album segment name.
+        /// </summary>
+        public const int MAX_ALBUM_SEGMENT_LENGTH = 64;
+
+        /// <summary>
+        /// Maximum nested folder depth permitted in a recursive album path.
+        /// </summary>
+        public const int MAX_ALBUM_DEPTH = 8;
+
+        /// <summary>
+        /// Canonical slash separator between album hierarchy segments.
+        /// </summary>
+        public const char ALBUM_PATH_SEPARATOR = '/';
+
+        /// <summary>
+        /// Maximum character length permitted for normalized comma-separated image tags.
+        /// </summary>
+        public const int MAX_IMAGE_TAGS_LENGTH = 500;
+
+        /// <summary>
+        /// Maximum number of distinct tags allowed per image.
+        /// </summary>
+        public const int MAX_IMAGE_TAG_COUNT = 20;
+
+        /// <summary>
+        /// Maximum character length permitted for a single normalized tag token.
+        /// </summary>
+        public const int MAX_SINGLE_TAG_LENGTH = 40;
+
+        /// <summary>
+        /// Canonical comma delimiter used to store normalized tags on <c>ImageEntity</c>.
+        /// </summary>
+        public const char IMAGE_TAG_SEPARATOR = ',';
+
+        /// <summary>
         /// Maximum character length permitted for a storage node (shard) identifier.
         /// </summary>
         // Kept short because the node ID is embedded inside composite '{node}_{guid}' external IDs and 'picture.{node}.{guid}' handles.

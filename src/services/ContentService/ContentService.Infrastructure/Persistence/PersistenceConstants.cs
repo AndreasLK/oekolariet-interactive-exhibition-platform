@@ -49,4 +49,9 @@ internal static class PersistenceConstants
         /// SQL Server error code for foreign-key constraint conflicts (e.g., referencing a deleted row).
         /// </summary>
         public const int SQL_ERROR_FOREIGN_KEY_CONFLICT = 547;
+
+        /// <summary>
+        /// Escape prefix used inside <c>EF.Functions.Like</c> patterns so user <c>%</c>, <c>_</c>, and <c>[</c> input stays literal.
+        /// </summary>
+        public const string LIKE_ESCAPE_CHAR = @"\";
 }
