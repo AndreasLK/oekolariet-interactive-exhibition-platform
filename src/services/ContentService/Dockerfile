@@ -4,6 +4,7 @@ WORKDIR /src
 # Restore dependencies using project files first for Docker layer caching.
 COPY ContentService.Domain/ContentService.Domain.csproj ContentService.Domain/
 COPY ContentService.Application/ContentService.Application.csproj ContentService.Application/
+COPY ContentService.Facade/ContentService.Facade.csproj ContentService.Facade/
 COPY ContentService.Infrastructure/ContentService.Infrastructure.csproj ContentService.Infrastructure/
 COPY ContentService.Api/ContentService.Api.csproj ContentService.Api/
 RUN dotnet restore ContentService.Api/ContentService.Api.csproj
