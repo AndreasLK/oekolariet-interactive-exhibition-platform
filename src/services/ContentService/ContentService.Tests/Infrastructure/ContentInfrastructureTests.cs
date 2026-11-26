@@ -51,23 +51,23 @@ public sealed class ContentInfrastructureTests : IAsyncLifetime
                 await using ContentDbContext dbContext = this._fixture.CreateDbContext();
                 SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
                 TemplateEntity first = TemplateEntity.Create(
-                        storageNodeId: InfrastructureTestHelpers.VALID_NODE_ID,
+                        storageNodeId: InfrastructureTestFixtures.VALID_NODE_ID,
                         name: "Unique Name",
                         componentType: TemplateComponentType.QuizTemplate,
                         schemaJson: "{}",
-                        actorId: InfrastructureTestHelpers.VALID_ACTOR_ID);
+                        actorId: InfrastructureTestFixtures.VALID_ACTOR_ID);
                 TemplateEntity second = TemplateEntity.Create(
-                        storageNodeId: InfrastructureTestHelpers.VALID_NODE_ID,
+                        storageNodeId: InfrastructureTestFixtures.VALID_NODE_ID,
                         name: "Second Name",
                         componentType: TemplateComponentType.QuizTemplate,
                         schemaJson: "{}",
-                        actorId: InfrastructureTestHelpers.VALID_ACTOR_ID);
+                        actorId: InfrastructureTestFixtures.VALID_ACTOR_ID);
                 TemplateEntity duplicate = TemplateEntity.Create(
-                        storageNodeId: InfrastructureTestHelpers.VALID_NODE_ID,
+                        storageNodeId: InfrastructureTestFixtures.VALID_NODE_ID,
                         name: "unique name",
                         componentType: TemplateComponentType.GameTemplate,
                         schemaJson: "{}",
-                        actorId: InfrastructureTestHelpers.VALID_ACTOR_ID);
+                        actorId: InfrastructureTestFixtures.VALID_ACTOR_ID);
 
                 await templateRepository.AddAsync(template: first, cancellationToken: CancellationToken.None);
                 await templateRepository.AddAsync(template: second, cancellationToken: CancellationToken.None);
@@ -77,7 +77,7 @@ public sealed class ContentInfrastructureTests : IAsyncLifetime
                         templateRepository.AddAsync(template: duplicate, cancellationToken: CancellationToken.None));
 
                 Guid secondStamp = second.ConcurrencyStamp;
-                second.UpdateSchema(name: "UNIQUE NAME", schemaJson: "{}", actorId: InfrastructureTestHelpers.VALID_ACTOR_ID);
+                second.UpdateSchema(name: "UNIQUE NAME", schemaJson: "{}", actorId: InfrastructureTestFixtures.VALID_ACTOR_ID);
                 await Assert.ThrowsAsync<DomainValidationException>(() =>
                         templateRepository.UpdateAsync(
                                 template: second,
@@ -96,22 +96,22 @@ public sealed class ContentInfrastructureTests : IAsyncLifetime
                 SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
 
-                ImageEntity image = InfrastructureTestHelpers.CreateSeededImage(payloadBytes: InfrastructureTestHelpers.PNG_HEADER_BYTES);
+                ImageEntity image = InfrastructureTestFixtures.CreateSeededImage(payloadBytes: InfrastructureTestFixtures.PNG_HEADER_BYTES);
                 await imageRepository.AddAsync(
                         metadata: image,
-                        binary: ImageBinaryEntity.Create(imageId: image.Id, data: InfrastructureTestHelpers.PNG_HEADER_BYTES),
+                        binary: ImageBinaryEntity.Create(imageId: image.Id, data: InfrastructureTestFixtures.PNG_HEADER_BYTES),
                         cancellationToken: CancellationToken.None);
 
                 TemplateEntity template = TemplateEntity.Create(
-                        storageNodeId: InfrastructureTestHelpers.VALID_NODE_ID,
+                        storageNodeId: InfrastructureTestFixtures.VALID_NODE_ID,
                         name: "Link Clearing Template",
                         componentType: TemplateComponentType.InfoScreen,
                         schemaJson: $"{{\"hero\":\"{image.Reference}\"}}",
-                        actorId: InfrastructureTestHelpers.VALID_ACTOR_ID);
+                        actorId: InfrastructureTestFixtures.VALID_ACTOR_ID);
                 await templateRepository.AddAsync(template: template, cancellationToken: CancellationToken.None);
 
                 Guid currentStamp = template.ConcurrencyStamp;
-                template.UpdateSchema(name: "Link Clearing Template", schemaJson: "{}", actorId: InfrastructureTestHelpers.VALID_ACTOR_ID);
+                template.UpdateSchema(name: "Link Clearing Template", schemaJson: "{}", actorId: InfrastructureTestFixtures.VALID_ACTOR_ID);
 
                 // Act
                 await templateRepository.UpdateAsync(
@@ -136,23 +136,23 @@ public sealed class ContentInfrastructureTests : IAsyncLifetime
                 SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
 
-                ImageEntity initialImage = InfrastructureTestHelpers.CreateSeededImage(payloadBytes: InfrastructureTestHelpers.PNG_HEADER_BYTES);
-                ImageEntity newImage = InfrastructureTestHelpers.CreateSeededImage(payloadBytes: InfrastructureTestHelpers.PNG_HEADER_BYTES);
+                ImageEntity initialImage = InfrastructureTestFixtures.CreateSeededImage(payloadBytes: InfrastructureTestFixtures.PNG_HEADER_BYTES);
+                ImageEntity newImage = InfrastructureTestFixtures.CreateSeededImage(payloadBytes: InfrastructureTestFixtures.PNG_HEADER_BYTES);
                 await imageRepository.AddAsync(
                         metadata: initialImage,
-                        binary: ImageBinaryEntity.Create(imageId: initialImage.Id, data: InfrastructureTestHelpers.PNG_HEADER_BYTES),
+                        binary: ImageBinaryEntity.Create(imageId: initialImage.Id, data: InfrastructureTestFixtures.PNG_HEADER_BYTES),
                         cancellationToken: CancellationToken.None);
                 await imageRepository.AddAsync(
                         metadata: newImage,
-                        binary: ImageBinaryEntity.Create(imageId: newImage.Id, data: InfrastructureTestHelpers.PNG_HEADER_BYTES),
+                        binary: ImageBinaryEntity.Create(imageId: newImage.Id, data: InfrastructureTestFixtures.PNG_HEADER_BYTES),
                         cancellationToken: CancellationToken.None);
 
                 TemplateEntity template = TemplateEntity.Create(
-                        storageNodeId: InfrastructureTestHelpers.VALID_NODE_ID,
+                        storageNodeId: InfrastructureTestFixtures.VALID_NODE_ID,
                         name: "Concurrency Guarded",
                         componentType: TemplateComponentType.QuizTemplate,
                         schemaJson: $"{{\"a\":\"{initialImage.Reference}\"}}",
-                        actorId: InfrastructureTestHelpers.VALID_ACTOR_ID);
+                        actorId: InfrastructureTestFixtures.VALID_ACTOR_ID);
                 await templateRepository.AddAsync(template: template, cancellationToken: CancellationToken.None);
 
                 await this._fixture.RotatePersistedConcurrencyStampAsync(
@@ -164,7 +164,7 @@ public sealed class ContentInfrastructureTests : IAsyncLifetime
                 template.UpdateSchema(
                         name: "Stale Rename",
                         schemaJson: $"{{\"b\":\"{newImage.Reference}\"}}",
-                        actorId: InfrastructureTestHelpers.VALID_ACTOR_ID);
+                        actorId: InfrastructureTestFixtures.VALID_ACTOR_ID);
 
                 // Act & Assert
                 await Assert.ThrowsAsync<ConcurrencyConflictException>(() =>
@@ -190,7 +190,7 @@ public sealed class ContentInfrastructureTests : IAsyncLifetime
                 Assert.Equal(initialImage.Id, link.ImageId);
 
                 SqlServerStorageQuotaMonitor quotaMonitor = new(dbContext: dbContext);
-                long expectedActiveBytes = InfrastructureTestHelpers.PNG_HEADER_BYTES.Length * ACTIVE_SEEDED_IMAGE_COUNT;
+                long expectedActiveBytes = InfrastructureTestFixtures.PNG_HEADER_BYTES.Length * ACTIVE_SEEDED_IMAGE_COUNT;
                 Assert.Equal(expectedActiveBytes, await quotaMonitor.GetUsedBytesAsync(cancellationToken: CancellationToken.None));
         }
 

@@ -49,17 +49,17 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
                 // Arrange
                 await using ContentDbContext dbContext = this._fixture.CreateDbContext();
                 SqlServerImageRepository imageRepository = new(dbContext: dbContext);
-                ImageEntity activeImage = ImageUseCaseTestHelpers.CreateSeededImage(payloadBytes: ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD);
-                ImageEntity deletedImage = ImageUseCaseTestHelpers.CreateSeededImage(payloadBytes: ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD);
-                deletedImage.MarkDeleted(actorId: ImageUseCaseTestHelpers.VALID_ACTOR_ID);
+                ImageEntity activeImage = ImageUseCaseTestFixtures.CreateSeededImage(payloadBytes: ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD);
+                ImageEntity deletedImage = ImageUseCaseTestFixtures.CreateSeededImage(payloadBytes: ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD);
+                deletedImage.MarkDeleted(actorId: ImageUseCaseTestFixtures.VALID_ACTOR_ID);
 
                 await imageRepository.AddAsync(
                         metadata: activeImage,
-                        binary: ImageBinaryEntity.Create(imageId: activeImage.Id, data: ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD),
+                        binary: ImageBinaryEntity.Create(imageId: activeImage.Id, data: ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD),
                         cancellationToken: CancellationToken.None);
                 await imageRepository.AddAsync(
                         metadata: deletedImage,
-                        binary: ImageBinaryEntity.Create(imageId: deletedImage.Id, data: ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD),
+                        binary: ImageBinaryEntity.Create(imageId: deletedImage.Id, data: ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD),
                         cancellationToken: CancellationToken.None);
 
                 GetImageMetadataUseCase useCase = new(imageRepository: imageRepository);
@@ -87,12 +87,12 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
                 await using ContentDbContext dbContext = this._fixture.CreateDbContext();
                 SqlServerImageRepository imageRepository = new(dbContext: dbContext);
                 CountingImageBinaryStore binaryStore = new(innerStore: new SqlServerImageBinaryStore(dbContext: dbContext));
-                ImageEntity image = ImageUseCaseTestHelpers.CreateSeededImage(payloadBytes: ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD);
-                ImageBinaryEntity binary = ImageBinaryEntity.Create(imageId: image.Id, data: ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD);
+                ImageEntity image = ImageUseCaseTestFixtures.CreateSeededImage(payloadBytes: ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD);
+                ImageBinaryEntity binary = ImageBinaryEntity.Create(imageId: image.Id, data: ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD);
                 await imageRepository.AddAsync(metadata: image, binary: binary, cancellationToken: CancellationToken.None);
 
                 // Seed an orphaned metadata row without ImageBinaries to exercise missing-stream KeyNotFoundException handling.
-                ImageEntity metadataOnlyImage = ImageUseCaseTestHelpers.CreateSeededImage(payloadBytes: ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD);
+                ImageEntity metadataOnlyImage = ImageUseCaseTestFixtures.CreateSeededImage(payloadBytes: ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD);
                 await this._fixture.SeedImageMetadataOnlyAsync(image: metadataOnlyImage, cancellationToken: CancellationToken.None);
 
                 GetImageStreamUseCase useCase = new(
@@ -110,7 +110,7 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
 
                 using MemoryStream copy = new();
                 await result.Content.CopyToAsync(destination: copy, cancellationToken: CancellationToken.None);
-                Assert.Equal(ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD, copy.ToArray());
+                Assert.Equal(ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD, copy.ToArray());
 
                 await Assert.ThrowsAsync<KeyNotFoundException>(() => useCase.ExecuteAsync(
                         query: new GetImageStreamQuery { ImageId = metadataOnlyImage.Id },
@@ -127,37 +127,37 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
                 await using ContentDbContext dbContext = this._fixture.CreateDbContext();
                 SqlServerTemplateRepository templateRepository = new(dbContext: dbContext);
                 SqlServerImageRepository imageRepository = new(dbContext: dbContext);
-                ImageEntity referencedImage = ImageUseCaseTestHelpers.CreateSeededImage(payloadBytes: ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD);
-                ImageEntity freeImage = ImageUseCaseTestHelpers.CreateSeededImage(payloadBytes: ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD);
+                ImageEntity referencedImage = ImageUseCaseTestFixtures.CreateSeededImage(payloadBytes: ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD);
+                ImageEntity freeImage = ImageUseCaseTestFixtures.CreateSeededImage(payloadBytes: ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD);
 
                 await imageRepository.AddAsync(
                         metadata: referencedImage,
-                        binary: ImageBinaryEntity.Create(imageId: referencedImage.Id, data: ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD),
+                        binary: ImageBinaryEntity.Create(imageId: referencedImage.Id, data: ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD),
                         cancellationToken: CancellationToken.None);
                 await imageRepository.AddAsync(
                         metadata: freeImage,
-                        binary: ImageBinaryEntity.Create(imageId: freeImage.Id, data: ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD),
+                        binary: ImageBinaryEntity.Create(imageId: freeImage.Id, data: ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD),
                         cancellationToken: CancellationToken.None);
 
                 // Link referencedImage via an archived template in SQL Server to ensure archived templates still block image deletion.
                 TemplateEntity archivedTemplate = TemplateEntity.Create(
-                        storageNodeId: ImageUseCaseTestHelpers.VALID_NODE_ID,
+                        storageNodeId: ImageUseCaseTestFixtures.VALID_NODE_ID,
                         name: "Archived Layout",
                         componentType: TemplateComponentType.InfoScreen,
                         schemaJson: $"{{\"hero\":\"{referencedImage.Reference}\"}}",
-                        actorId: ImageUseCaseTestHelpers.VALID_ACTOR_ID);
-                archivedTemplate.Archive(actorId: ImageUseCaseTestHelpers.VALID_ACTOR_ID);
+                        actorId: ImageUseCaseTestFixtures.VALID_ACTOR_ID);
+                archivedTemplate.Archive(actorId: ImageUseCaseTestFixtures.VALID_ACTOR_ID);
                 await templateRepository.AddAsync(template: archivedTemplate, cancellationToken: CancellationToken.None);
 
                 DeleteImageUseCase useCase = new(imageRepository: imageRepository);
 
                 // Act & Assert
                 await Assert.ThrowsAsync<EntityInUseException>(() => useCase.ExecuteAsync(
-                        command: new DeleteImageCommand { ImageId = referencedImage.Id, ActorId = ImageUseCaseTestHelpers.VALID_ACTOR_ID },
+                        command: new DeleteImageCommand { ImageId = referencedImage.Id, ActorId = ImageUseCaseTestFixtures.VALID_ACTOR_ID },
                         cancellationToken: CancellationToken.None));
 
                 await useCase.ExecuteAsync(
-                        command: new DeleteImageCommand { ImageId = freeImage.Id, ActorId = ImageUseCaseTestHelpers.VALID_ACTOR_ID },
+                        command: new DeleteImageCommand { ImageId = freeImage.Id, ActorId = ImageUseCaseTestFixtures.VALID_ACTOR_ID },
                         cancellationToken: CancellationToken.None);
 
                 ImageEntity? reloadedFreeImage = await imageRepository.GetByIdAsync(
@@ -176,17 +176,17 @@ public sealed class ImageUseCasesTests : IAsyncLifetime
                 // Arrange
                 await using ContentDbContext dbContext = this._fixture.CreateDbContext();
                 SqlServerImageRepository imageRepository = new(dbContext: dbContext);
-                ImageEntity activeImage = ImageUseCaseTestHelpers.CreateSeededImage(payloadBytes: ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD);
-                ImageEntity deletedImage = ImageUseCaseTestHelpers.CreateSeededImage(payloadBytes: ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD);
-                deletedImage.MarkDeleted(actorId: ImageUseCaseTestHelpers.VALID_ACTOR_ID);
+                ImageEntity activeImage = ImageUseCaseTestFixtures.CreateSeededImage(payloadBytes: ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD);
+                ImageEntity deletedImage = ImageUseCaseTestFixtures.CreateSeededImage(payloadBytes: ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD);
+                deletedImage.MarkDeleted(actorId: ImageUseCaseTestFixtures.VALID_ACTOR_ID);
 
                 await imageRepository.AddAsync(
                         metadata: activeImage,
-                        binary: ImageBinaryEntity.Create(imageId: activeImage.Id, data: ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD),
+                        binary: ImageBinaryEntity.Create(imageId: activeImage.Id, data: ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD),
                         cancellationToken: CancellationToken.None);
                 await imageRepository.AddAsync(
                         metadata: deletedImage,
-                        binary: ImageBinaryEntity.Create(imageId: deletedImage.Id, data: ImageUseCaseTestHelpers.VALID_PNG_PAYLOAD),
+                        binary: ImageBinaryEntity.Create(imageId: deletedImage.Id, data: ImageUseCaseTestFixtures.VALID_PNG_PAYLOAD),
                         cancellationToken: CancellationToken.None);
 
                 ListImagesUseCase useCase = new(imageRepository: imageRepository);
