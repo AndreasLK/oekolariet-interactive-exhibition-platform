@@ -46,7 +46,7 @@ public sealed class ContentServiceImageDownloadTests
                         handler: handler,
                         baseAddress: new Uri(uriString: BASE_URL_WITH_SUBPATH, uriKind: UriKind.Absolute));
 
-                ContentImageDownload download = await client.DownloadImageAsync(imageId: imageId, cancellationToken: TestContext.Current.CancellationToken);
+                ContentImageDownloadResponse download = await client.DownloadImageAsync(imageId: imageId, cancellationToken: TestContext.Current.CancellationToken);
                 await using (download)
                 {
                         using MemoryStream copied = new();
