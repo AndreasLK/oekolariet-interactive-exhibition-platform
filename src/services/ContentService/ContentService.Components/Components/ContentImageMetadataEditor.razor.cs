@@ -8,7 +8,7 @@ namespace ContentService.Components.Components;
 /// Controlled metadata editing form for updating an image's searchable description (<c>AltText</c>), tags, and album path.
 /// </summary>
 /// <remarks>
-/// Captures the <see cref="ContentImageMetadata.ConcurrencyStamp"/> loaded into the form so ContentService can detect
+/// Captures the <see cref="ContentImageResponse.ConcurrencyStamp"/> loaded into the form so ContentService can detect
 /// optimistic concurrency conflicts (HTTP 409) if another editor updates or deletes the image first.
 /// </remarks>
 public sealed partial class ContentImageMetadataEditor : ComponentBase
@@ -28,7 +28,7 @@ public sealed partial class ContentImageMetadataEditor : ComponentBase
         /// Gets or sets the image metadata record being edited.
         /// </summary>
         [Parameter]
-        public ContentImageMetadata? Image { get; set; }
+        public ContentImageResponse? Image { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether metadata persistence is currently in flight.
@@ -40,7 +40,7 @@ public sealed partial class ContentImageMetadataEditor : ComponentBase
         /// Gets or sets the callback invoked when the user submits updated metadata.
         /// </summary>
         [Parameter]
-        public EventCallback<UpdateImageMetadataRequest> OnSaveRequested { get; set; }
+        public EventCallback<ContentUpdateImageMetadataCommand> OnSaveRequested { get; set; }
 
         /// <summary>
         /// Gets or sets the callback invoked when the user cancels metadata editing.
@@ -87,7 +87,7 @@ public sealed partial class ContentImageMetadataEditor : ComponentBase
                 this.OnCancelRequested.InvokeAsync();
 
         /// <summary>
-        /// Builds a trimmed <see cref="UpdateImageMetadataRequest"/> stamped with the loaded <see cref="ContentImageMetadata.ConcurrencyStamp"/>.
+        /// Builds a trimmed <see cref="ContentUpdateImageMetadataCommand"/> stamped with the loaded <see cref="ContentImageResponse.ConcurrencyStamp"/>.
         /// </summary>
         private async Task HandleSaveClickedAsync()
         {
@@ -96,7 +96,7 @@ public sealed partial class ContentImageMetadataEditor : ComponentBase
                         return;
                 }
 
-                UpdateImageMetadataRequest request = new()
+                ContentUpdateImageMetadataCommand request = new()
                 {
                         // Convert blank fields to null so ContentService clears those columns instead of storing empty whitespace.
                         AltText = string.IsNullOrWhiteSpace(value: this._altText) ? null : this._altText.Trim(),

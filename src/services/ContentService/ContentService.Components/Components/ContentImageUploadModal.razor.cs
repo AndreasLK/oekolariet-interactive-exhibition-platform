@@ -76,7 +76,7 @@ public sealed partial class ContentImageUploadModal : ComponentBase
         /// Gets or sets the callback invoked after at least one image uploads successfully, passing the newly persisted metadata records.
         /// </summary>
         [Parameter]
-        public EventCallback<IReadOnlyList<ContentImageMetadata>> OnUploadCompleted { get; set; }
+        public EventCallback<IReadOnlyList<ContentImageResponse>> OnUploadCompleted { get; set; }
 
         /// <inheritdoc />
         protected override void OnParametersSet()
@@ -149,7 +149,7 @@ public sealed partial class ContentImageUploadModal : ComponentBase
                 }
 
                 this._isUploading = true;
-                (List<ContentImageMetadata> Uploaded, int FailedCount) outcome;
+                (List<ContentImageResponse> Uploaded, int FailedCount) outcome;
 
                 try
                 {
@@ -174,7 +174,7 @@ public sealed partial class ContentImageUploadModal : ComponentBase
         }
 
         private async Task ReportBatchOutcomeAsync(
-                IReadOnlyList<ContentImageMetadata> uploaded,
+                IReadOnlyList<ContentImageResponse> uploaded,
                 int failedCount)
         {
                 if (uploaded.Count == 0)
