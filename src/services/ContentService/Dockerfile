@@ -17,7 +17,7 @@ WORKDIR /app
 
 COPY --from=build /app/publish .
 
-# Run as non-root user provided by the official .NET 10 ASP.NET runtime image.
+# Run as non-root user provided by the official .NET 11 ASP.NET runtime image.
 USER $APP_UID
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
