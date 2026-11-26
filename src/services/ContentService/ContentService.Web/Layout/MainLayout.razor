@@ -8,6 +8,14 @@
         </TopBar>
         <ChildContent>
                 <Column Modifier="@this.BuildContentColumnModifier()" Gap="1.5rem">
+                        <Row Gap="0.5rem" Wrap="true" VerticalAlignment="VerticalAlignment.Center">
+                                <Pill Text="Dev Preview"
+                                      Variant="@(this.IsUserPreviewActive() ? Pill.PillVariant.Neutral : Pill.PillVariant.Accent)"
+                                      OnClick="@this.NavigateToDevPreview" />
+                                <Pill Text="User Preview"
+                                      Variant="@(this.IsUserPreviewActive() ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
+                                      OnClick="@this.NavigateToUserPreview" />
+                        </Row>
                         @this.Body
                 </Column>
         </ChildContent>

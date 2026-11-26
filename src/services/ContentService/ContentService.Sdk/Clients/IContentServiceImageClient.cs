@@ -75,6 +75,16 @@ public interface IContentServiceImageClient
                 CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Downloads the lightweight preview stream and HTTP headers for an active exhibition image.
+        /// </summary>
+        /// <param name="imageId">The unique identifier of the image whose preview should be downloaded.</param>
+        /// <param name="cancellationToken">A token to cancel the HTTP request before headers arrive.</param>
+        /// <returns>A disposable <see cref="ContentImageDownload"/> owning the preview stream and response.</returns>
+        public Task<ContentImageDownload> DownloadImagePreviewAsync(
+                Guid imageId,
+                CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Retrieves the metadata record for an active exhibition image.
         /// </summary>
         /// <param name="imageId">The unique identifier of the image.</param>
@@ -102,5 +112,12 @@ public interface IContentServiceImageClient
         /// <param name="imageId">The unique identifier of the image.</param>
         /// <returns>The absolute URI pointing to <c>api/images/{imageId}/content</c>.</returns>
         public Uri GetImageContentUri(Guid imageId);
+
+        /// <summary>
+        /// Builds the absolute ContentService HTTP preview URI for fast gallery thumbnail rendering.
+        /// </summary>
+        /// <param name="imageId">The unique identifier of the image.</param>
+        /// <returns>The absolute URI pointing to <c>api/images/{imageId}/preview</c>.</returns>
+        public Uri GetImagePreviewUri(Guid imageId) => this.GetImageContentUri(imageId: imageId);
 }
 

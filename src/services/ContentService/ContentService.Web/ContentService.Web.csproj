@@ -6,6 +6,8 @@
                 <ImplicitUsings>enable</ImplicitUsings>
                 <!-- Emit XML documentation and enforce CS1591/CS1573 across all public web types. -->
                 <GenerateDocumentationFile>true</GenerateDocumentationFile>
+                <!-- Avoid shipping ~2 MB of ICU globalization data when only standard formatting is used. -->
+                <InvariantGlobalization>true</InvariantGlobalization>
         </PropertyGroup>
 
         <ItemGroup>

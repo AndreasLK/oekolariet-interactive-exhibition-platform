@@ -32,8 +32,7 @@ public static class DependencyInjection
                         .Bind(configuration.GetSection(SdkConstants.CONTENT_SERVICE_SECTION_NAME))
                         .ValidateOnStart();
 
-                RegisterTypedTemplateClient(services: services);
-                return RegisterTypedImageClient(services: services);
+                return RegisterTypedClients(services: services);
         }
 
         /// <summary>
@@ -56,20 +55,20 @@ public static class DependencyInjection
                         .Configure(configureOptions)
                         .ValidateOnStart();
 
-                RegisterTypedTemplateClient(services: services);
-                return RegisterTypedImageClient(services: services);
+                return RegisterTypedClients(services: services);
         }
 
-        private static IHttpClientBuilder RegisterTypedImageClient(IServiceCollection services)
+        /// <summary>
+        /// Registers all ContentService typed HTTP clients with shared base-address and timeout configuration.
+        /// </summary>
+        /// <param name="services">The target service collection.</param>
+        /// <returns>The <see cref="IHttpClientBuilder"/> for the primary image client.</returns>
+        private static IHttpClientBuilder RegisterTypedClients(IServiceCollection services)
         {
-                return services.AddHttpClient<IContentServiceImageClient, ContentServiceImageClient>(
-                        configureClient: ConfigureHttpClient);
-        }
-
-        private static IHttpClientBuilder RegisterTypedTemplateClient(IServiceCollection services)
-        {
-                return services.AddHttpClient<IContentServiceTemplateClient, ContentServiceTemplateClient>(
-                        configureClient: ConfigureHttpClient);
+                services.AddHttpClient<IContentServiceTemplateClient, ContentServiceTemplateClient>(configureClient: ConfigureHttpClient);
+                services.AddHttpClient<IContentServicePublishingClient, ContentServicePublishingClient>(configureClient: ConfigureHttpClient);
+                services.AddHttpClient<IContentServiceHealthClient, ContentServiceHealthClient>(configureClient: ConfigureHttpClient);
+                return services.AddHttpClient<IContentServiceImageClient, ContentServiceImageClient>(configureClient: ConfigureHttpClient);
         }
 
         private static void ConfigureHttpClient(

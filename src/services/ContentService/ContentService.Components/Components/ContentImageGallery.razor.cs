@@ -459,8 +459,8 @@ public sealed partial class ContentImageGallery : ComponentBase, IDisposable
         {
                 try
                 {
-                        // Fall back to the image content endpoint when the preview-specific URI helper is not present on this branch.
-                        return this.ImageClient.GetImageContentUri(imageId: imageId).AbsoluteUri;
+                        // Load the saved lightweight WebP preview for gallery tiles so multi-megabyte originals do not stall the grid.
+                        return this.ImageClient.GetImagePreviewUri(imageId: imageId).AbsoluteUri;
                 }
                 catch (Exception ex) when (ex is InvalidOperationException or OptionsValidationException)
                 {
