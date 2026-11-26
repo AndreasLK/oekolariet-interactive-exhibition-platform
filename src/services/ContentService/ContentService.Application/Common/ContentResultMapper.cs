@@ -29,6 +29,8 @@ internal static class ContentResultMapper
                         SizeBytes = image.FileSizeBytes,
                         Sha256Hash = image.Sha256Hash,
                         AltText = image.AltText,
+                        AlbumPath = image.AlbumPath,
+                        Tags = image.TagList,
                         CreatedAt = image.CreatedAt,
                         ConcurrencyStamp = image.ConcurrencyStamp
                 };
