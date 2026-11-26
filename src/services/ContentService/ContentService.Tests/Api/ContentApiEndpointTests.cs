@@ -115,7 +115,7 @@ public sealed class ContentApiEndpointTests
 
                 // Verify upload preserves Danish filename, altText, and actor attribution through Minimal API binding.
                 await using MemoryStream uploadStream = new(buffer: ApiEndpointTestFixtures.VALID_PNG_BYTES);
-                ContentImageMetadata uploaded = await sdkClient.UploadImageAsync(request: new UploadImageRequest
+                ContentImageResponse uploaded = await sdkClient.UploadImageAsync(command: new ContentUploadImageCommand
                 {
                         Content = uploadStream,
                         FileName = "økolariet æble.png",
@@ -128,14 +128,14 @@ public sealed class ContentApiEndpointTests
                 Assert.Equal(expected: ApiEndpointTestFixtures.VALID_PNG_BYTES.Length, actual: uploaded.SizeBytes);
 
                 // Verify metadata retrieval and content URI generation match the uploaded image.
-                ContentImageMetadata fetched = await sdkClient.GetImageMetadataAsync(imageId: uploaded.Id, cancellationToken: TestContext.Current.CancellationToken);
+                ContentImageResponse fetched = await sdkClient.GetImageMetadataAsync(imageId: uploaded.Id, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(expected: uploaded.Id, actual: fetched.Id);
                 Assert.Equal(
                         expected: new Uri(baseUri: httpClient.BaseAddress!, relativeUri: $"api/v1/images/{uploaded.Id:D}/content"),
                         actual: sdkClient.GetImageContentUri(imageId: uploaded.Id));
 
                 // Verify download extracts FileNameStar and streams exact PNG bytes.
-                await using ContentImageDownload downloaded = await sdkClient.DownloadImageAsync(imageId: uploaded.Id, cancellationToken: TestContext.Current.CancellationToken);
+                await using ContentImageDownloadResponse downloaded = await sdkClient.DownloadImageAsync(imageId: uploaded.Id, cancellationToken: TestContext.Current.CancellationToken);
                 await using MemoryStream downloadedBytes = new();
                 await downloaded.Content.CopyToAsync(destination: downloadedBytes, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(expected: ApiEndpointTestFixtures.VALID_PNG_BYTES, actual: downloadedBytes.ToArray());
