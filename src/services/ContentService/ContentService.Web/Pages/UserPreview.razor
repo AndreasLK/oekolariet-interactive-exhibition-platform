@@ -85,7 +85,7 @@
                                                         }
 
                                                         <Row Gap="0.75rem" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
-                                                                <ActionButton Text="Verify &amp; Download"
+                                                                <ActionButton Text="Verify Image"
                                                                               Variant="ActionButton.ButtonVariant.Solid"
                                                                               Size="ActionButton.ButtonSize.Small"
                                                                               IsLoading="@this._isDownloadingImage"
@@ -171,7 +171,7 @@
                                                 @if (this._resolvedBundle.Assets.Count > 0)
                                                 {
                                                         <Column Gap="0.35rem" Modifier="@UIModifier.New.FillMaxWidth()">
-                                                                @foreach (ContentBundleAsset asset in this._resolvedBundle.Assets)
+                                                                @foreach (ContentBundleAssetResponse asset in this._resolvedBundle.Assets)
                                                                 {
                                                                         <Row HorizontalArrangement="Arrangement.SpaceBetween"
                                                                              VerticalAlignment="VerticalAlignment.Center"
