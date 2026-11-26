@@ -1,0 +1,13 @@
+# Build output from Visual Studio. It is built fresh inside the container.
+**/bin/
+**/obj/
+
+# Visual Studio and user files
+**/.vs/
+**/*.user
+
+# Not needed by the Api
+EditorService.Presentation/
+
+# Secrets must never go into an image
+**/.env
