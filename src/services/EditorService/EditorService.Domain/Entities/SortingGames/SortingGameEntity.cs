@@ -198,34 +198,30 @@ namespace EditorService.Domain.Entities.SortingGames
                 }
 
                 /// <summary>
-                /// Updates a Category Item
+                /// Changes the name, explanation and image of a category item.
+                /// The item stays in its category: an employee cannot move an item to another category.
                 /// </summary>
-                /// <param name="categoryItemId"></param>
-                /// <param name="name"></param>
-                /// <param name="explanation"></param>
-                /// <param name="imageId"></param>
-                /// <param name="categoryReceiverId"></param>
-                /// <param name="lockToken"></param>
-                /// <param name="actorId"></param>
-                /// <param name="now"></param>
-                /// <exception cref="DomainValidationException"></exception>
-                public void UpdateCategoryItem(Guid categoryItemId, string name, string explanation, Guid imageId, Guid categoryReceiverId, Guid lockToken, string actorId, DateTimeOffset now)
+                /// <param name="categoryItemId">The identifier of the item to change.</param>
+                /// <param name="name">The new name of the item.</param>
+                /// <param name="explanation">The new explanation shown after the item is sorted.</param>
+                /// <param name="imageId">The new image of the item in Content Service.</param>
+                /// <param name="lockToken">The token of the lock held by the caller.</param>
+                /// <param name="actorId">The identifier of the actor making the change.</param>
+                /// <param name="now">The current UTC time.</param>
+                /// <exception cref="DomainValidationException">Thrown when the item does not exist in this game, or a value is not valid.</exception>
+                public void UpdateCategoryItem(Guid categoryItemId, string name, string explanation, Guid imageId, Guid lockToken, string actorId, DateTimeOffset now)
                 {
                         // 1. Only the person holding the lock may change the game.
                         this.EnsureLockHeld(lockToken: lockToken, now: now);
+
                         // 2. Find the category item in the game.
                         CategoryItemEntity? categoryItem = this._categoryItems.FirstOrDefault(predicate: item => item.Id == categoryItemId);
                         if (categoryItem is null)
                         {
                                 throw new DomainValidationException(message: "The category item does not exist in this game.");
                         }
-                        // 3. The item must point to a category receiver that exists in this game.
-                        bool receiverExists = this._categoryReceivers.Any(predicate: receiver => receiver.Id == categoryReceiverId);
-                        if (!receiverExists)
-                        {
-                                throw new DomainValidationException(message: "The category receiver does not exist in this game.");
-                        }
-                        // 4. Update the category item and mark the game as changed.
+
+                        // 3. Update the category item and mark the game as changed.
                         categoryItem.UpdateName(name: name);
                         categoryItem.UpdateExplanation(explanation: explanation);
                         categoryItem.UpdateImage(imageId: imageId);
