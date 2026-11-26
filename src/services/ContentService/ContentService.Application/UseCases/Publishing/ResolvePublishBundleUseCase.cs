@@ -86,7 +86,9 @@ public sealed class ResolvePublishBundleUseCase
                         storageNodeClient: this._storageNodeClient,
                         localStorageNodeId: this._localStorageNodeId);
 
-                // Sort canonically by formatted GUID then StorageNodeId so identical exhibition content yields the exact same manifest and checksum regardless of JSON order.
+                // Non-standard manifest sealing: Sorts assets canonically by GUID then StorageNodeId before hashing.
+                // Gain: Reproducible offline kiosk checksums regardless of JSON property/reference order.
+                // Loss: O(N log N) sort per bundle resolution (negligible for exhibition template asset counts).
                 List<ImageMetadataResult> orderedImages =
                 [
                         .. resolvedImages

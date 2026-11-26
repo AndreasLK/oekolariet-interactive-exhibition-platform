@@ -92,6 +92,10 @@ public sealed class UploadImageUseCase
                 // Short-circuit based on declared length first so obvious over-quota uploads fail before reading megabytes from the network.
                 this.EnsureWithinQuota(currentUsedBytes: currentUsedBytes, incomingBytes: command.DeclaredLengthBytes);
 
+                // Non-standard upload pipeline: Buffers up to effectiveMaxSizeBytes in memory (via BoundedImageStreamReader)
+                // and pre-generates a WebP preview synchronously on upload rather than streaming straight to disk or resizing lazily.
+                // Gain: Catches spoofed Content-Length headers, validates magic bytes + SHA-256 in one pass, and makes gallery loads instant.
+                // Loss: Holds up to 10 MiB per concurrent upload in memory and adds preview encoding CPU to the upload request.
                 // Enforce a hard read ceiling during streaming so spoofed Content-Length headers cannot trigger unbounded memory allocation.
                 byte[] payload = await BoundedImageStreamReader.ReadPayloadWithLimitAsync(
                         content: command.Content,
