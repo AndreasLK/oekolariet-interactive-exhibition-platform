@@ -5,6 +5,11 @@ namespace ContentService.Api.Endpoints.Pool;
 /// <summary>
 /// Extracts strongly typed fields from Dapr CloudEvent envelopes or raw JSON event payloads.
 /// </summary>
+/// <remarks>
+/// Non-standard CloudEvent parsing: Reads <see cref="JsonElement"/> directly instead of registering <c>app.UseCloudEvents()</c> middleware.
+/// Gain: Accepts both Dapr CloudEvent <c>data</c> envelopes and raw JSON payloads in tests without extra middleware.
+/// Loss: Does not handle binary-mode CloudEvents (HTTP <c>ce-*</c> headers) or non-JSON CloudEvent content types.
+/// </remarks>
 internal static class CloudEventPayloadReader
 {
         /// <summary>
