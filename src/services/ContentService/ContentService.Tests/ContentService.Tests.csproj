@@ -8,6 +8,7 @@
         </PropertyGroup>
 
         <ItemGroup>
+                <PackageReference Include="bunit" Version="2.15.2" />
                 <PackageReference Include="coverlet.collector" Version="6.0.4" />
                 <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.14" />
                 <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
@@ -23,6 +24,7 @@
         <ItemGroup>
                 <ProjectReference Include="..\ContentService.Api\ContentService.Api.csproj" />
                 <ProjectReference Include="..\ContentService.Application\ContentService.Application.csproj" />
+                <ProjectReference Include="..\ContentService.Components\ContentService.Components.csproj" />
                 <ProjectReference Include="..\ContentService.Domain\ContentService.Domain.csproj" />
                 <ProjectReference Include="..\ContentService.Infrastructure\ContentService.Infrastructure.csproj" />
                 <ProjectReference Include="..\ContentService.Sdk\ContentService.Sdk.csproj" />
