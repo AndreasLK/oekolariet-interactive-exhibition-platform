@@ -1,4 +1,6 @@
+using EditorService.Application.CommandHandlers.EditLocks;
 using EditorService.Application.CommandHandlers.Games;
+using EditorService.Application.Interfaces.CommandHandlers.EditLocks;
 using EditorService.Application.Interfaces.CommandHandlers.Games;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -26,12 +28,18 @@ namespace EditorService.Application.DependencyInjection
                         services.TryAddSingleton(instance: TimeProvider.System);
 
                         // One line per command handler.
+                        // Games
                         services.AddScoped<ICreateSortingGameCommandHandler, CreateSortingGameCommandHandler>();
                         services.AddScoped<IRenameGameCommandHandler, RenameGameCommandHandler>();
                         services.AddScoped<IUpdateGameTemplateCommandHandler, UpdateGameTemplateCommandHandler>();
                         services.AddScoped<IUpdateGameThemeCommandHandler, UpdateGameThemeCommandHandler>();
                         services.AddScoped<IPublishGameCommandHandler, PublishGameCommandHandler>();
                         services.AddScoped<IDeleteGameCommandHandler, DeleteGameCommandHandler>();
+
+                        // Locks
+                        services.AddScoped<IAcquireLockCommandHandler, AcquireLockCommandHandler>();
+                        services.AddScoped<IRenewLockCommandHandler, RenewLockCommandHandler>();
+                        services.AddScoped<IReleaseLockCommandHandler, ReleaseLockCommandHandler>();
 
                         return services;
                 }
