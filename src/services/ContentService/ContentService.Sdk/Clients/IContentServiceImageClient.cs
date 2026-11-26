@@ -4,7 +4,8 @@ using ContentService.Sdk.Models;
 namespace ContentService.Sdk.Clients;
 
 /// <summary>
-/// Typed HTTP client contract for listing, uploading, downloading, deleting, and resolving exhibition images from ContentService.
+/// Typed HTTP client contract for listing, uploading, downloading, previewing, updating, deleting,
+/// and resolving exhibition images from ContentService.
 /// </summary>
 public interface IContentServiceImageClient
 {
@@ -15,8 +16,8 @@ public interface IContentServiceImageClient
         /// <param name="pageSize">The maximum number of items per page.</param>
         /// <param name="searchTerm">Optional case-insensitive search filter across file name, alt text, and tags.</param>
         /// <param name="cancellationToken">A token to cancel the HTTP request.</param>
-        /// <returns>A <see cref="ContentPagedResult{T}"/> containing the requested page of image metadata.</returns>
-        public Task<ContentPagedResult<ContentImageMetadata>> ListImagesAsync(
+        /// <returns>A <see cref="ContentPagedResponse{T}"/> containing the requested page of image responses.</returns>
+        public Task<ContentPagedResponse<ContentImageResponse>> ListImagesAsync(
                 int page = SdkConstants.DEFAULT_PAGE,
                 int pageSize = SdkConstants.DEFAULT_PAGE_SIZE,
                 string? searchTerm = null,
@@ -27,8 +28,8 @@ public interface IContentServiceImageClient
         /// </summary>
         /// <param name="query">The image catalog query parameters.</param>
         /// <param name="cancellationToken">A token to cancel the HTTP request.</param>
-        /// <returns>A <see cref="ContentPagedResult{T}"/> containing matching image metadata.</returns>
-        public Task<ContentPagedResult<ContentImageMetadata>> ListImagesAsync(
+        /// <returns>A <see cref="ContentPagedResponse{T}"/> containing matching image responses.</returns>
+        public Task<ContentPagedResponse<ContentImageResponse>> ListImagesAsync(
                 ContentImageQuery query,
                 CancellationToken cancellationToken = default);
 
@@ -43,25 +44,48 @@ public interface IContentServiceImageClient
                 CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Updates searchable description (<c>AltText</c>), tags, and album path on an active image.
+        /// Retrieves image responses for a batch of active image identifiers in a single request.
         /// </summary>
-        /// <param name="imageId">The unique identifier of the image to update.</param>
-        /// <param name="request">The updated metadata fields and expected concurrency stamp.</param>
+        /// <param name="imageIds">The collection of image identifiers to resolve.</param>
         /// <param name="cancellationToken">A token to cancel the HTTP request.</param>
-        /// <returns>The updated <see cref="ContentImageMetadata"/> with a rotated concurrency stamp.</returns>
-        public Task<ContentImageMetadata> UpdateImageMetadataAsync(
-                Guid imageId,
-                UpdateImageMetadataRequest request,
+        /// <returns>A read-only list of matching <see cref="ContentImageResponse"/> records.</returns>
+        public Task<IReadOnlyList<ContentImageResponse>> GetImagesMetadataBatchAsync(
+                IReadOnlyCollection<Guid> imageIds,
                 CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Uploads an image stream to ContentService and returns its persisted metadata.
+        /// Updates searchable description (<c>AltText</c>), tags, and album path on an active image.
         /// </summary>
-        /// <param name="request">The upload stream, file name, MIME type, and optional metadata.</param>
+        /// <param name="imageId">The unique identifier of the image to update.</param>
+        /// <param name="command">The updated metadata fields and expected concurrency stamp.</param>
+        /// <param name="cancellationToken">A token to cancel the HTTP request.</param>
+        /// <returns>The updated <see cref="ContentImageResponse"/> with a rotated concurrency stamp.</returns>
+        public Task<ContentImageResponse> UpdateImageMetadataAsync(
+                Guid imageId,
+                ContentUpdateImageMetadataCommand command,
+                CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Updates searchable description (<c>AltText</c>), tags, and album path on an active image
+        /// identified by either a GUID or a shard-aware <c>{node}_{guid}</c> external identifier.
+        /// </summary>
+        /// <param name="imageIdentifier">The image GUID or shard-aware <c>{node}_{guid}</c> external identifier.</param>
+        /// <param name="command">The updated metadata fields and expected concurrency stamp.</param>
+        /// <param name="cancellationToken">A token to cancel the HTTP request.</param>
+        /// <returns>The updated <see cref="ContentImageResponse"/> with a rotated concurrency stamp.</returns>
+        public Task<ContentImageResponse> UpdateImageMetadataAsync(
+                string imageIdentifier,
+                ContentUpdateImageMetadataCommand command,
+                CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Uploads an image stream to ContentService and returns its persisted image response.
+        /// </summary>
+        /// <param name="command">The upload stream, file name, MIME type, and optional metadata.</param>
         /// <param name="cancellationToken">A token to cancel the HTTP upload.</param>
-        /// <returns>The persisted <see cref="ContentImageMetadata"/> returned by ContentService.</returns>
-        public Task<ContentImageMetadata> UploadImageAsync(
-                UploadImageRequest request,
+        /// <returns>The persisted <see cref="ContentImageResponse"/> returned by ContentService.</returns>
+        public Task<ContentImageResponse> UploadImageAsync(
+                ContentUploadImageCommand command,
                 CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -69,29 +93,62 @@ public interface IContentServiceImageClient
         /// </summary>
         /// <param name="imageId">The unique identifier of the image to download.</param>
         /// <param name="cancellationToken">A token to cancel the HTTP request before headers arrive.</param>
-        /// <returns>A disposable <see cref="ContentImageDownload"/> owning the payload stream and response.</returns>
-        public Task<ContentImageDownload> DownloadImageAsync(
+        /// <returns>A disposable <see cref="ContentImageDownloadResponse"/> owning the payload stream and response.</returns>
+        public Task<ContentImageDownloadResponse> DownloadImageAsync(
                 Guid imageId,
+                CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Downloads the raw binary stream and HTTP headers for an active exhibition image
+        /// identified by either a GUID or a shard-aware <c>{node}_{guid}</c> external identifier.
+        /// </summary>
+        /// <param name="imageIdentifier">The image GUID or shard-aware <c>{node}_{guid}</c> external identifier.</param>
+        /// <param name="cancellationToken">A token to cancel the HTTP request before headers arrive.</param>
+        /// <returns>A disposable <see cref="ContentImageDownloadResponse"/> owning the payload stream and response.</returns>
+        public Task<ContentImageDownloadResponse> DownloadImageAsync(
+                string imageIdentifier,
                 CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Downloads the lightweight preview stream and HTTP headers for an active exhibition image.
         /// </summary>
-        /// <param name="imageId">The unique identifier of the image whose preview should be downloaded.</param>
+        /// <param name="imageId">The unique identifier of the image whose preview to download.</param>
         /// <param name="cancellationToken">A token to cancel the HTTP request before headers arrive.</param>
-        /// <returns>A disposable <see cref="ContentImageDownload"/> owning the preview stream and response.</returns>
-        public Task<ContentImageDownload> DownloadImagePreviewAsync(
+        /// <returns>A disposable <see cref="ContentImageDownloadResponse"/> owning the preview stream and response.</returns>
+        public Task<ContentImageDownloadResponse> DownloadImagePreviewAsync(
                 Guid imageId,
                 CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Retrieves the metadata record for an active exhibition image.
+        /// Downloads the lightweight preview stream and HTTP headers for an active exhibition image
+        /// identified by either a GUID or a shard-aware <c>{node}_{guid}</c> external identifier.
+        /// </summary>
+        /// <param name="imageIdentifier">The image GUID or shard-aware <c>{node}_{guid}</c> external identifier.</param>
+        /// <param name="cancellationToken">A token to cancel the HTTP request before headers arrive.</param>
+        /// <returns>A disposable <see cref="ContentImageDownloadResponse"/> owning the preview stream and response.</returns>
+        public Task<ContentImageDownloadResponse> DownloadImagePreviewAsync(
+                string imageIdentifier,
+                CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Retrieves the <see cref="ContentImageResponse"/> for an active exhibition image.
         /// </summary>
         /// <param name="imageId">The unique identifier of the image.</param>
         /// <param name="cancellationToken">A token to cancel the HTTP request.</param>
-        /// <returns>The <see cref="ContentImageMetadata"/> for the requested image.</returns>
-        public Task<ContentImageMetadata> GetImageMetadataAsync(
+        /// <returns>The <see cref="ContentImageResponse"/> for the requested image.</returns>
+        public Task<ContentImageResponse> GetImageMetadataAsync(
                 Guid imageId,
+                CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Retrieves the <see cref="ContentImageResponse"/> for an active exhibition image
+        /// identified by either a GUID or a shard-aware <c>{node}_{guid}</c> external identifier.
+        /// </summary>
+        /// <param name="imageIdentifier">The image GUID or shard-aware <c>{node}_{guid}</c> external identifier.</param>
+        /// <param name="cancellationToken">A token to cancel the HTTP request.</param>
+        /// <returns>The <see cref="ContentImageResponse"/> for the requested image.</returns>
+        public Task<ContentImageResponse> GetImageMetadataAsync(
+                string imageIdentifier,
                 CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -107,17 +164,45 @@ public interface IContentServiceImageClient
                 CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Soft-deletes an unreferenced exhibition image in ContentService
+        /// identified by either a GUID or a shard-aware <c>{node}_{guid}</c> external identifier.
+        /// </summary>
+        /// <param name="imageIdentifier">The image GUID or shard-aware <c>{node}_{guid}</c> external identifier.</param>
+        /// <param name="actorId">Optional audit actor identifier overriding <c>ContentServiceClientOptions.DefaultActorId</c>.</param>
+        /// <param name="cancellationToken">A token to cancel the HTTP request.</param>
+        /// <returns>A task representing the asynchronous deletion operation.</returns>
+        public Task DeleteImageAsync(
+                string imageIdentifier,
+                string? actorId = null,
+                CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Builds the absolute ContentService HTTP content URI for direct browser <c>&lt;img src&gt;</c> rendering.
         /// </summary>
         /// <param name="imageId">The unique identifier of the image.</param>
-        /// <returns>The absolute URI pointing to <c>api/images/{imageId}/content</c>.</returns>
+        /// <returns>The absolute URI pointing to <c>api/v1/images/{imageId}/content</c>.</returns>
         public Uri GetImageContentUri(Guid imageId);
 
         /// <summary>
-        /// Builds the absolute ContentService HTTP preview URI for fast gallery thumbnail rendering.
+        /// Builds the absolute ContentService HTTP content URI for direct browser <c>&lt;img src&gt;</c> rendering
+        /// using either a GUID or a shard-aware <c>{node}_{guid}</c> external identifier.
+        /// </summary>
+        /// <param name="imageIdentifier">The image GUID or shard-aware <c>{node}_{guid}</c> external identifier.</param>
+        /// <returns>The absolute URI pointing to <c>api/v1/images/{imageIdentifier}/content</c>.</returns>
+        public Uri GetImageContentUri(string imageIdentifier);
+
+        /// <summary>
+        /// Builds the absolute ContentService HTTP preview URI for lightweight gallery <c>&lt;img src&gt;</c> rendering.
         /// </summary>
         /// <param name="imageId">The unique identifier of the image.</param>
-        /// <returns>The absolute URI pointing to <c>api/images/{imageId}/preview</c>.</returns>
-        public Uri GetImagePreviewUri(Guid imageId) => this.GetImageContentUri(imageId: imageId);
-}
+        /// <returns>The absolute URI pointing to <c>api/v1/images/{imageId}/preview</c>.</returns>
+        public Uri GetImagePreviewUri(Guid imageId);
 
+        /// <summary>
+        /// Builds the absolute ContentService HTTP preview URI for lightweight gallery <c>&lt;img src&gt;</c> rendering
+        /// using either a GUID or a shard-aware <c>{node}_{guid}</c> external identifier.
+        /// </summary>
+        /// <param name="imageIdentifier">The image GUID or shard-aware <c>{node}_{guid}</c> external identifier.</param>
+        /// <returns>The absolute URI pointing to <c>api/v1/images/{imageIdentifier}/preview</c>.</returns>
+        public Uri GetImagePreviewUri(string imageIdentifier);
+}
