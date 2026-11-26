@@ -1,0 +1,85 @@
+@page "/"
+
+@* Standalone test page exercising recursive albums, folder uploads, searchable tags/descriptions, and EditorService auto-assignment. *@
+<Column Gap="1.5rem" Modifier="@UIModifier.New.FillMaxWidth()">
+        <Column Gap="0.35rem">
+                <Text Value="Exhibition Image Library" Variant="TypographyVariant.H1" />
+                <Text Value="Browse recursive albums, upload folders with previews, tag/describe assets, and simulate EditorService auto-assigned locations."
+                      Variant="TypographyVariant.Body"
+                      Muted="true" />
+        </Column>
+
+        @* Simulate a host service (e.g. EditorService) auto-assigning a target album like Madaffald. *@
+        <Row Gap="0.5rem" Wrap="true" VerticalAlignment="VerticalAlignment.Center" Modifier="@UIModifier.New.FillMaxWidth()">
+                <Text Value="Host Context:" Variant="TypographyVariant.Caption" Muted="true" />
+                <Pill Text="All Albums (Unlocked)"
+                      Variant="@(this._activeHostAlbum is null ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
+                      OnClick="@(() => this.SelectHostContext(albumPath: null, lockAlbum: false))" />
+                <Pill Text="Editor: Madaffald (Auto-Assign)"
+                      Variant="@(this._activeHostAlbum == MADAFFALD_ALBUM ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
+                      OnClick="@(() => this.SelectHostContext(albumPath: MADAFFALD_ALBUM, lockAlbum: true))" />
+                <Pill Text="Editor: Genbrug/Plastik (Auto-Assign)"
+                      Variant="@(this._activeHostAlbum == PLASTIK_ALBUM ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
+                      OnClick="@(() => this.SelectHostContext(albumPath: PLASTIK_ALBUM, lockAlbum: true))" />
+        </Row>
+
+        <ContentImageGallery AllowDelete="true"
+                             DefaultAlbumPath="@this._activeHostAlbum"
+                             LockToDefaultAlbum="@this._lockHostAlbum"
+                             OnImageSelected="@this.HandleImageSelectedAsync" />
+
+        <Divider />
+
+        <Column Gap="0.75rem"
+                Modifier="@this.BuildTestPanelModifier()">
+                <Row HorizontalArrangement="Arrangement.SpaceBetween"
+                     VerticalAlignment="VerticalAlignment.Center"
+                     Wrap="true"
+                     Gap="0.5rem"
+                     Modifier="@UIModifier.New.FillMaxWidth()">
+                        <Text Value="EditorService Integration &amp; API Download Test" Variant="TypographyVariant.Title" />
+                        <Pill Text="@(this._selectedImage is null ? "No image selected" : "Selection active")"
+                              Variant="@(this._selectedImage is null ? Pill.PillVariant.Neutral : Pill.PillVariant.Success)" />
+                </Row>
+
+                @if (this._selectedImage is null)
+                {
+                        <ALKsPersonalUI.Layout.Text Value="Select any tile (checkbox or 'Select Image' in the preview modal) to test passing metadata to a host service and downloading bytes via IContentServiceImageClient.DownloadImageAsync."
+                                                    Variant="TypographyVariant.Body"
+                                                    Muted="true" />
+                }
+                else
+                {
+                        <Row Gap="1.25rem" Wrap="true" VerticalAlignment="VerticalAlignment.Top" Modifier="@UIModifier.New.FillMaxWidth()">
+                                <Box Modifier="@this.BuildPreviewBoxModifier()">
+                                        <Image Source="@this.ResolveSelectedImageSource()"
+                                               Alt="@this._selectedImage.FileName"
+                                               Fit="ImageFit.Cover"
+                                               Modifier="@UIModifier.New.FillMaxSize()" />
+                                </Box>
+
+                                <Column Gap="0.5rem" Modifier="@this.BuildMetadataColumnModifier()">
+                                        <Text Value="@($"Id: {this._selectedImage.Id:D}")" Variant="TypographyVariant.Mono" />
+                                        <Text Value="@($"PictureReference: {this._selectedImage.PictureReference}")" Variant="TypographyVariant.Mono" />
+                                        <Text Value="@($"Album: {this._selectedImage.AlbumPath ?? "Root"} | Tags: {(this._selectedImage.Tags.Count == 0 ? "None" : string.Join(separator: ", ", values: this._selectedImage.Tags))}")"
+                                              Variant="TypographyVariant.Caption" />
+                                        <Text Value="@($"Content URI: {this.ResolveSelectedImageSource()}")" Variant="TypographyVariant.Caption" Muted="true" Wrap="true" />
+
+                                        <Row Gap="0.75rem" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
+                                                <ActionButton Text="Test API Download"
+                                                              Variant="ActionButton.ButtonVariant.Solid"
+                                                              Size="ActionButton.ButtonSize.Small"
+                                                              IsLoading="@this._isTestingDownload"
+                                                              IsDisabled="@this._isTestingDownload"
+                                                              OnClick="@this.HandleTestDownloadClickedAsync" />
+
+                                                @if (!string.IsNullOrWhiteSpace(value: this._lastDownloadSummary))
+                                                {
+                                                        <ALKsPersonalUI.Layout.Text Value="@this._lastDownloadSummary" Variant="TypographyVariant.Caption" />
+                                                }
+                                        </Row>
+                                </Column>
+                        </Row>
+                }
+        </Column>
+</Column>
