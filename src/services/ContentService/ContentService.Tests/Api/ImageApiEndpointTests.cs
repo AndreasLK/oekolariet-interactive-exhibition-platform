@@ -176,5 +176,50 @@ public sealed class ImageApiEndpointTests
                 using HttpResponseMessage deleteMissingResponse = await client.DeleteAsync(requestUri: $"/api/images/{seeded.Id}");
                 Assert.Equal(HttpStatusCode.NotFound, deleteMissingResponse.StatusCode);
         }
+
+        /// <summary>
+        /// Verifies that <c>GET /api/images/{id}/content</c> emits <c>Vary: Origin</c> without an <c>Origin</c> header and emits non-duplicated CORS headers when an allowed <c>Origin</c> is sent.
+        /// </summary>
+        [Fact]
+        public async Task GetImageContent_SetsVaryOriginWithoutOriginHeaderAndDoesNotDuplicateOnCorsRequestsAsync()
+        {
+                // Arrange: Seed an image on a host with an explicit allowed Blazor origin.
+                InMemoryContentState state = new();
+                ImageEntity seeded = ApiEndpointTestFixtures.CreateSeededImage(
+                        fileName: "leaf.png",
+                        bytes: ApiEndpointTestFixtures.VALID_PNG_BYTES);
+                state.SeedImage(image: seeded, binaryBytes: ApiEndpointTestFixtures.VALID_PNG_BYTES);
+
+                await using FakeApiFactory factory = new(
+                        state: state,
+                        environmentName: Environments.Development,
+                        configurationOverrides: new Dictionary<string, string?>
+                        {
+                                ["Cors:AllowedOrigins:0"] = ApiEndpointTestFixtures.ALLOWED_ORIGIN
+                        });
+                using HttpClient client = factory.CreateClient();
+
+                // Act 1: Request content without an Origin header (simulating a plain <img> tag).
+                using HttpResponseMessage noOriginResponse = await client.GetAsync(requestUri: $"/api/images/{seeded.Id}/content");
+
+                // Assert 1: Vary: Origin must still be returned so the browser cache separates <img> responses from fetch() responses.
+                Assert.Equal(expected: HttpStatusCode.OK, actual: noOriginResponse.StatusCode);
+                Assert.False(noOriginResponse.Headers.Contains(HeaderNames.AccessControlAllowOrigin));
+                string[] noOriginVaryValues = noOriginResponse.Headers.GetValues(HeaderNames.Vary).ToArray();
+                Assert.Single(collection: noOriginVaryValues, expected: HeaderNames.Origin);
+
+                // Act 2: Request content with an allowed Origin header (simulating Blazor WASM DownloadImageAsync fetch()).
+                using HttpRequestMessage corsRequest = new(method: HttpMethod.Get, requestUri: $"/api/images/{seeded.Id}/content");
+                corsRequest.Headers.Add(name: HeaderNames.Origin, value: ApiEndpointTestFixtures.ALLOWED_ORIGIN);
+                using HttpResponseMessage corsResponse = await client.SendAsync(request: corsRequest);
+
+                // Assert 2: CORS headers are present and Vary: Origin is emitted once without duplication.
+                Assert.Equal(expected: HttpStatusCode.OK, actual: corsResponse.StatusCode);
+                Assert.Contains(
+                        expected: ApiEndpointTestFixtures.ALLOWED_ORIGIN,
+                        collection: corsResponse.Headers.GetValues(HeaderNames.AccessControlAllowOrigin));
+                string[] corsVaryValues = corsResponse.Headers.GetValues(HeaderNames.Vary).ToArray();
+                Assert.Single(collection: corsVaryValues, expected: HeaderNames.Origin);
+        }
 }
 

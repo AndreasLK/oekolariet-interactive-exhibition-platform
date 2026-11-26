@@ -76,6 +76,16 @@ internal static class ApiConstants
         public const string IMAGE_CONTENT_ROUTE = "/{id:guid}/content";
 
         /// <summary>
+        /// Sub-resource route for updating searchable image metadata (description, tags, and album path).
+        /// </summary>
+        public const string IMAGE_METADATA_ROUTE = "/{id:guid}/metadata";
+
+        /// <summary>
+        /// Route listing distinct child album paths under <c>/api/images</c>.
+        /// </summary>
+        public const string IMAGE_ALBUMS_ROUTE = "/albums";
+
+        /// <summary>
         /// OpenAPI group label keeping image endpoints organized together in generated Swagger docs and client SDKs.
         /// </summary>
         public const string IMAGES_OPENAPI_TAG = "Images";

@@ -1,9 +1,9 @@
 using ContentService.Api.Common;
+using ContentService.Api.Contracts;
 using ContentService.Application.Common;
 using ContentService.Application.Models;
 using ContentService.Application.UseCases.Images;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Net.Http.Headers;
 
 namespace ContentService.Api.Endpoints;
 
@@ -36,10 +36,20 @@ internal static class ImageEndpoints
                 group.MapGet(pattern: ApiConstants.GROUP_ROOT_ROUTE, handler: HandleListImagesAsync)
                         .Produces<PagedResult<ImageMetadataResult>>(StatusCodes.Status200OK);
 
+                group.MapGet(pattern: ApiConstants.IMAGE_ALBUMS_ROUTE, handler: HandleListAlbumsAsync)
+                        .Produces<IReadOnlyList<string>>(StatusCodes.Status200OK)
+                        .ProducesProblem(StatusCodes.Status400BadRequest);
+
                 group.MapGet(pattern: ApiConstants.RESOURCE_ID_ROUTE, handler: HandleGetImageMetadataAsync)
                         .Produces<ImageMetadataResult>(StatusCodes.Status200OK)
                         .ProducesProblem(StatusCodes.Status400BadRequest)
                         .ProducesProblem(StatusCodes.Status404NotFound);
+
+                group.MapPatch(pattern: ApiConstants.IMAGE_METADATA_ROUTE, handler: HandleUpdateImageMetadataAsync)
+                        .Produces<ImageMetadataResult>(StatusCodes.Status200OK)
+                        .ProducesProblem(StatusCodes.Status400BadRequest)
+                        .ProducesProblem(StatusCodes.Status404NotFound)
+                        .ProducesProblem(StatusCodes.Status409Conflict);
 
                 group.MapGet(pattern: ApiConstants.IMAGE_CONTENT_ROUTE, handler: HandleGetImageContentAsync)
                         .Produces(StatusCodes.Status200OK)
@@ -59,7 +69,9 @@ internal static class ImageEndpoints
         /// Forwards the raw multipart upload stream directly to <see cref="UploadImageUseCase"/> so large files are not double-buffered at the API boundary before size and quota checks run.
         /// </summary>
         /// <param name="file">The uploaded multipart image file.</param>
-        /// <param name="altText">Optional accessibility alt text.</param>
+        /// <param name="altText">Optional accessibility alt text / description.</param>
+        /// <param name="albumPath">Optional recursive album path (e.g., <c>Madaffald/Frugt</c>).</param>
+        /// <param name="tags">Optional comma-separated search tags.</param>
         /// <param name="httpContext">The active HTTP context used to resolve trusted actor identity.</param>
         /// <param name="useCase">The upload image application use case.</param>
         /// <param name="cancellationToken">Propagates client disconnects to abort upload streaming and persistence.</param>
@@ -67,6 +79,8 @@ internal static class ImageEndpoints
         private static async Task<IResult> HandleUploadImageAsync(
                 IFormFile file,
                 [FromForm] string? altText,
+                [FromForm] string? albumPath,
+                [FromForm] string? tags,
                 HttpContext httpContext,
                 UploadImageUseCase useCase,
                 CancellationToken cancellationToken)
@@ -76,11 +90,13 @@ internal static class ImageEndpoints
                 UploadImageCommand command = new()
                 {
                         FileName = file.FileName ?? string.Empty,
-                        ContentType = ExtractMediaType(rawContentType: file.ContentType),
+                        ContentType = ImageContentResponseHeaders.ExtractMediaType(rawContentType: file.ContentType),
                         DeclaredLengthBytes = file.Length,
                         Content = contentStream,
                         ActorId = RequestActorResolver.ResolveActorId(httpContext: httpContext),
-                        AltText = altText
+                        AltText = altText,
+                        AlbumPath = albumPath,
+                        Tags = tags
                 };
 
                 ImageMetadataResult created = await useCase.ExecuteAsync(
@@ -97,7 +113,9 @@ internal static class ImageEndpoints
         /// </summary>
         /// <param name="page">Optional 1-based page index.</param>
         /// <param name="pageSize">Optional page size.</param>
-        /// <param name="searchTerm">Optional filename search term.</param>
+        /// <param name="searchTerm">Optional search filter matched against file name, alt text, and tags.</param>
+        /// <param name="albumPath">Optional recursive album path filter.</param>
+        /// <param name="includeSubalbums">Optional flag controlling whether nested sub-albums are included (defaults to true).</param>
         /// <param name="useCase">The list images application use case.</param>
         /// <param name="cancellationToken">Propagates client disconnects during listing.</param>
         /// <returns>An HTTP 200 OK response containing a <see cref="PagedResult{T}"/> of image metadata.</returns>
@@ -105,6 +123,8 @@ internal static class ImageEndpoints
                 [FromQuery] int? page,
                 [FromQuery] int? pageSize,
                 [FromQuery] string? searchTerm,
+                [FromQuery] string? albumPath,
+                [FromQuery] bool? includeSubalbums,
                 ListImagesUseCase useCase,
                 CancellationToken cancellationToken)
         {
@@ -112,7 +132,9 @@ internal static class ImageEndpoints
                 {
                         Page = page ?? ApplicationConstants.DEFAULT_PAGE,
                         PageSize = pageSize ?? ApplicationConstants.DEFAULT_PAGE_SIZE,
-                        SearchTerm = searchTerm
+                        SearchTerm = searchTerm,
+                        AlbumPath = albumPath,
+                        IncludeSubalbums = includeSubalbums ?? true
                 };
 
                 PagedResult<ImageMetadataResult> result = await useCase.ExecuteAsync(
@@ -120,6 +142,58 @@ internal static class ImageEndpoints
                         cancellationToken: cancellationToken);
 
                 return Results.Ok(result);
+        }
+
+        /// <summary>
+        /// Lists immediate child album paths directly beneath an optional parent album.
+        /// </summary>
+        /// <param name="parentPath">Optional parent album path, or <see langword="null"/> for root albums.</param>
+        /// <param name="useCase">The list albums application use case.</param>
+        /// <param name="cancellationToken">Propagates client disconnects during album lookup.</param>
+        /// <returns>An HTTP 200 OK response containing sorted immediate child album paths.</returns>
+        private static async Task<IResult> HandleListAlbumsAsync(
+                [FromQuery] string? parentPath,
+                ListAlbumsUseCase useCase,
+                CancellationToken cancellationToken)
+        {
+                IReadOnlyList<string> childAlbums = await useCase.ExecuteAsync(
+                        query: new ListAlbumsQuery { ParentAlbumPath = parentPath },
+                        cancellationToken: cancellationToken);
+
+                return Results.Ok(childAlbums);
+        }
+
+        /// <summary>
+        /// Updates searchable description (<c>AltText</c>), tags, and album path for an active image while enforcing optimistic concurrency.
+        /// </summary>
+        /// <param name="id">The unique image identifier.</param>
+        /// <param name="request">The metadata update payload and expected concurrency stamp.</param>
+        /// <param name="httpContext">The active HTTP context used to resolve trusted actor identity.</param>
+        /// <param name="useCase">The update metadata application use case.</param>
+        /// <param name="cancellationToken">Propagates client disconnects during persistence.</param>
+        /// <returns>An HTTP 200 OK response containing the updated <see cref="ImageMetadataResult"/>.</returns>
+        private static async Task<IResult> HandleUpdateImageMetadataAsync(
+                Guid id,
+                UpdateImageMetadataRequest request,
+                HttpContext httpContext,
+                UpdateImageMetadataUseCase useCase,
+                CancellationToken cancellationToken)
+        {
+                UpdateImageMetadataCommand command = new()
+                {
+                        ImageId = id,
+                        AltText = request.AltText,
+                        Tags = request.Tags,
+                        AlbumPath = request.AlbumPath,
+                        ExpectedConcurrencyStamp = request.ExpectedConcurrencyStamp,
+                        ActorId = RequestActorResolver.ResolveActorId(httpContext: httpContext)
+                };
+
+                ImageMetadataResult updated = await useCase.ExecuteAsync(
+                        command: command,
+                        cancellationToken: cancellationToken);
+
+                return Results.Ok(updated);
         }
 
         /// <summary>
@@ -162,8 +236,7 @@ internal static class ImageEndpoints
                 // Dispose streamResult if header setup fails before Results.Stream assumes ownership.
                 try
                 {
-                        httpContext.Response.Headers.CacheControl = ApiConstants.IMAGE_CACHE_CONTROL_HEADER_VALUE;
-                        ConfigureContentResponseHeaders(response: httpContext.Response, metadata: streamResult.Metadata);
+                        ImageContentResponseHeaders.Configure(response: httpContext.Response, metadata: streamResult.Metadata);
                         return Results.Stream(
                                 stream: streamResult.Content,
                                 contentType: streamResult.Metadata.ContentType);
@@ -197,41 +270,5 @@ internal static class ImageEndpoints
 
                 await useCase.ExecuteAsync(command: command, cancellationToken: cancellationToken);
                 return Results.NoContent();
-        }
-
-        /// <summary>
-        /// Strips optional MIME parameters (such as <c>; charset=utf-8</c>) so valid uploads are not falsely rejected by exact allowlist comparisons.
-        /// </summary>
-        /// <param name="rawContentType">The raw multipart <c>Content-Type</c> header value.</param>
-        /// <returns>The bare media type string, or the raw value when unparseable so downstream validation reports the bad header.</returns>
-        private static string ExtractMediaType(string? rawContentType)
-        {
-                if (string.IsNullOrWhiteSpace(rawContentType))
-                {
-                        return string.Empty;
-                }
-
-                return MediaTypeHeaderValue.TryParse(input: rawContentType, parsedValue: out MediaTypeHeaderValue? parsed)
-                        ? parsed.MediaType.Value ?? string.Empty
-                        : rawContentType;
-        }
-
-        /// <summary>
-        /// Sets content length, range-support notice, MIME-sniffing protection, and UTF-8 safe inline disposition so browsers render images safely and accurately.
-        /// </summary>
-        /// <param name="response">The outgoing HTTP response.</param>
-        /// <param name="metadata">The image metadata describing size and file name.</param>
-        private static void ConfigureContentResponseHeaders(HttpResponse response, ImageMetadataResult metadata)
-        {
-                response.ContentLength = metadata.SizeBytes;
-                response.Headers[HeaderNames.AcceptRanges] = ApiConstants.ACCEPT_RANGES_NONE;
-                response.Headers[HeaderNames.XContentTypeOptions] = ApiConstants.CONTENT_TYPE_OPTIONS_NOSNIFF;
-
-                // Use FileNameStar so RFC 6266 UTF-8 percent-encoding preserves spaces and Danish/non-ASCII characters safely in HTTP headers.
-                ContentDispositionHeaderValue disposition = new(ApiConstants.INLINE_DISPOSITION_TYPE)
-                {
-                        FileNameStar = metadata.FileName
-                };
-                response.Headers[HeaderNames.ContentDisposition] = disposition.ToString();
         }
 }
