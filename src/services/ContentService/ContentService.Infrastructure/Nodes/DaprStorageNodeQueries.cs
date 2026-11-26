@@ -9,6 +9,11 @@ namespace ContentService.Infrastructure.Nodes;
 /// </summary>
 internal sealed class DaprStorageNodeQueries
 {
+        private const string IMAGES_V1_ROUTE_PREFIX = "api/v1/images";
+        private const string BATCH_METADATA_ROUTE = $"{IMAGES_V1_ROUTE_PREFIX}/batch-metadata";
+        private const string TEMPLATES_IMAGE_REFERENCES_PREFIX = "api/v1/templates/image-references";
+        private const string PREVIEW_STREAM_SUFFIX = "preview";
+        private const string CONTENT_STREAM_SUFFIX = "content";
         /// <summary>
         /// Shared Dapr sidecar HTTP request sender.
         /// </summary>
@@ -38,7 +43,7 @@ internal sealed class DaprStorageNodeQueries
         {
                 Uri uri = this._requestSender.BuildDaprInvokeUri(
                         storageNodeId: storageNodeId,
-                        relativeApiPath: $"api/v1/images/{storageNodeId}_{imageId}");
+                        relativeApiPath: $"{IMAGES_V1_ROUTE_PREFIX}/{storageNodeId}_{imageId}");
 
                 using HttpRequestMessage request = this._requestSender.CreateRequest(method: HttpMethod.Get, uri: uri);
                 using HttpResponseMessage response = await this._requestSender.SendAsync(
@@ -78,7 +83,7 @@ internal sealed class DaprStorageNodeQueries
 
                 Uri uri = this._requestSender.BuildDaprInvokeUri(
                         storageNodeId: storageNodeId,
-                        relativeApiPath: "api/v1/images/batch-metadata");
+                        relativeApiPath: BATCH_METADATA_ROUTE);
 
                 using HttpRequestMessage request = this._requestSender.CreateRequest(method: HttpMethod.Post, uri: uri);
                 request.Content = JsonContent.Create(inputValue: imageIds, options: DaprNodeRequestSender.JSON_OPTIONS);
@@ -101,6 +106,14 @@ internal sealed class DaprStorageNodeQueries
         /// <summary>
         /// Opens a streaming image or preview response from a peer storage node.
         /// </summary>
+        /// <remarks>
+        /// Non-standard two-step stream: Fetches JSON metadata first, then opens the binary stream with
+        /// <see cref="HttpCompletionOption.ResponseHeadersRead"/> wrapped in <c>HttpResponseOwningStream</c>.
+        /// <para>
+        /// What we gain: Zero-LOH streaming for multi-megabyte payloads while still returning <c>Sha256Hash</c> and <c>ConcurrencyStamp</c>.
+        /// What we lose: One extra lightweight metadata round-trip per peer stream request.
+        /// </para>
+        /// </remarks>
         /// <param name="storageNodeId">The owning storage node identifier.</param>
         /// <param name="imageId">The unique image identifier.</param>
         /// <param name="isPreview"><see langword="true"/> to request the preview stream; <see langword="false"/> for original content.</param>
@@ -112,10 +125,10 @@ internal sealed class DaprStorageNodeQueries
                 bool isPreview,
                 CancellationToken cancellationToken)
         {
-                string suffix = isPreview ? "preview" : "content";
+                string suffix = isPreview ? PREVIEW_STREAM_SUFFIX : CONTENT_STREAM_SUFFIX;
                 Uri uri = this._requestSender.BuildDaprInvokeUri(
                         storageNodeId: storageNodeId,
-                        relativeApiPath: $"api/v1/images/{storageNodeId}_{imageId}/{suffix}");
+                        relativeApiPath: $"{IMAGES_V1_ROUTE_PREFIX}/{storageNodeId}_{imageId}/{suffix}");
 
                 // WHY: Fetch metadata first so we have FileName, Sha256Hash, and ConcurrencyStamp for ImageStreamResult before opening the raw network stream.
                 ImageMetadataResult? metadata = await this.GetImageMetadataAsync(
@@ -178,7 +191,7 @@ internal sealed class DaprStorageNodeQueries
         {
                 Uri uri = this._requestSender.BuildDaprInvokeUri(
                         storageNodeId: peerStorageNodeId,
-                        relativeApiPath: $"api/v1/templates/image-references/{imageId}");
+                        relativeApiPath: $"{TEMPLATES_IMAGE_REFERENCES_PREFIX}/{imageId}");
 
                 using HttpRequestMessage request = this._requestSender.CreateRequest(method: HttpMethod.Get, uri: uri);
                 using HttpResponseMessage response = await this._requestSender.SendAsync(
