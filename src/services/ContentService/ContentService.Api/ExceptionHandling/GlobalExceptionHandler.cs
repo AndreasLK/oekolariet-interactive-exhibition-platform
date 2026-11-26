@@ -9,6 +9,13 @@ namespace ContentService.Api.ExceptionHandling;
 /// <summary>
 /// Centralizes HTTP error translation so domain, concurrency, quota, and binding faults return consistent RFC 7807 <see cref="ProblemDetails"/> payloads without leaking stack traces or stripping CORS headers.
 /// </summary>
+/// <remarks>
+/// Non-standard error middleware behavior:
+/// <list type="bullet">
+/// <item>Explicitly re-applies CORS headers before writing <see cref="ProblemDetails"/> because ASP.NET Core's <c>ExceptionHandlerMiddleware</c> clears response headers before invoking <see cref="IExceptionHandler"/> (which would otherwise blind Blazor WASM to 4xx/5xx error details).</item>
+/// <item>Distinguishes <see cref="OperationCanceledException"/> with <c>RequestAborted</c> (499 client disconnect) from <c>HttpClient</c> timeouts (504 Gateway Timeout).</item>
+/// </list>
+/// </remarks>
 internal sealed class GlobalExceptionHandler : IExceptionHandler
 {
         private const string GATEWAY_TIMEOUT_TITLE = "Upstream storage node timed out.";

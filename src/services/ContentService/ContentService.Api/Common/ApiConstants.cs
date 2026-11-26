@@ -204,4 +204,19 @@ internal static class ApiConstants
         /// Diagnostic fragment used to distinguish ASP.NET Core multipart size-limit rejections (HTTP 413) from malformed form syntax (HTTP 400).
         /// </summary>
         public const string MULTIPART_LENGTH_LIMIT_MESSAGE_FRAGMENT = "Multipart body length limit";
+
+        /// <summary>
+        /// Configuration key controlling whether EF Core migrations run automatically during API host startup.
+        /// </summary>
+        public const string DATABASE_AUTO_MIGRATE_CONFIG_KEY = "Database:AutoMigrateOnStartup";
+
+        /// <summary>
+        /// Configuration key specifying the Dapr Pub/Sub component name used for pool scatter-gather subscriptions.
+        /// </summary>
+        public const string CONTENT_STORAGE_PUBSUB_CONFIG_KEY = "ContentStorage:PubSubName";
+
+        /// <summary>
+        /// Fallback Dapr Pub/Sub component name when <see cref="CONTENT_STORAGE_PUBSUB_CONFIG_KEY"/> is not configured.
+        /// </summary>
+        public const string DEFAULT_PUBSUB_NAME = "contentservice-pubsub";
 }
