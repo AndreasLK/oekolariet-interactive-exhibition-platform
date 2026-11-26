@@ -11,33 +11,43 @@ namespace ContentService.Sdk.Protocol;
 internal static class ImageUploadMultipartContentFactory
 {
         /// <summary>
-        /// Validates the upload request and builds a multipart form-data payload without inspecting stream length or position.
+        /// Validates the upload command and builds a multipart form-data payload without inspecting stream length or position.
         /// </summary>
-        /// <param name="request">The caller-supplied upload stream, file name, MIME type, and optional alt text.</param>
+        /// <remarks>
+        /// Non-standard multipart construction: Instead of Refit's <c>[Multipart] StreamPart</c>, we build
+        /// <see cref="MultipartFormDataContent"/> manually.
+        /// <para>
+        /// What we gain: Explicit dual <c>FileName</c> (7-bit ASCII fallback) + <c>FileNameStar</c> (UTF-8 Danish characters),
+        /// omission of <see langword="null"/> optional fields, and safe handling of non-seekable Blazor <c>IBrowserFile</c>
+        /// streams without touching <c>Stream.Length</c> or <c>Stream.Position</c>.
+        /// What we lose: Declarative Refit <c>[Multipart]</c> parameter attributes on the endpoint interface.
+        /// </para>
+        /// </remarks>
+        /// <param name="command">The caller-supplied upload stream, file name, MIME type, and optional alt text.</param>
         /// <returns>A configured <see cref="MultipartFormDataContent"/> ready to send to <c>POST api/images</c>.</returns>
         /// <exception cref="ArgumentException">Thrown when the stream is unreadable, the file name is unsafe, or the content type is invalid.</exception>
-        public static MultipartFormDataContent Create(UploadImageRequest request)
+        public static MultipartFormDataContent Create(ContentUploadImageCommand command)
         {
-                // Validate before wrapping request.Content in StreamContent so validation errors never dispose the caller's stream.
-                ValidateUploadRequest(request: request);
+                // Validate before wrapping command.Content in StreamContent so validation errors never dispose the caller's stream.
+                ValidateUploadCommand(command: command);
 
-                MediaTypeHeaderValue parsedMediaType = MediaTypeHeaderValue.Parse(input: request.ContentType);
+                MediaTypeHeaderValue parsedMediaType = MediaTypeHeaderValue.Parse(input: command.ContentType);
                 MultipartFormDataContent multipart = [];
                 StreamContent? fileContent = null;
 
                 try
                 {
-                        fileContent = new StreamContent(content: request.Content);
+                        fileContent = new StreamContent(content: command.Content);
                         fileContent.Headers.ContentType = new MediaTypeHeaderValue(mediaType: parsedMediaType.MediaType!);
-                        fileContent.Headers.ContentDisposition = BuildFileContentDisposition(fileName: request.FileName);
+                        fileContent.Headers.ContentDisposition = BuildFileContentDisposition(fileName: command.FileName);
 
                         multipart.Add(content: fileContent);
                         // Clear local ownership once MultipartFormDataContent owns fileContent disposal.
                         fileContent = null;
 
-                        AddOptionalFormField(multipart: multipart, fieldName: SdkConstants.MULTIPART_ALT_TEXT_FIELD_NAME, value: request.AltText);
-                        AddOptionalFormField(multipart: multipart, fieldName: SdkConstants.MULTIPART_ALBUM_PATH_FIELD_NAME, value: request.AlbumPath);
-                        AddOptionalFormField(multipart: multipart, fieldName: SdkConstants.MULTIPART_TAGS_FIELD_NAME, value: request.Tags);
+                        AddOptionalFormField(multipart: multipart, fieldName: SdkConstants.MULTIPART_ALT_TEXT_FIELD_NAME, value: command.AltText);
+                        AddOptionalFormField(multipart: multipart, fieldName: SdkConstants.MULTIPART_ALBUM_PATH_FIELD_NAME, value: command.AlbumPath);
+                        AddOptionalFormField(multipart: multipart, fieldName: SdkConstants.MULTIPART_TAGS_FIELD_NAME, value: command.Tags);
                         return multipart;
                 }
                 catch
@@ -49,31 +59,31 @@ internal static class ImageUploadMultipartContentFactory
         }
 
         /// <summary>
-        /// Validates that the upload request has a readable stream, safe file name, and parseable MIME media type.
+        /// Validates that the upload command has a readable stream, safe file name, and parseable MIME media type.
         /// </summary>
-        /// <param name="request">The upload request to validate.</param>
-        private static void ValidateUploadRequest(UploadImageRequest request)
+        /// <param name="command">The upload command to validate.</param>
+        private static void ValidateUploadCommand(ContentUploadImageCommand command)
         {
-                if (request.Content is null || !request.Content.CanRead)
+                if (command.Content is null || !command.Content.CanRead)
                 {
                         throw new ArgumentException(
                                 message: "Upload content stream must be non-null and readable.",
-                                paramName: nameof(request));
+                                paramName: nameof(command));
                 }
 
-                if (string.IsNullOrWhiteSpace(request.FileName) || ContainsHeaderUnsafeCharacters(value: request.FileName))
+                if (string.IsNullOrWhiteSpace(command.FileName) || ContainsHeaderUnsafeCharacters(value: command.FileName))
                 {
                         throw new ArgumentException(
                                 message: "FileName must be non-empty and cannot contain quotes or control characters.",
-                                paramName: nameof(request));
+                                paramName: nameof(command));
                 }
 
-                if (!MediaTypeHeaderValue.TryParse(input: request.ContentType, parsedValue: out MediaTypeHeaderValue? parsedType)
+                if (!MediaTypeHeaderValue.TryParse(input: command.ContentType, parsedValue: out MediaTypeHeaderValue? parsedType)
                         || string.IsNullOrWhiteSpace(parsedType.MediaType))
                 {
                         throw new ArgumentException(
                                 message: "ContentType must be a valid MIME media type.",
-                                paramName: nameof(request));
+                                paramName: nameof(command));
                 }
         }
 
