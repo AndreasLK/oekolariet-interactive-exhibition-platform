@@ -1,0 +1,52 @@
+.template-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+    border: 2px solid var(--ui-border, rgba(255, 255, 255, 0.14));
+    border-radius: var(--ui-radius-md, 0.75rem);
+    background: var(--ui-bg-surface, #1c1c28);
+    transition: border-color 120ms ease, background 120ms ease;
+}
+
+.template-tile-selectable:hover,
+.template-tile-selectable:focus-within {
+    border-color: var(--ui-accent, #7c3aed);
+}
+
+.template-tile-selected {
+    border-color: var(--ui-accent, #7c3aed);
+    background: color-mix(in srgb, var(--ui-accent, #7c3aed) 14%, var(--ui-bg-surface, #1c1c28));
+}
+
+.template-tile-preview {
+    position: relative;
+    width: 100%;
+}
+
+.template-tile-preview-clickable {
+    cursor: pointer;
+}
+
+.template-tile-check {
+    position: absolute;
+    top: 0.45rem;
+    right: 0.45rem;
+    z-index: 2;
+    width: 1.75rem;
+    height: 1.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 2px solid #ffffff;
+    background: color-mix(in srgb, var(--ui-bg-app, #12121a) 75%, transparent);
+    color: #ffffff;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.template-tile-selected .template-tile-check {
+    background: var(--ui-accent, #7c3aed);
+}
+
