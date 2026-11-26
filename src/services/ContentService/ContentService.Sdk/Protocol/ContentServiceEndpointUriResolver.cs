@@ -136,6 +136,25 @@ internal static class ContentServiceEndpointUriResolver
         }
 
         /// <summary>
+        /// Builds the lightweight image preview URI (<c>api/images/{imageId}/preview</c>) after validating <paramref name="imageId"/>.
+        /// </summary>
+        /// <param name="httpClient">The configured <see cref="HttpClient"/> instance.</param>
+        /// <param name="options">Fallback client options supplying <see cref="ContentServiceClientOptions.BaseAddress"/>.</param>
+        /// <param name="imageId">The non-empty image identifier.</param>
+        /// <returns>The resolved absolute preview <see cref="Uri"/>.</returns>
+        public static Uri BuildImagePreviewUri(
+                HttpClient httpClient,
+                ContentServiceClientOptions options,
+                Guid imageId)
+        {
+                ValidateImageId(imageId: imageId);
+                Uri normalizedBase = ResolveNormalizedBaseUri(httpClient: httpClient, options: options);
+                return new Uri(
+                        baseUri: normalizedBase,
+                        relativeUri: $"{SdkConstants.IMAGES_ROUTE_PREFIX}/{imageId:D}/{SdkConstants.IMAGE_PREVIEW_SUFFIX}");
+        }
+
+        /// <summary>
         /// Builds the template collection endpoint URI (<c>api/templates</c>) relative to the normalized base address.
         /// </summary>
         /// <param name="httpClient">The configured <see cref="HttpClient"/> instance.</param>
@@ -195,6 +214,34 @@ internal static class ContentServiceEndpointUriResolver
                 ValidateTemplateId(templateId: templateId);
                 Uri normalizedBase = ResolveNormalizedBaseUri(httpClient: httpClient, options: options);
                 return new Uri(baseUri: normalizedBase, relativeUri: $"{SdkConstants.TEMPLATES_ROUTE_PREFIX}/{templateId:D}");
+        }
+
+        /// <summary>
+        /// Builds the publish bundle resolution URI (<c>api/publish-bundles/resolve</c>) relative to the normalized base address.
+        /// </summary>
+        /// <param name="httpClient">The configured <see cref="HttpClient"/> instance.</param>
+        /// <param name="options">Fallback client options supplying <see cref="ContentServiceClientOptions.BaseAddress"/>.</param>
+        /// <returns>The resolved absolute publish bundle resolution <see cref="Uri"/>.</returns>
+        public static Uri BuildPublishBundleResolveUri(
+                HttpClient httpClient,
+                ContentServiceClientOptions options)
+        {
+                Uri normalizedBase = ResolveNormalizedBaseUri(httpClient: httpClient, options: options);
+                return new Uri(baseUri: normalizedBase, relativeUri: SdkConstants.PUBLISH_BUNDLES_ROUTE);
+        }
+
+        /// <summary>
+        /// Builds the storage health URI (<c>api/health/storage</c>) relative to the normalized base address.
+        /// </summary>
+        /// <param name="httpClient">The configured <see cref="HttpClient"/> instance.</param>
+        /// <param name="options">Fallback client options supplying <see cref="ContentServiceClientOptions.BaseAddress"/>.</param>
+        /// <returns>The resolved absolute storage health <see cref="Uri"/>.</returns>
+        public static Uri BuildStorageHealthUri(
+                HttpClient httpClient,
+                ContentServiceClientOptions options)
+        {
+                Uri normalizedBase = ResolveNormalizedBaseUri(httpClient: httpClient, options: options);
+                return new Uri(baseUri: normalizedBase, relativeUri: SdkConstants.STORAGE_HEALTH_ROUTE);
         }
 
         /// <summary>

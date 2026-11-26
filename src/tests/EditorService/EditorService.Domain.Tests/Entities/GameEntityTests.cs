@@ -1,11 +1,11 @@
-using EditorService.Domain.Enums;
+﻿using EditorService.Domain.Enums;
 using EditorService.Domain.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using EditorService.Tests.TestDoubles;
+using EditorService.Domain.Tests.TestDoubles;
 
-namespace EditorService.Tests.Domain
+namespace EditorService.Domain.Tests.Entities
 {
         /// <summary>
         /// Tests the shared rules in GameEntity: creating a game, the edit lock and publishing.

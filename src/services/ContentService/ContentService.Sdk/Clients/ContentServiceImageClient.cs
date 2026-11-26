@@ -145,11 +145,37 @@ public sealed class ContentServiceImageClient : IContentServiceImageClient
         }
 
         /// <inheritdoc />
-        public async Task<ContentImageDownload> DownloadImageAsync(
+        public Task<ContentImageDownload> DownloadImageAsync(
                 Guid imageId,
                 CancellationToken cancellationToken = default)
         {
                 Uri requestUri = this.GetImageContentUri(imageId: imageId);
+                return this.DownloadStreamAsync(
+                        requestUri: requestUri,
+                        cancellationToken: cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public Task<ContentImageDownload> DownloadImagePreviewAsync(
+                Guid imageId,
+                CancellationToken cancellationToken = default)
+        {
+                Uri requestUri = this.GetImagePreviewUri(imageId: imageId);
+                return this.DownloadStreamAsync(
+                        requestUri: requestUri,
+                        cancellationToken: cancellationToken);
+        }
+
+        /// <summary>
+        /// Streams an image content or preview response while transferring <see cref="HttpResponseMessage"/> ownership to <see cref="ContentImageDownload"/>.
+        /// </summary>
+        /// <param name="requestUri">The resolved content or preview endpoint URI.</param>
+        /// <param name="cancellationToken">A token to cancel the HTTP request before headers arrive.</param>
+        /// <returns>A disposable <see cref="ContentImageDownload"/> owning the payload stream and response.</returns>
+        private async Task<ContentImageDownload> DownloadStreamAsync(
+                Uri requestUri,
+                CancellationToken cancellationToken)
+        {
                 using HttpRequestMessage httpRequest = new(method: HttpMethod.Get, requestUri: requestUri);
 
                 // IMPORTANT: Do NOT wrap 'response' in a 'using' block here!
@@ -233,6 +259,13 @@ public sealed class ContentServiceImageClient : IContentServiceImageClient
         /// <inheritdoc />
         public Uri GetImageContentUri(Guid imageId) =>
                 ContentServiceEndpointUriResolver.BuildImageContentUri(
+                        httpClient: this._httpClient,
+                        options: this._options,
+                        imageId: imageId);
+
+        /// <inheritdoc />
+        public Uri GetImagePreviewUri(Guid imageId) =>
+                ContentServiceEndpointUriResolver.BuildImagePreviewUri(
                         httpClient: this._httpClient,
                         options: this._options,
                         imageId: imageId);

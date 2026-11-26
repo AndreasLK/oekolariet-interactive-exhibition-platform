@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using ContentService.Application.Interfaces;
 using ContentService.Application.Common;
 using ContentService.Application.Models;
 using ContentService.Application.Options;
@@ -10,14 +9,16 @@ using ContentService.Domain.Enums;
 using ContentService.Infrastructure.Persistence;
 using ContentService.Infrastructure.Repositories;
 using ContentService.Tests.Application.Persistence;
+using ContentService.Tests.Common;
 using MicrosoftOptions = Microsoft.Extensions.Options.Options;
 
 namespace ContentService.Tests.Application;
 
 /// <summary>
-/// Integration and validation tests for <see cref="GetStorageHealthUseCase"/> and <see cref="ContentStorageOptionsValidator"/>.
+/// Integration tests for <see cref="GetStorageHealthUseCase"/> executed against a real SQL Server container.
 /// </summary>
 [Collection(MsSqlContentDatabaseCollection.COLLECTION_NAME)]
+[Trait(TestTraits.CATEGORY_KEY, TestTraits.INTEGRATION)]
 public sealed class GetStorageHealthUseCaseTests : IAsyncLifetime
 {
         /// <summary>
@@ -188,62 +189,6 @@ public sealed class GetStorageHealthUseCaseTests : IAsyncLifetime
         }
 
         /// <summary>
-        /// Verifies defensive clamping when an <see cref="IStorageQuotaMonitor"/> implementation returns a negative byte count.
-        /// </summary>
-        /// <returns>A task representing the asynchronous test execution.</returns>
-        [Fact]
-        public async Task ExecuteAsync_WhenMonitorReportsNegativeUsage_ClampsUsedBytesToZeroAsync()
-        {
-                // Arrange
-                // Inject a faulty monitor returning negative bytes to verify defensive clamping to zero.
-                NegativeUsedBytesQuotaMonitor negativeMonitor = new();
-                ContentStorageOptions options = new() { TotalQuotaBytes = QUOTA_ONE_THOUSAND_BYTES };
-                GetStorageHealthUseCase useCase = new(
-                        quotaMonitor: negativeMonitor,
-                        options: MicrosoftOptions.Create(options));
-
-                // Act
-                StorageHealthResult result = await useCase.ExecuteAsync(cancellationToken: CancellationToken.None);
-
-                // Assert
-                Assert.Equal(StorageHealthStatus.Healthy, result.Status);
-                Assert.Equal(0L, result.UsedBytes);
-                Assert.Equal(0.0, result.UtilizationPercent);
-        }
-
-        /// <summary>
-        /// Verifies that <see cref="ContentStorageOptionsValidator"/> accepts default options and rejects invalid node IDs, size limits, quotas, and thresholds.
-        /// </summary>
-        [Fact]
-        public void ContentStorageOptionsValidator_WhenValidOrInvalidConfigurations_ValidatesAccurately()
-        {
-                // Arrange
-                ContentStorageOptionsValidator validator = new();
-                ContentStorageOptions validOptions = new();
-                ContentStorageOptions badNodeOptions = new() { StorageNodeId = "Node_1" };
-                ContentStorageOptions oversizedImageOptions = new() { MaxImageSizeBytes = DomainConstants.MAX_IMAGE_SIZE_BYTES + 1 };
-                ContentStorageOptions zeroImageOptions = new() { MaxImageSizeBytes = 0 };
-                ContentStorageOptions negativeQuotaOptions = new() { TotalQuotaBytes = -1 };
-                // Invert warning and critical thresholds to ensure the validator rejects Warning > Critical configurations.
-                ContentStorageOptions invertedThresholdOptions = new()
-                {
-                        WarningThresholdPercent = CRITICAL_THRESHOLD_95,
-                        CriticalThresholdPercent = ApplicationConstants.DEFAULT_WARNING_THRESHOLD_PERCENT
-                };
-                ContentStorageOptions nanThresholdOptions = new() { WarningThresholdPercent = double.NaN };
-
-                // Act & Assert
-                Assert.True(validator.Validate(name: null, options: validOptions).Succeeded);
-                Assert.True(validator.Validate(name: null, options: null!).Failed);
-                Assert.True(validator.Validate(name: null, options: badNodeOptions).Failed);
-                Assert.True(validator.Validate(name: null, options: oversizedImageOptions).Failed);
-                Assert.True(validator.Validate(name: null, options: zeroImageOptions).Failed);
-                Assert.True(validator.Validate(name: null, options: negativeQuotaOptions).Failed);
-                Assert.True(validator.Validate(name: null, options: invertedThresholdOptions).Failed);
-                Assert.True(validator.Validate(name: null, options: nanThresholdOptions).Failed);
-        }
-
-        /// <summary>
         /// Seeds a single active image metadata and binary row with the specified byte length in SQL Server.
         /// </summary>
         /// <param name="byteCount">The exact payload size in bytes.</param>
@@ -265,20 +210,5 @@ public sealed class GetStorageHealthUseCaseTests : IAsyncLifetime
                 ImageBinaryEntity binary = ImageBinaryEntity.Create(imageId: image.Id, data: payload);
 
                 await imageRepository.AddAsync(metadata: image, binary: binary, cancellationToken: CancellationToken.None);
-        }
-
-        /// <summary>
-        /// Minimal test double returning a negative byte count to exercise defensive clamping in <see cref="GetStorageHealthUseCase"/>.
-        /// </summary>
-        private sealed class NegativeUsedBytesQuotaMonitor : IStorageQuotaMonitor
-        {
-                /// <summary>
-                /// Simulated invalid negative byte usage.
-                /// </summary>
-                private const long NEGATIVE_USAGE_BYTES = -10L;
-
-                /// <inheritdoc />
-                public Task<long> GetUsedBytesAsync(CancellationToken cancellationToken) =>
-                        Task.FromResult(NEGATIVE_USAGE_BYTES);
         }
 }

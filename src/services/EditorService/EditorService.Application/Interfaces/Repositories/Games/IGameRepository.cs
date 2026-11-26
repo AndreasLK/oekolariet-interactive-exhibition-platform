@@ -14,29 +14,29 @@ namespace EditorService.Application.Interfaces.Repositories.Games
                 /// <param name="id">The id of the game.</param>
                 /// <param name="cancellationToken">Stops the call if the request is cancelled.</param>
                 /// <returns>The game, or <see langword="null"/>.</returns>
-                Task<GameEntity?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+                public Task<GameEntity?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
                 /// <summary>Saves a new game.</summary>
                 /// <param name="game">The game to save.</param>
                 /// <param name="cancellationToken">Stops the call if the request is cancelled.</param>
                 /// <returns>A task that finishes when the game is saved.</returns>
-                Task AddAsync(GameEntity game, CancellationToken cancellationToken);
+                public Task AddAsync(GameEntity game, CancellationToken cancellationToken);
 
                 /// <summary>Saves changes to an existing game.</summary>
                 /// <param name="game">The changed game.</param>
                 /// <param name="cancellationToken">Stops the call if the request is cancelled.</param>
                 /// <returns>A task that finishes when the changes are saved.</returns>
-                Task UpdateAsync(GameEntity game, CancellationToken cancellationToken);
+                public Task UpdateAsync(GameEntity game, CancellationToken cancellationToken);
 
                 /// <summary>Deletes a game.</summary>
                 /// <param name="game">The game to delete.</param>
                 /// <param name="cancellationToken">Stops the call if the request is cancelled.</param>
                 /// <returns>A task that finishes when the game is deleted.</returns>
-                Task DeleteAsync(GameEntity game, CancellationToken cancellationToken);
+                public Task DeleteAsync(GameEntity game, CancellationToken cancellationToken);
 
                 /// <summary>Writes all added and changed games to the database in one transaction.</summary>
                 /// <param name="cancellationToken">Stops the call if the request is cancelled.</param>
                 /// <returns>A task that finishes when everything is saved.</returns>
-                Task SaveChangesAsync(CancellationToken cancellationToken);
+                public Task SaveChangesAsync(CancellationToken cancellationToken);
         }
 }

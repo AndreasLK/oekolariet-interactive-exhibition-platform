@@ -98,6 +98,7 @@ internal static class HttpResponseErrorMapper
                 int maxBytes,
                 CancellationToken cancellationToken)
         {
+                // Allocate one fixed, SOH-sized buffer (16 KiB) instead of ReadToEndAsync so oversized proxy/HTML error pages are truncated safely.
                 byte[] buffer = new byte[maxBytes];
                 int totalRead = 0;
 
