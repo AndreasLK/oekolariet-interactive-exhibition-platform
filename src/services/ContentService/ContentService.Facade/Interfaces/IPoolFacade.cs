@@ -13,7 +13,7 @@ public interface IPoolFacade
         /// <param name="requiredBytes">Minimum remaining bytes required for the upload.</param>
         /// <param name="cancellationToken">Propagates cancellation.</param>
         /// <returns>The winning <see cref="PoolNodeOfferDto"/>, or <see langword="null"/> if no healthy node replied in time.</returns>
-        Task<PoolNodeOfferDto?> RequestHealthyUploadOfferAsync(
+        public Task<PoolNodeOfferDto?> RequestHealthyUploadOfferAsync(
                 long requiredBytes,
                 CancellationToken cancellationToken = default);
 
@@ -22,7 +22,7 @@ public interface IPoolFacade
         /// </summary>
         /// <param name="correlationId">The correlation identifier of the pending scatter-gather request.</param>
         /// <param name="offer">The peer node's offer payload.</param>
-        void CompletePendingRequest(
+        public void CompletePendingRequest(
                 Guid correlationId,
                 PoolNodeOfferDto offer);
 
@@ -34,7 +34,7 @@ public interface IPoolFacade
         /// <param name="correlationId">The correlation identifier echoed to the requester.</param>
         /// <param name="availableBytes">Remaining quota bytes on this node.</param>
         /// <param name="cancellationToken">Propagates cancellation.</param>
-        Task SendLocalOfferReplyAsync(
+        public Task SendLocalOfferReplyAsync(
                 string? replyToAppId,
                 string? replyTopic,
                 Guid correlationId,
