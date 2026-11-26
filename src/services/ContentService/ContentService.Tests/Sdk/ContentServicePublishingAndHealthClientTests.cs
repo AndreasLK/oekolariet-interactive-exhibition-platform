@@ -6,6 +6,7 @@ using ContentService.Sdk;
 using ContentService.Sdk.Clients;
 using ContentService.Sdk.Models;
 using ContentService.Sdk.Options;
+using ContentService.Sdk.Protocol;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -13,8 +14,8 @@ using Xunit;
 namespace ContentService.Tests.Sdk;
 
 /// <summary>
-/// Verifies <see cref="ContentServicePublishingClient"/>, <see cref="ContentServiceHealthClient"/>,
-/// <see cref="ContentServiceImageClient.DownloadImagePreviewAsync"/>, and SDK DI registration.
+/// Verifies <see cref="IContentServicePlatformClient"/>,
+/// <see cref="IContentServiceImageClient.DownloadImagePreviewAsync(Guid, CancellationToken)"/>, and SDK DI registration.
 /// </summary>
 public sealed class ContentServicePublishingAndHealthClientTests
 {
@@ -22,7 +23,7 @@ public sealed class ContentServicePublishingAndHealthClientTests
 
         /// <summary>
         /// Verifies <see cref="DependencyInjection.AddContentServiceSdk(IServiceCollection, Action{ContentServiceClientOptions})"/>
-        /// registers all four typed HTTP clients needed by consumers such as EditorService.
+        /// registers all typed SDK clients needed by consumers such as EditorService.
         /// </summary>
         [Fact]
         public void AddContentServiceSdkRegistersAllTypedClients()
@@ -34,13 +35,12 @@ public sealed class ContentServicePublishingAndHealthClientTests
 
                 Assert.NotNull(provider.GetService<IContentServiceImageClient>());
                 Assert.NotNull(provider.GetService<IContentServiceTemplateClient>());
-                Assert.NotNull(provider.GetService<IContentServicePublishingClient>());
-                Assert.NotNull(provider.GetService<IContentServiceHealthClient>());
+                Assert.NotNull(provider.GetService<IContentServicePlatformClient>());
         }
 
         /// <summary>
-        /// Verifies <see cref="ContentServicePublishingClient.ResolvePublishBundleAsync"/> posts to
-        /// <c>api/publish-bundles/resolve</c> and deserializes assets and bundle checksum.
+        /// Verifies <see cref="IContentServicePlatformClient.ResolvePublishBundleAsync"/> posts to
+        /// <c>api/v1/publish-bundles/resolve</c> and deserializes assets and bundle checksum.
         /// </summary>
         [Fact]
         public async Task ResolvePublishBundleAsyncPostsPayloadAndDeserializesBundle()
@@ -71,7 +71,7 @@ public sealed class ContentServicePublishingAndHealthClientTests
                 {
                         Assert.Equal(expected: HttpMethod.Post, actual: request.Method);
                         Assert.Equal(
-                                expected: new Uri(baseUri: BASE_ADDRESS, relativeUri: "api/publish-bundles/resolve"),
+                                expected: new Uri(baseUri: BASE_ADDRESS, relativeUri: "api/v1/publish-bundles/resolve"),
                                 actual: request.RequestUri);
 
                         return new HttpResponseMessage(statusCode: HttpStatusCode.OK)
@@ -83,13 +83,14 @@ public sealed class ContentServicePublishingAndHealthClientTests
                         };
                 });
 
-                using HttpClient httpClient = new(handler: handler) { BaseAddress = BASE_ADDRESS };
-                ContentServicePublishingClient client = new(
-                        httpClient: httpClient,
-                        options: Microsoft.Extensions.Options.Options.Create(new ContentServiceClientOptions { BaseAddress = BASE_ADDRESS }));
+                ServiceCollection services = new();
+                services.AddContentServiceSdk(options => options.BaseAddress = BASE_ADDRESS);
+                services.ConfigureHttpClientDefaults(builder => builder.ConfigurePrimaryHttpMessageHandler(() => handler));
+                using ServiceProvider provider = services.BuildServiceProvider();
+                IContentServicePlatformClient client = provider.GetRequiredService<IContentServicePlatformClient>();
 
-                ContentPublishBundle bundle = await client.ResolvePublishBundleAsync(
-                        request: new ResolvePublishBundleRequest
+                ContentPublishBundleResponse bundle = await client.ResolvePublishBundleAsync(
+                        query: new ContentResolvePublishBundleQuery
                         {
                                 TemplateId = templateId,
                                 ImplementationJson = "{\"answers\":[]}"
@@ -103,8 +104,8 @@ public sealed class ContentServicePublishingAndHealthClientTests
         }
 
         /// <summary>
-        /// Verifies <see cref="ContentServiceHealthClient.GetStorageHealthAsync"/> requests
-        /// <c>api/health/storage</c> and deserializes stringified <see cref="ContentStorageHealthStatus"/>.
+        /// Verifies <see cref="IContentServicePlatformClient.GetStorageHealthAsync"/> requests
+        /// <c>api/v1/health/storage</c> and deserializes stringified <see cref="ContentStorageHealthStatus"/>.
         /// </summary>
         [Fact]
         public async Task GetStorageHealthAsyncRequestsHealthEndpointAndDeserializesStatus()
@@ -122,7 +123,7 @@ public sealed class ContentServicePublishingAndHealthClientTests
                 {
                         Assert.Equal(expected: HttpMethod.Get, actual: request.Method);
                         Assert.Equal(
-                                expected: new Uri(baseUri: BASE_ADDRESS, relativeUri: "api/health/storage"),
+                                expected: new Uri(baseUri: BASE_ADDRESS, relativeUri: "api/v1/health/storage"),
                                 actual: request.RequestUri);
 
                         return new HttpResponseMessage(statusCode: HttpStatusCode.OK)
@@ -134,12 +135,13 @@ public sealed class ContentServicePublishingAndHealthClientTests
                         };
                 });
 
-                using HttpClient httpClient = new(handler: handler) { BaseAddress = BASE_ADDRESS };
-                ContentServiceHealthClient client = new(
-                        httpClient: httpClient,
-                        options: Microsoft.Extensions.Options.Options.Create(new ContentServiceClientOptions { BaseAddress = BASE_ADDRESS }));
+                ServiceCollection services = new();
+                services.AddContentServiceSdk(options => options.BaseAddress = BASE_ADDRESS);
+                services.ConfigureHttpClientDefaults(builder => builder.ConfigurePrimaryHttpMessageHandler(() => handler));
+                using ServiceProvider provider = services.BuildServiceProvider();
+                IContentServicePlatformClient client = provider.GetRequiredService<IContentServicePlatformClient>();
 
-                ContentStorageHealthReport report = await client.GetStorageHealthAsync(
+                ContentStorageHealthResponse report = await client.GetStorageHealthAsync(
                         cancellationToken: TestContext.Current.CancellationToken);
 
                 Assert.Equal(expected: ContentStorageHealthStatus.Warning, actual: report.Status);
@@ -149,8 +151,8 @@ public sealed class ContentServicePublishingAndHealthClientTests
         }
 
         /// <summary>
-        /// Verifies <see cref="ContentServiceImageClient.DownloadImagePreviewAsync"/> streams
-        /// from <c>api/images/{id}/preview</c> and transfers stream ownership to <see cref="ContentImageDownload"/>.
+        /// Verifies <see cref="IContentServiceImageClient.DownloadImagePreviewAsync(Guid, CancellationToken)"/> streams
+        /// from <c>api/v1/images/{id}/preview</c> and transfers stream ownership to <see cref="ContentImageDownloadResponse"/>.
         /// </summary>
         [Fact]
         public async Task DownloadImagePreviewAsyncStreamsFromPreviewEndpoint()
@@ -162,7 +164,7 @@ public sealed class ContentServicePublishingAndHealthClientTests
                 {
                         Assert.Equal(expected: HttpMethod.Get, actual: request.Method);
                         Assert.Equal(
-                                expected: new Uri(baseUri: BASE_ADDRESS, relativeUri: $"api/images/{imageId:D}/preview"),
+                                expected: new Uri(baseUri: BASE_ADDRESS, relativeUri: $"api/v1/images/{imageId:D}/preview"),
                                 actual: request.RequestUri);
 
                         ByteArrayContent content = new(content: previewBytes);
@@ -175,12 +177,13 @@ public sealed class ContentServicePublishingAndHealthClientTests
                         };
                 });
 
-                using HttpClient httpClient = new(handler: handler) { BaseAddress = BASE_ADDRESS };
-                ContentServiceImageClient client = new(
-                        httpClient: httpClient,
-                        options: Microsoft.Extensions.Options.Options.Create(new ContentServiceClientOptions { BaseAddress = BASE_ADDRESS }));
+                ServiceCollection services = new();
+                services.AddContentServiceSdk(options => options.BaseAddress = BASE_ADDRESS);
+                services.ConfigureHttpClientDefaults(builder => builder.ConfigurePrimaryHttpMessageHandler(() => handler));
+                using ServiceProvider provider = services.BuildServiceProvider();
+                IContentServiceImageClient client = provider.GetRequiredService<IContentServiceImageClient>();
 
-                await using ContentImageDownload download = await client.DownloadImagePreviewAsync(
+                await using ContentImageDownloadResponse download = await client.DownloadImagePreviewAsync(
                         imageId: imageId,
                         cancellationToken: TestContext.Current.CancellationToken);
 
