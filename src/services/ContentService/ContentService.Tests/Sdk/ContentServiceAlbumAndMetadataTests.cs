@@ -23,7 +23,7 @@ public sealed class ContentServiceAlbumAndMetadataTests
         public async Task ListImagesAsync_WithAlbumQuery_FormatsAlbumAndSearchQueryAsync()
         {
                 // Arrange
-                ContentPagedResult<ContentImageMetadata> expected = new()
+                ContentPagedResponse<ContentImageResponse> expected = new()
                 {
                         Items = [],
                         Page = 1,
@@ -92,7 +92,7 @@ public sealed class ContentServiceAlbumAndMetadataTests
                 Guid imageId = Guid.NewGuid();
                 Guid originalStamp = Guid.NewGuid();
                 Guid rotatedStamp = Guid.NewGuid();
-                ContentImageMetadata updated = new()
+                ContentImageResponse updated = new()
                 {
                         Id = imageId,
                         PictureReference = $"picture.node-1.{imageId:D}",
@@ -118,7 +118,7 @@ public sealed class ContentServiceAlbumAndMetadataTests
                 ContentServiceImageClient client = CreateClient(handler: handler);
 
                 // Act
-                ContentImageMetadata actual = await client.UpdateImageMetadataAsync(imageId: imageId, request: new UpdateImageMetadataRequest
+                ContentImageResponse actual = await client.UpdateImageMetadataAsync(imageId: imageId, command: new ContentUpdateImageMetadataCommand
                 {
                         AltText = "Yellow banana",
                         Tags = "banana, fruit",
