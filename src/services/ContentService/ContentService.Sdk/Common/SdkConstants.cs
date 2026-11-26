@@ -34,9 +34,29 @@ internal static class SdkConstants
         public const string IMAGES_ROUTE_PREFIX = "api/v1/images";
 
         /// <summary>
+        /// Relative route prefix for ContentService template endpoints (omits leading slash so subpath base URIs are preserved).
+        /// </summary>
+        public const string TEMPLATES_ROUTE_PREFIX = "api/templates";
+
+        /// <summary>
+        /// Relative route for resolving and checksum-sealing offline kiosk publish bundles.
+        /// </summary>
+        public const string PUBLISH_BUNDLES_ROUTE = "api/publish-bundles/resolve";
+
+        /// <summary>
+        /// Relative route for querying ContentService storage quota health telemetry.
+        /// </summary>
+        public const string STORAGE_HEALTH_ROUTE = "api/health/storage";
+
+        /// <summary>
         /// Route suffix appended to an image resource path to retrieve its binary payload stream.
         /// </summary>
         public const string IMAGE_CONTENT_SUFFIX = "content";
+
+        /// <summary>
+        /// Route suffix appended to an image resource path to retrieve its lightweight gallery preview.
+        /// </summary>
+        public const string IMAGE_PREVIEW_SUFFIX = "preview";
 
         /// <summary>
         /// Route suffix appended to an image resource path to update searchable metadata.
@@ -69,9 +89,14 @@ internal static class SdkConstants
         public const string PAGE_SIZE_QUERY_PARAM = "pageSize";
 
         /// <summary>
-        /// Query string parameter name for search text on <c>GET /api/images</c>.
+        /// Query string parameter name for search text on <c>GET /api/images</c> and <c>GET /api/templates</c>.
         /// </summary>
         public const string SEARCH_TERM_QUERY_PARAM = "searchTerm";
+
+        /// <summary>
+        /// Query string parameter name for component type filtering on <c>GET /api/templates</c>.
+        /// </summary>
+        public const string COMPONENT_TYPE_QUERY_PARAM = "componentType";
 
         /// <summary>
         /// Query string parameter name for album path filtering on <c>GET /api/images</c>.
@@ -124,7 +149,7 @@ internal static class SdkConstants
         public const string FALLBACK_ASCII_FILENAME = "image";
 
         /// <summary>
-        /// Media type indicating an RFC 7807 ProblemDetails JSON response.
+        /// Media type indicating an RFC 7807 ProblemDetails JSON response, allowing the SDK to distinguish structured API errors from generic JSON or proxy HTML error pages.
         /// </summary>
         public const string PROBLEM_JSON_MEDIA_TYPE = "application/problem+json";
 
@@ -139,8 +164,11 @@ internal static class SdkConstants
         public const string JSON_MEDIA_TYPE_SUFFIX = "+json";
 
         /// <summary>
-        /// Maximum number of bytes read from an error response body when constructing diagnostics.
+        /// Maximum number of bytes (16 KiB) read from an error response body when constructing diagnostics.
         /// </summary>
+        /// <remarks>
+        /// 16 KiB is large enough to capture complete RFC 7807 ProblemDetails JSON payloads while bounding memory so huge reverse-proxy HTML error pages cannot exhaust client memory.
+        /// </remarks>
         public const int MAX_ERROR_BODY_BYTES = 16 * 1024;
 
         /// <summary>

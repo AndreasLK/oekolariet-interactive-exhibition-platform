@@ -16,20 +16,24 @@
     <Project Path="src/services/ContentService/ContentService.Web/ContentService.Web.csproj" />
   </Folder>
   <Folder Name="/src/Services/EditorService/">
-    <Project Path="EditorService.Sdk/EditorService.Sdk.csproj" Id="e8ba4f21-d2bc-4a54-939b-91c33d5b9d8d" />
     <Project Path="src/services/EditorService/EditorService.Api/EditorService.Api.csproj" />
     <Project Path="src/services/EditorService/EditorService.Application/EditorService.Application.csproj" />
     <Project Path="src/services/EditorService/EditorService.Domain/EditorService.Domain.csproj" />
     <Project Path="src/services/EditorService/EditorService.Facade/EditorService.Facade.csproj" />
     <Project Path="src/services/EditorService/EditorService.Infrastructure/EditorService.Infrastructure.csproj" />
     <Project Path="src/services/EditorService/EditorService.Presentation/EditorService.Presentation.csproj" />
-    <Project Path="src/services/EditorService/EditorService.Tests/EditorService.Tests.csproj" />
+    <Project Path="src/services/EditorService/EditorService.Sdk/EditorService.Sdk.csproj" />
   </Folder>
   <Folder Name="/src/Services/AuthService/">
+    <Project Path="src/services/AuthService/AuthService.API/AuthService.API.csproj" />
     <Project Path="src/services/AuthService/AuthService.Application/AuthService.Application.csproj" />
     <Project Path="src/services/AuthService/AuthService.Domain/AuthService.Domain.csproj" />
     <Project Path="src/services/AuthService/AuthService.Infrastructure/AuthService.Infrastructure.csproj" />
-    <Project Path="src/services/AuthService/AuthService.API/AuthService.API.csproj" />
+  </Folder>
+  <Folder Name="/src/tests/" />
+  <Folder Name="/src/tests/EditorService/">
+    <Project Path="src/tests/EditorService/EditorService.Application.Tests/EditorService.Application.Tests.csproj" />
+    <Project Path="src/tests/EditorService/EditorService.Domain.Tests/EditorService.Domain.Tests.csproj" />
   </Folder>
   <Folder Name="/tests/" />
   <Folder Name="/tests/AuthService/">

@@ -10,6 +10,7 @@ using ContentService.Domain.ValueObjects;
 using ContentService.Infrastructure.Persistence;
 using ContentService.Infrastructure.Repositories;
 using ContentService.Tests.Application.Persistence;
+using ContentService.Tests.Common;
 
 namespace ContentService.Tests.Application;
 
@@ -17,6 +18,7 @@ namespace ContentService.Tests.Application;
 /// Integration tests for <see cref="ResolvePublishBundleUseCase"/> executed against a real SQL Server container.
 /// </summary>
 [Collection(MsSqlContentDatabaseCollection.COLLECTION_NAME)]
+[Trait(TestTraits.CATEGORY_KEY, TestTraits.INTEGRATION)]
 public sealed class ResolvePublishBundleUseCaseTests : IAsyncLifetime
 {
         /// <summary>

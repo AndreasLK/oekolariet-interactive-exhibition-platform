@@ -1,0 +1,26 @@
+@* Ready-to-use modal window for browsing and selecting a layout template from ContentService. *@
+<Modal IsOpen="@this.IsOpen"
+       IsOpenChanged="@this.IsOpenChanged"
+       Title="@this.Title"
+       CloseOnBackdropClick="true"
+       Modifier="@this.BuildModalModifier()">
+        <ChildContent>
+                @if (this.IsOpen)
+                {
+                        <Box Modifier="@this.BuildBodyModifier()">
+                                <ContentTemplateGallery OnTemplateSelected="@this.HandleTemplateSelectedAsync"
+                                                        DefaultComponentType="@this.DefaultComponentType"
+                                                        AllowManage="@this.AllowManage"
+                                                        PageSize="@this.PageSize" />
+                        </Box>
+                }
+        </ChildContent>
+        <FooterContent>
+                <Row HorizontalArrangement="Arrangement.End" Modifier="@UIModifier.New.FillMaxWidth()">
+                        <ActionButton Text="Close"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      OnClick="@this.HandleCloseAsync" />
+                </Row>
+        </FooterContent>
+</Modal>
+

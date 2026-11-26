@@ -64,7 +64,7 @@
                         @foreach (ContentImageMetadata image in this._images)
                         {
                                 <MediaTile @key="image.Id"
-                                           ImageSource="@this.ResolveImageContentSource(imageId: image.Id)"
+                                           ImageSource="@this.ResolveImagePreviewSource(imageId: image.Id)"
                                            ImageAlt="@this.ResolveImageAlt(image: image)"
                                            Title="@image.FileName"
                                            Subtitle="@ContentImageDisplayFormatter.FormatTileSubtitle(image: image)"

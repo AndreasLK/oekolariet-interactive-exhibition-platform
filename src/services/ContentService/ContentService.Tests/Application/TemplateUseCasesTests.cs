@@ -8,6 +8,8 @@ using ContentService.Domain.Exceptions;
 using ContentService.Infrastructure.Persistence;
 using ContentService.Infrastructure.Repositories;
 using ContentService.Tests.Application.Persistence;
+using ContentService.Tests.Common;
+using MicrosoftOptions = Microsoft.Extensions.Options.Options;
 
 namespace ContentService.Tests.Application;
 
@@ -15,6 +17,7 @@ namespace ContentService.Tests.Application;
 /// Integration tests for template update, query, and archive use cases executed against a real SQL Server container.
 /// </summary>
 [Collection(MsSqlContentDatabaseCollection.COLLECTION_NAME)]
+[Trait(TestTraits.CATEGORY_KEY, TestTraits.INTEGRATION)]
 public sealed class TemplateUseCasesTests : IAsyncLifetime
 {
         private const int OVERSIZED_PAGE_SIZE = 500;

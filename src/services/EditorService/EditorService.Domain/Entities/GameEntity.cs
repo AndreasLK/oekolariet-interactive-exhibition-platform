@@ -161,6 +161,17 @@ namespace EditorService.Domain.Entities
                 }
 
                 /// <summary>
+                /// Checks that the game may be deleted. Deleting it from the database is done by the application layer.
+                /// </summary>
+                /// <param name="lockToken">The token of the lock held by the caller.</param>
+                /// <param name="now">The current UTC time.</param>
+                /// <exception cref="EditLockRequiredException">Thrown when the caller does not hold a valid lock.</exception>
+                public void EnsureCanBeDeleted(Guid lockToken, DateTimeOffset now)
+                {
+                        this.EnsureLockHeld(lockToken: lockToken, now: now);
+                }
+
+                /// <summary>
                 /// Sets up the shared state of a new game. Called from the <c>Create</c> method of each concrete game.
                 /// </summary>
                 /// <param name="title">The display title of the game.</param>

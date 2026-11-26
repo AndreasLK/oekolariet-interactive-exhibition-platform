@@ -7,6 +7,9 @@ using ContentService.Application.Models;
 using ContentService.Domain.Common;
 using ContentService.Domain.Enums;
 using ContentService.Tests.Application.Persistence;
+using ContentService.Tests.Common;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
 
 namespace ContentService.Tests.Api;
@@ -15,6 +18,7 @@ namespace ContentService.Tests.Api;
 /// End-to-end HTTP integration tests verifying template CRUD, publishing, storage health, CORS, and pipeline error mappings against SQL Server.
 /// </summary>
 [Collection(MsSqlContentDatabaseCollection.COLLECTION_NAME)]
+[Trait(TestTraits.CATEGORY_KEY, TestTraits.INTEGRATION)]
 public sealed class ContentApiIntegrationTests : IAsyncLifetime
 {
         private const int SMALL_MAX_IMAGE_BYTES = 64;
