@@ -37,7 +37,10 @@ public sealed class SqlServerImageBinaryStore : IImageBinaryStore
                         select binary.Data)
                         .FirstOrDefaultAsync(cancellationToken: cancellationToken);
 
-                // Return a read-only MemoryStream so callers can dispose it normally without keeping SQL connections open during HTTP writes.
+                // Non-standard binary read: Materializes byte[] into a read-only MemoryStream instead of streaming
+                // via SqlDataReader (SequentialAccess) across the HTTP response lifetime.
+                // Gain: Releases the SQL Server connection immediately so slow kiosk/browser downloads never exhaust the connection pool.
+                // Loss: Allocates up to 10 MiB (MaxImageSizeBytes) on the LOH per concurrent original-image download.
                 return payloadBytes is null
                         ? null
                         : new MemoryStream(buffer: payloadBytes, writable: false);
