@@ -421,6 +421,19 @@ public sealed partial class ContentImageGallery : ComponentBase, IDisposable
                         operationPrefix: operationPrefix));
         }
 
+        private string ResolveImagePreviewSource(Guid imageId)
+        {
+                try
+                {
+                        // Load the saved lightweight WebP preview for gallery tiles so multi-megabyte originals do not stall the grid.
+                        return this.ImageClient.GetImagePreviewUri(imageId: imageId).AbsoluteUri;
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or OptionsValidationException)
+                {
+                        return string.Empty;
+                }
+        }
+
         private string ResolveImageContentSource(Guid imageId)
         {
                 try

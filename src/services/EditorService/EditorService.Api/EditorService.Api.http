@@ -1,6 +1,13 @@
 @EditorService.Api_HostAddress = http://localhost:5187
+@ApiVersion = v1
 
-GET {{EditorService.Api_HostAddress}}/weatherforecast/
+### Create game
+POST {{EditorService.Api_HostAddress}}/api/{{ApiVersion}}/games
+Content-Type: application/json
 Accept: application/json
+
+{
+  "name": "Test game"
+}
 
 ###

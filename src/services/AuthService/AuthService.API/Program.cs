@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using AuthService.Application.Authentication;
 using AuthService.Infrastructure.Authentication;
+using AuthService.Application.Sessions;
+using AuthService.Infrastructure.Persistence.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +25,14 @@ string connectionString = builder.Configuration
 builder.Services.AddDbContext<AuthDbContext>(
         optionsAction: options => options.UseSqlite(
                 connectionString: connectionString));
+
+
+// DIP: Application depends on the repository contract, not EF Core.
+// Scoped lifetime shares the request's DbContext for consistent persistence.
+builder.Services.AddScoped<IAuthSessionRepository, AuthSessionRepository>();
+
+
+
 
 // Identity handles credential storage and password hashing.
 // JWT authentication will be configured separately.
@@ -126,6 +136,11 @@ builder.Services.AddSingleton<IAccessTokenIssuer>(
                         accessTokenLifetime: TimeSpan.FromMinutes(
                                 minutes: accessTokenMinutes),
                         timeProvider: serviceProvider.GetRequiredService<TimeProvider>()));
+
+
+// DIP: Infrastructure provides secure refresh-token generation.
+builder.Services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
+
 
 
 builder.Services.AddControllers();

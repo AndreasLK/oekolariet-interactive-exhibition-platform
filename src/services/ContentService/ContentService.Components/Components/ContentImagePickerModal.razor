@@ -1,0 +1,28 @@
+@* Ready-to-use modal window for browsing and selecting an image from ContentService. *@
+<Modal IsOpen="@this.IsOpen"
+       IsOpenChanged="@this.IsOpenChanged"
+       Title="@this.Title"
+       CloseOnBackdropClick="true"
+       Modifier="@this.BuildModalModifier()">
+        <ChildContent>
+                @if (this.IsOpen)
+                {
+                        <Box Modifier="@this.BuildBodyModifier()">
+                                <ContentImageGallery OnImageSelected="@this.HandleImageSelectedAsync"
+                                                     DefaultAlbumPath="@this.DefaultAlbumPath"
+                                                     LockToDefaultAlbum="@this.LockToDefaultAlbum"
+                                                     AllowEditMetadata="@this.AllowEditMetadata"
+                                                     AllowDelete="@this.AllowDelete"
+                                                     PageSize="@this.PageSize" />
+                        </Box>
+                }
+        </ChildContent>
+        <FooterContent>
+                <Row HorizontalArrangement="Arrangement.End" Modifier="@UIModifier.New.FillMaxWidth()">
+                        <ActionButton Text="Close"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      OnClick="@this.HandleCloseAsync" />
+                </Row>
+        </FooterContent>
+</Modal>
+
