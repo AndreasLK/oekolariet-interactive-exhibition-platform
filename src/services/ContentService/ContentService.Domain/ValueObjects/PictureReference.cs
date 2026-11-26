@@ -6,6 +6,12 @@ namespace ContentService.Domain.ValueObjects;
 /// <summary>
 /// Represents a shard-aware image reference pairing a storage node identifier with an image GUID.
 /// </summary>
+/// <remarks>
+/// Non-standard identifier design: Encodes the owning <see cref="StorageNodeId"/> directly inside the handle
+/// (<c>picture.{node}.{guid}</c> / <c>{node}_{guid}</c>) instead of using opaque bare GUIDs.
+/// Gain: Zero-lookup shard routing to the owning storage node and single-segment HTTP URLs.
+/// Loss: Handles are tied to their originating node ID unless an alias/redirect layer is introduced later.
+/// </remarks>
 // Implemented as a sealed record class instead of a struct so default(PictureReference) cannot exist in an invalid unvalidated state.
 public sealed record class PictureReference
 {

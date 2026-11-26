@@ -46,8 +46,12 @@ public abstract class BaseEntity
         /// <summary>
         /// Gets the optimistic concurrency token rotated on creation and every modification.
         /// </summary>
+        /// <remarks>
+        /// Non-standard concurrency token: Uses a domain-managed <see cref="Guid"/> instead of SQL Server <c>rowversion</c> (<c>[Timestamp] byte[]</c>).
+        /// Gain: Persistence-agnostic optimistic locking across EF Core, in-memory test fakes, and JSON DTOs without base64 byte arrays.
+        /// Loss: Requires domain methods (<see cref="MarkModified"/>) to rotate the stamp explicitly rather than relying on DB triggers.
+        /// </remarks>
         // Detects if two users edit the same record concurrently so the second save fails instead of silently overwriting the first.
-        // Stored as a domain-managed Guid rather than SQL Server rowversion to keep concurrency checks persistence-agnostic.
         public Guid ConcurrencyStamp { get; protected set; }
 
         /// <summary>
