@@ -36,10 +36,10 @@ public sealed class ContentInfrastructureTests : IAsyncLifetime
         }
 
         /// <inheritdoc />
-        public Task InitializeAsync() => this._fixture.ResetDatabaseAsync();
+        public ValueTask InitializeAsync() => new(this._fixture.ResetDatabaseAsync());
 
         /// <inheritdoc />
-        public Task DisposeAsync() => Task.CompletedTask;
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
         /// <summary>
         /// Verifies that duplicate template names colliding on the SQL unique index translate to <see cref="DomainValidationException"/> in both add and update paths.

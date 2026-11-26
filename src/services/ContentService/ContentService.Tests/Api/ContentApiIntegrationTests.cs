@@ -37,10 +37,10 @@ public sealed class ContentApiIntegrationTests : IAsyncLifetime
         }
 
         /// <inheritdoc />
-        public Task InitializeAsync() => this._fixture.ResetDatabaseAsync();
+        public ValueTask InitializeAsync() => new(this._fixture.ResetDatabaseAsync());
 
         /// <inheritdoc />
-        public Task DisposeAsync() => Task.CompletedTask;
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
         /// <summary>
         /// Verifies the full HTTP template CRUD lifecycle, duplicate-name 400 validation, stale concurrency token 409 Conflict, and archive delete behavior.

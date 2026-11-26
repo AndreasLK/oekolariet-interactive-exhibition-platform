@@ -75,13 +75,13 @@ public sealed class GetStorageHealthUseCaseTests : IAsyncLifetime
         /// Clears all SQL Server tables before each test executes.
         /// </summary>
         /// <returns>A task representing asynchronous database cleanup.</returns>
-        public Task InitializeAsync() => this._fixture.ResetDatabaseAsync();
+        public ValueTask InitializeAsync() => new(this._fixture.ResetDatabaseAsync());
 
         /// <summary>
         /// Completes per-test cleanup without disposing the shared SQL Server container.
         /// </summary>
         /// <returns>A completed task.</returns>
-        public Task DisposeAsync() => Task.CompletedTask;
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
         /// <summary>
         /// Verifies mapping from SQL Server byte utilization across Healthy, Warning, and >= 100% FullReadOnly states.
