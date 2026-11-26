@@ -110,7 +110,7 @@ public sealed class ContentServicePublishingAndHealthClientTests
         [Fact]
         public async Task GetStorageHealthAsyncRequestsHealthEndpointAndDeserializesStatus()
         {
-                const string responseJson = """
+                const string RESPONSE_JSON = """
                         {
                           "status": "Warning",
                           "usedBytes": 800,
@@ -129,7 +129,7 @@ public sealed class ContentServicePublishingAndHealthClientTests
                         return new HttpResponseMessage(statusCode: HttpStatusCode.OK)
                         {
                                 Content = new StringContent(
-                                        content: responseJson,
+                                        content: RESPONSE_JSON,
                                         encoding: Encoding.UTF8,
                                         mediaType: "application/json")
                         };
