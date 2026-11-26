@@ -1,0 +1,34 @@
+@* Breadcrumb and sub-album chip bar using ALKsPersonalUI Breadcrumbs and Pill for recursive folder navigation. *@
+<Column Gap="0.6rem" Modifier="@UIModifier.New.FillMaxWidth()">
+        <Row HorizontalArrangement="Arrangement.SpaceBetween"
+             VerticalAlignment="VerticalAlignment.Center"
+             Wrap="true"
+             Gap="0.5rem"
+             Modifier="@UIModifier.New.FillMaxWidth()">
+                <Breadcrumbs Items="@this.BuildBreadcrumbItems()"
+                             AriaLabel="Album path navigation"
+                             OnItemClicked="@this.HandleBreadcrumbClickedAsync" />
+
+                @if (!string.IsNullOrWhiteSpace(value: this.CurrentAlbumPath))
+                {
+                        <Pill Text="@(this.IncludeSubalbums ? "Showing subfolders" : "Current folder only")"
+                              Variant="@(this.IncludeSubalbums ? Pill.PillVariant.Accent : Pill.PillVariant.Neutral)"
+                              OnClick="@this.HandleToggleSubalbumsAsync" />
+                }
+        </Row>
+
+        @if (this.ChildAlbumPaths.Count > 0)
+        {
+                <Row Gap="0.5rem" Wrap="true" VerticalAlignment="VerticalAlignment.Center" Modifier="@UIModifier.New.FillMaxWidth()">
+                        <Text Value="Albums:" Variant="TypographyVariant.Caption" Muted="true" />
+                        @foreach (string childPath in this.ChildAlbumPaths)
+                        {
+                                <Pill @key="childPath"
+                                      Text="@AlbumPathNormalizer.FormatLeafName(fullAlbumPath: childPath)"
+                                      Variant="Pill.PillVariant.Neutral"
+                                      OnClick="@(() => this.HandleChildAlbumClickedAsync(albumPath: childPath))" />
+                        }
+                </Row>
+        }
+</Column>
+

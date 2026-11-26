@@ -1,0 +1,121 @@
+@* Google Photos-inspired embeddable image gallery, recursive album browser, and picker built solely with ALKsPersonalUI. *@
+<Column Gap="1.25rem" Modifier="@UIModifier.New.FillMaxWidth()">
+        @* Top action toolbar: search across file name/description/tags, total count indicator, refresh, and upload trigger. *@
+        <Row HorizontalArrangement="Arrangement.SpaceBetween"
+             VerticalAlignment="VerticalAlignment.Center"
+             Gap="0.75rem"
+             Wrap="true"
+             Modifier="@UIModifier.New.FillMaxWidth()">
+                <SearchInput Value="@this._searchTerm"
+                             ValueChanged="@this.HandleSearchChangedAsync"
+                             Placeholder="Search by file name, description, or tags..."
+                             AriaLabel="Search images"
+                             Modifier="@ContentGalleryLayout.BuildSearchInputModifier()" />
+
+                <Row HorizontalArrangement="Arrangement.End"
+                     VerticalAlignment="VerticalAlignment.Center"
+                     Gap="0.5rem"
+                     Wrap="true">
+                        <Pill Text="@($"{this._totalCount} image(s)")" Variant="Pill.PillVariant.Neutral" />
+
+                        <ActionButton Text="Refresh"
+                                      Variant="ActionButton.ButtonVariant.Outline"
+                                      Size="ActionButton.ButtonSize.Small"
+                                      IsDisabled="@this._isLoading"
+                                      OnClick="@this.HandleRefreshClickedAsync" />
+
+                        <ActionButton Text="Upload"
+                                      Variant="ActionButton.ButtonVariant.Solid"
+                                      Size="ActionButton.ButtonSize.Small"
+                                      OnClick="@this.HandleOpenUploadModal" />
+                </Row>
+        </Row>
+
+        <ContentAlbumBreadcrumbBar CurrentAlbumPath="@this._currentAlbumPath"
+                                   LockedRootAlbumPath="@this.ResolveLockedRootAlbumPath()"
+                                   ChildAlbumPaths="@this._childAlbumPaths"
+                                   IncludeSubalbums="@this._includeSubalbums"
+                                   OnNavigateAlbum="@this.HandleAlbumNavigatedAsync"
+                                   OnIncludeSubalbumsChanged="@this.HandleIncludeSubalbumsChangedAsync" />
+
+        @if (this._isLoading && this._images.Count == 0)
+        {
+                <Box ContentAlignment="BoxAlignment.Center"
+                     Modifier="@ContentGalleryLayout.BuildLoaderBoxModifier()">
+                        <OrbitalLoader LoadingText="Loading exhibition images..." />
+                </Box>
+        }
+        else if (this._images.Count == 0)
+        {
+                <Box ContentAlignment="BoxAlignment.Center"
+                     Modifier="@ContentGalleryLayout.BuildEmptyStateBoxModifier()">
+                        <Column HorizontalAlignment="HorizontalAlignment.Center" Gap="0.75rem">
+                                <Text Value="@ContentGalleryLayout.ResolveEmptyStateMessage(searchTerm: this._searchTerm, currentAlbumPath: this._currentAlbumPath)" Variant="TypographyVariant.Subtitle" Muted="true" />
+                                <ActionButton Text="Upload images"
+                                              Variant="ActionButton.ButtonVariant.Solid"
+                                              OnClick="@this.HandleOpenUploadModal" />
+                        </Column>
+                </Box>
+        }
+        else
+        {
+                @* Responsive photo grid using ALKsPersonalUI MediaTile with @key so Blazor preserves tile selection across reloads. *@
+                <Grid MinColumnWidth="@GRID_MIN_COLUMN_WIDTH" Gap="1rem" Modifier="@UIModifier.New.FillMaxWidth()">
+                        @foreach (ContentImageMetadata image in this._images)
+                        {
+                                <MediaTile @key="image.Id"
+                                           ImageSource="@this.ResolveImageContentSource(imageId: image.Id)"
+                                           ImageAlt="@this.ResolveImageAlt(image: image)"
+                                           Title="@image.FileName"
+                                           Subtitle="@ContentImageDisplayFormatter.FormatTileSubtitle(image: image)"
+                                           IsSelectionMode="@this.OnImageSelected.HasDelegate"
+                                           IsSelected="@(this._selectedImageId == image.Id)"
+                                           OnClick="@(() => this.HandleTileClicked(image: image))"
+                                           OnToggleSelect="@((isSelected) => this.HandleTileSelectionToggledAsync(image: image, isSelected: isSelected))" />
+                        }
+                </Grid>
+
+                @if (this._totalPages > FIRST_PAGE)
+                {
+                        <Row HorizontalArrangement="Arrangement.Center"
+                             VerticalAlignment="VerticalAlignment.Center"
+                             Gap="0.75rem"
+                             Modifier="@ContentGalleryLayout.BuildPaginationRowModifier()">
+                                <ActionButton Text="Previous"
+                                              Variant="ActionButton.ButtonVariant.Outline"
+                                              Size="ActionButton.ButtonSize.Small"
+                                              IsDisabled="@(this._isLoading || this._currentPage <= FIRST_PAGE)"
+                                              OnClick="@this.HandlePreviousPageClickedAsync" />
+
+                                <Text Value="@($"Page {this._currentPage} of {this._totalPages}")"
+                                      Variant="TypographyVariant.Caption"
+                                      Muted="true" />
+
+                                <ActionButton Text="Next"
+                                              Variant="ActionButton.ButtonVariant.Outline"
+                                              Size="ActionButton.ButtonSize.Small"
+                                              IsDisabled="@(this._isLoading || this._currentPage >= this._totalPages)"
+                                              OnClick="@this.HandleNextPageClickedAsync" />
+                        </Row>
+                }
+        }
+</Column>
+
+<ContentImageDetailModal IsOpen="@this._isDetailModalOpen"
+                         IsOpenChanged="@this.HandleDetailModalVisibilityChanged"
+                         Image="@this._inspectedImage"
+                         ImageSource="@this.ResolveInspectedImageSource()"
+                         ShowSelectButton="@this.OnImageSelected.HasDelegate"
+                         AllowDelete="@this.AllowDelete"
+                         AllowEditMetadata="@this.AllowEditMetadata"
+                         IsDeleting="@this._isDeleting"
+                         IsSavingMetadata="@this._isSavingMetadata"
+                         OnSelectRequested="@this.HandleDetailSelectRequestedAsync"
+                         OnDeleteRequested="@this.HandleDetailDeleteRequestedAsync"
+                         OnSaveMetadataRequested="@this.HandleDetailSaveMetadataRequestedAsync" />
+
+<ContentImageUploadModal IsOpen="@this._isUploadModalOpen"
+                         IsOpenChanged="@this.HandleUploadModalVisibilityChanged"
+                         DefaultAlbumPath="@this._currentAlbumPath"
+                         LockAlbumPath="@this.LockToDefaultAlbum"
+                         OnUploadCompleted="@this.HandleUploadCompletedAsync" />
