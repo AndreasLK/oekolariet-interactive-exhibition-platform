@@ -93,7 +93,9 @@ internal static class StorageNodeTargetResolver
                         return null;
                 }
 
-                // WHY: Prefer stateless Dapr Pub/Sub scatter-gather so nodes do not need to know about all peers in advance.
+                // WHY: Prefer stateless Dapr Pub/Sub scatter-gather over static PeerStorageNodeIds so nodes do not need
+                // hardcoded cluster topology. Gain: zero-config horizontal scaling. Loss: scatter-gather round-trip latency
+                // on bare-GUID misses (which is why shard-prefixed {node}_{guid} IDs are preferred).
                 if (poolCoordinator is not null)
                 {
                         PoolNodeOffer? offer = await poolCoordinator.LocateImageOwnerAsync(

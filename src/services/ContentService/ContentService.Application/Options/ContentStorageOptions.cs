@@ -24,12 +24,12 @@ public sealed class ContentStorageOptions
         /// <summary>
         /// Gets or sets the Dapr Pub/Sub component name used for stateless pool scatter-gather broadcasts.
         /// </summary>
-        public string PubSubName { get; set; } = "contentservice-pubsub";
+        public string PubSubName { get; set; } = ApplicationConstants.DEFAULT_PUBSUB_NAME;
 
         /// <summary>
         /// Gets or sets the timeout in seconds when waiting for peer nodes to respond to a pool broadcast.
         /// </summary>
-        public int PoolRequestTimeoutSeconds { get; set; } = 5;
+        public int PoolRequestTimeoutSeconds { get; set; } = ApplicationConstants.DEFAULT_POOL_REQUEST_TIMEOUT_SECONDS;
 
         /// <summary>
         /// Gets or sets optional peer storage node identifiers for direct checks (e.g., cross-node delete reference checks).
