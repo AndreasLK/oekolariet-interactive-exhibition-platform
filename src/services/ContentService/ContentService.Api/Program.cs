@@ -40,7 +40,10 @@ builder.Services.AddApiVersioning(options =>
 })
 .AddOpenApi();
 
-// Force Minimal API parameter/body binding errors into GlobalExceptionHandler so clients still receive RFC 7807 ProblemDetails and CORS headers instead of bare 400 responses.
+// Non-standard Minimal API error handling: ThrowOnBadRequest = true forces parameter/body binding failures
+// into GlobalExceptionHandler instead of returning bare 400 responses.
+// Gain: Blazor WASM clients always receive RFC 7807 ProblemDetails with CORS headers even on malformed requests.
+// Loss: Slight exception-path overhead when clients send invalid route/query/body payloads.
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
@@ -58,7 +61,7 @@ builder.Services.AddCors();
 WebApplication app = builder.Build();
 
 // Apply EF Core migrations on startup when explicitly enabled (e.g., Docker Compose multi-node containers).
-if (app.Configuration.GetValue<bool>("Database:AutoMigrateOnStartup"))
+if (app.Configuration.GetValue<bool>(ApiConstants.DATABASE_AUTO_MIGRATE_CONFIG_KEY))
 {
         using IServiceScope migrationScope = app.Services.CreateScope();
         ContentDbContext dbContext = migrationScope.ServiceProvider.GetRequiredService<ContentDbContext>();
