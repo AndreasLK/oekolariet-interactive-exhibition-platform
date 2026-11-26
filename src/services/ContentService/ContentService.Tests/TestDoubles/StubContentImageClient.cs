@@ -69,6 +69,11 @@ internal sealed class StubContentImageClient : IContentServiceImageClient
                 CancellationToken cancellationToken = default) =>
                 throw new NotSupportedException();
 
+        public Task<ContentImageDownload> DownloadImagePreviewAsync(
+                Guid imageId,
+                CancellationToken cancellationToken = default) =>
+                throw new NotSupportedException();
+
         public Task<ContentImageMetadata> GetImageMetadataAsync(
                 Guid imageId,
                 CancellationToken cancellationToken = default) =>
