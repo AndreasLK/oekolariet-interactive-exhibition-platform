@@ -22,9 +22,34 @@ internal static class HttpResponseErrorMapper
                 HttpResponseMessage response,
                 CancellationToken cancellationToken)
         {
+                ContentServiceApiException? exception = await CreateExceptionOrNullAsync(
+                        response: response,
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                if (exception is not null)
+                {
+                        throw exception;
+                }
+        }
+
+        /// <summary>
+        /// Inspects <paramref name="response"/> and returns a <see cref="ContentServiceApiException"/> with bounded diagnostics
+        /// when the response indicates failure, or <see langword="null"/> when it succeeded.
+        /// </summary>
+        /// <remarks>
+        /// Used directly by <c>RefitSettings.ExceptionFactory</c> (without disposing <paramref name="response"/>, because Refit
+        /// disposes the response in its <c>finally</c> block) and by <see cref="EnsureSuccessOrThrowAsync"/> for streaming downloads.
+        /// </remarks>
+        /// <param name="response">The HTTP response to inspect (lifetime remains owned by the caller).</param>
+        /// <param name="cancellationToken">A token to cancel error body reading.</param>
+        /// <returns>A mapped <see cref="ContentServiceApiException"/> on non-2xx responses; otherwise, <see langword="null"/>.</returns>
+        public static async Task<ContentServiceApiException?> CreateExceptionOrNullAsync(
+                HttpResponseMessage response,
+                CancellationToken cancellationToken)
+        {
                 if (response.IsSuccessStatusCode)
                 {
-                        return;
+                        return null;
                 }
 
                 // Read a bounded diagnostic snippet without disposing response; callers manage HttpResponseMessage lifetime.
@@ -42,7 +67,7 @@ internal static class HttpResponseErrorMapper
                         problemDetails: problemDetails,
                         rawBody: rawBody);
 
-                throw new ContentServiceApiException(
+                return new ContentServiceApiException(
                         statusCode: response.StatusCode,
                         message: message,
                         problemDetails: problemDetails,

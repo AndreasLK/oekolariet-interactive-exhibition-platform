@@ -4,9 +4,9 @@ using System.Text.Json.Serialization;
 namespace ContentService.Sdk.Common;
 
 /// <summary>
-/// Centralizes HTTP route segments, multipart field names, headers, and serialization defaults for <c>ContentService.Sdk</c>.
+/// Centralizes public consumer defaults and internal HTTP protocol constants for <c>ContentService.Sdk</c>.
 /// </summary>
-internal static class SdkConstants
+public static class SdkConstants
 {
         /// <summary>
         /// Default configuration section name for binding <see cref="Options.ContentServiceClientOptions"/>.
@@ -19,184 +19,191 @@ internal static class SdkConstants
         public const string DEFAULT_API_VERSION = "v1";
 
         /// <summary>
-        /// Root API path segment (omits leading slash so subpath base URIs are preserved).
-        /// </summary>
-        public const string API_ROUTE_SEGMENT = "api";
-
-        /// <summary>
-        /// Image resource path segment appended after <c>api/{version}</c>.
-        /// </summary>
-        public const string IMAGES_RESOURCE_SEGMENT = "images";
-
-        /// <summary>
-        /// Relative route prefix for ContentService v1 image endpoints (omits leading slash so subpath base URIs are preserved).
-        /// </summary>
-        public const string IMAGES_ROUTE_PREFIX = "api/v1/images";
-
-        /// <summary>
-        /// Relative route prefix for ContentService template endpoints (omits leading slash so subpath base URIs are preserved).
-        /// </summary>
-        public const string TEMPLATES_ROUTE_PREFIX = "api/templates";
-
-        /// <summary>
-        /// Relative route for resolving and checksum-sealing offline kiosk publish bundles.
-        /// </summary>
-        public const string PUBLISH_BUNDLES_ROUTE = "api/publish-bundles/resolve";
-
-        /// <summary>
-        /// Relative route for querying ContentService storage quota health telemetry.
-        /// </summary>
-        public const string STORAGE_HEALTH_ROUTE = "api/health/storage";
-
-        /// <summary>
-        /// Route suffix appended to an image resource path to retrieve its binary payload stream.
-        /// </summary>
-        public const string IMAGE_CONTENT_SUFFIX = "content";
-
-        /// <summary>
-        /// Route suffix appended to an image resource path to retrieve its lightweight gallery preview.
-        /// </summary>
-        public const string IMAGE_PREVIEW_SUFFIX = "preview";
-
-        /// <summary>
-        /// Route suffix appended to an image resource path to update searchable metadata.
-        /// </summary>
-        public const string IMAGE_METADATA_SUFFIX = "metadata";
-
-        /// <summary>
-        /// Route suffix appended to <c>api/images</c> to list immediate child album paths.
-        /// </summary>
-        public const string IMAGE_ALBUMS_SUFFIX = "albums";
-
-        /// <summary>
-        /// Default 1-based page index requested when listing exhibition images.
+        /// Default 1-based page index requested when listing exhibition images or templates.
         /// </summary>
         public const int DEFAULT_PAGE = 1;
 
         /// <summary>
-        /// Default number of image records requested per catalog page.
+        /// Default number of records requested per catalog page.
         /// </summary>
         public const int DEFAULT_PAGE_SIZE = 25;
 
         /// <summary>
-        /// Query string parameter name for the 1-based page index on <c>GET /api/images</c>.
-        /// </summary>
-        public const string PAGE_QUERY_PARAM = "page";
-
-        /// <summary>
-        /// Query string parameter name for the page size on <c>GET /api/images</c>.
-        /// </summary>
-        public const string PAGE_SIZE_QUERY_PARAM = "pageSize";
-
-        /// <summary>
-        /// Query string parameter name for search text on <c>GET /api/images</c> and <c>GET /api/templates</c>.
-        /// </summary>
-        public const string SEARCH_TERM_QUERY_PARAM = "searchTerm";
-
-        /// <summary>
-        /// Query string parameter name for component type filtering on <c>GET /api/templates</c>.
-        /// </summary>
-        public const string COMPONENT_TYPE_QUERY_PARAM = "componentType";
-
-        /// <summary>
-        /// Query string parameter name for album path filtering on <c>GET /api/images</c>.
-        /// </summary>
-        public const string ALBUM_PATH_QUERY_PARAM = "albumPath";
-
-        /// <summary>
-        /// Query string parameter name controlling recursive sub-album inclusion on <c>GET /api/images</c>.
-        /// </summary>
-        public const string INCLUDE_SUBALBUMS_QUERY_PARAM = "includeSubalbums";
-
-        /// <summary>
-        /// Query string parameter name for the parent album path on <c>GET /api/images/albums</c>.
-        /// </summary>
-        public const string PARENT_PATH_QUERY_PARAM = "parentPath";
-
-        /// <summary>
-        /// Form field name bound by ContentService <c>IFormFile file</c> upload parameter.
-        /// </summary>
-        public const string MULTIPART_FILE_FIELD_NAME = "file";
-
-        /// <summary>
-        /// Form field name bound by ContentService <c>[FromForm] string? altText</c> upload parameter.
-        /// </summary>
-        public const string MULTIPART_ALT_TEXT_FIELD_NAME = "altText";
-
-        /// <summary>
-        /// Form field name bound by ContentService <c>[FromForm] string? albumPath</c> upload parameter.
-        /// </summary>
-        public const string MULTIPART_ALBUM_PATH_FIELD_NAME = "albumPath";
-
-        /// <summary>
-        /// Form field name bound by ContentService <c>[FromForm] string? tags</c> upload parameter.
-        /// </summary>
-        public const string MULTIPART_TAGS_FIELD_NAME = "tags";
-
-        /// <summary>
-        /// Header name used to attribute image uploads to an internal editor actor.
+        /// Header name used to attribute mutating ContentService operations (uploads, updates, archival, and deletions) to an internal actor.
         /// </summary>
         public const string ACTOR_HEADER_NAME = "X-Actor-Id";
 
         /// <summary>
+        /// Root API path segment (omits leading slash so subpath base URIs are preserved).
+        /// </summary>
+        internal const string API_ROUTE_SEGMENT = "api";
+
+        /// <summary>
+        /// Image resource path segment appended after <c>api/{version}</c>.
+        /// </summary>
+        internal const string IMAGES_RESOURCE_SEGMENT = "images";
+
+        /// <summary>
+        /// Template resource path segment appended after <c>api/{version}</c>.
+        /// </summary>
+        internal const string TEMPLATES_RESOURCE_SEGMENT = "templates";
+
+        /// <summary>
+        /// Publish bundle resolution path segment appended after <c>api/{version}</c>.
+        /// </summary>
+        internal const string PUBLISH_BUNDLES_RESOLVE_PATH = "publish-bundles/resolve";
+
+        /// <summary>
+        /// Storage health diagnostic path segment appended after <c>api/{version}</c>.
+        /// </summary>
+        internal const string STORAGE_HEALTH_PATH = "health/storage";
+
+        /// <summary>
+        /// Pool upload-offer scatter-gather path segment appended after <c>api/{version}</c>.
+        /// </summary>
+        internal const string POOL_UPLOAD_OFFERS_PATH = "pool/upload-offers";
+
+        /// <summary>
+        /// Route suffix appended to an image resource path to retrieve its binary payload stream.
+        /// </summary>
+        internal const string IMAGE_CONTENT_SUFFIX = "content";
+
+        /// <summary>
+        /// Route suffix appended to an image resource path to retrieve its lightweight preview stream.
+        /// </summary>
+        internal const string IMAGE_PREVIEW_SUFFIX = "preview";
+
+        /// <summary>
+        /// Route suffix appended to <c>api/{version}/images</c> for batch metadata lookups.
+        /// </summary>
+        internal const string IMAGE_BATCH_METADATA_SUFFIX = "batch-metadata";
+
+        /// <summary>
+        /// Route suffix appended to an image resource path to update searchable metadata.
+        /// </summary>
+        internal const string IMAGE_METADATA_SUFFIX = "metadata";
+
+        /// <summary>
+        /// Route suffix appended to <c>api/{version}/images</c> to list immediate child album paths.
+        /// </summary>
+        internal const string IMAGE_ALBUMS_SUFFIX = "albums";
+
+        /// <summary>
+        /// Route suffix appended to <c>api/{version}/templates</c> to check image-to-template references.
+        /// </summary>
+        internal const string TEMPLATE_IMAGE_REFERENCES_SUFFIX = "image-references";
+
+        /// <summary>
+        /// Query string parameter name for the 1-based page index on catalog listings.
+        /// </summary>
+        internal const string PAGE_QUERY_PARAM = "page";
+
+        /// <summary>
+        /// Query string parameter name for the page size on catalog listings.
+        /// </summary>
+        internal const string PAGE_SIZE_QUERY_PARAM = "pageSize";
+
+        /// <summary>
+        /// Query string parameter name for search text on catalog listings.
+        /// </summary>
+        internal const string SEARCH_TERM_QUERY_PARAM = "searchTerm";
+
+        /// <summary>
+        /// Query string parameter name for album path filtering on image listings.
+        /// </summary>
+        internal const string ALBUM_PATH_QUERY_PARAM = "albumPath";
+
+        /// <summary>
+        /// Query string parameter name controlling recursive sub-album inclusion on image listings.
+        /// </summary>
+        internal const string INCLUDE_SUBALBUMS_QUERY_PARAM = "includeSubalbums";
+
+        /// <summary>
+        /// Query string parameter name for the parent album path on album listings.
+        /// </summary>
+        internal const string PARENT_PATH_QUERY_PARAM = "parentPath";
+
+        /// <summary>
+        /// Query string parameter name for filtering templates by component type.
+        /// </summary>
+        internal const string COMPONENT_TYPE_QUERY_PARAM = "componentType";
+
+        /// <summary>
+        /// Form field name bound by ContentService <c>IFormFile file</c> upload parameter.
+        /// </summary>
+        internal const string MULTIPART_FILE_FIELD_NAME = "file";
+
+        /// <summary>
+        /// Form field name bound by ContentService <c>[FromForm] string? altText</c> upload parameter.
+        /// </summary>
+        internal const string MULTIPART_ALT_TEXT_FIELD_NAME = "altText";
+
+        /// <summary>
+        /// Form field name bound by ContentService <c>[FromForm] string? albumPath</c> upload parameter.
+        /// </summary>
+        internal const string MULTIPART_ALBUM_PATH_FIELD_NAME = "albumPath";
+
+        /// <summary>
+        /// Form field name bound by ContentService <c>[FromForm] string? tags</c> upload parameter.
+        /// </summary>
+        internal const string MULTIPART_TAGS_FIELD_NAME = "tags";
+
+        /// <summary>
         /// Content-Disposition type required by ASP.NET Core multipart form-data parsing.
         /// </summary>
-        public const string FORM_DATA_DISPOSITION_TYPE = "form-data";
+        internal const string FORM_DATA_DISPOSITION_TYPE = "form-data";
 
         /// <summary>
         /// Fallback ASCII filename used alongside UTF-8 <c>FileNameStar</c> when an upload filename contains non-ASCII characters.
         /// </summary>
-        public const string FALLBACK_ASCII_FILENAME = "image";
+        internal const string FALLBACK_ASCII_FILENAME = "image";
 
         /// <summary>
-        /// Media type indicating an RFC 7807 ProblemDetails JSON response, allowing the SDK to distinguish structured API errors from generic JSON or proxy HTML error pages.
+        /// Media type indicating an RFC 7807 ProblemDetails JSON response.
         /// </summary>
-        public const string PROBLEM_JSON_MEDIA_TYPE = "application/problem+json";
+        internal const string PROBLEM_JSON_MEDIA_TYPE = "application/problem+json";
 
         /// <summary>
         /// Standard JSON media type.
         /// </summary>
-        public const string JSON_MEDIA_TYPE = "application/json";
+        internal const string JSON_MEDIA_TYPE = "application/json";
 
         /// <summary>
         /// Media type suffix for structured JSON extensions such as <c>+json</c>.
         /// </summary>
-        public const string JSON_MEDIA_TYPE_SUFFIX = "+json";
+        internal const string JSON_MEDIA_TYPE_SUFFIX = "+json";
 
         /// <summary>
-        /// Maximum number of bytes (16 KiB) read from an error response body when constructing diagnostics.
+        /// Maximum number of bytes read from an error response body when constructing diagnostics.
         /// </summary>
-        /// <remarks>
-        /// 16 KiB is large enough to capture complete RFC 7807 ProblemDetails JSON payloads while bounding memory so huge reverse-proxy HTML error pages cannot exhaust client memory.
-        /// </remarks>
-        public const int MAX_ERROR_BODY_BYTES = 16 * 1024;
+        internal const int MAX_ERROR_BODY_BYTES = 16 * 1024;
 
         /// <summary>
         /// Fallback ASCII replacement character when building a 7-bit <c>filename</c> header parameter.
         /// </summary>
-        public const char ASCII_FALLBACK_CHAR = '_';
+        internal const char ASCII_FALLBACK_CHAR = '_';
 
         /// <summary>
         /// Highest valid 7-bit printable ASCII code point permitted in HTTP header tokens and fallback filenames.
         /// </summary>
-        public const int MAX_PRINTABLE_ASCII = 126;
+        internal const int MAX_PRINTABLE_ASCII = 126;
 
         /// <summary>
         /// Lowest printable ASCII code point (space).
         /// </summary>
-        public const int MIN_PRINTABLE_ASCII = 32;
+        internal const int MIN_PRINTABLE_ASCII = 32;
 
         /// <summary>
         /// Shared JSON serializer configuration matching <c>ContentService.Api</c> web defaults and string enums.
         /// </summary>
-        public static readonly JsonSerializerOptions JSON_SERIALIZER_OPTIONS = CreateJsonSerializerOptions();
+        internal static readonly JsonSerializerOptions JSON_SERIALIZER_OPTIONS = CreateJsonSerializerOptions();
 
         /// <summary>
         /// Checks whether an optional HTTP header value contains only printable 7-bit ASCII characters without control characters.
         /// </summary>
         /// <param name="value">The header value to validate.</param>
         /// <returns><see langword="true"/> when all characters are printable ASCII; otherwise, <see langword="false"/>.</returns>
-        public static bool IsPrintableAsciiHeaderValue(string value)
+        internal static bool IsPrintableAsciiHeaderValue(string value)
         {
                 foreach (char character in value)
                 {
@@ -210,11 +217,15 @@ internal static class SdkConstants
                 return true;
         }
 
+        /// <summary>
+        /// Creates the shared <see cref="JsonSerializerOptions"/> matching <c>ContentService.Api</c> Minimal API defaults.
+        /// </summary>
+        /// <returns>A configured <see cref="JsonSerializerOptions"/> instance with string enum serialization.</returns>
         private static JsonSerializerOptions CreateJsonSerializerOptions()
         {
                 JsonSerializerOptions options = new(JsonSerializerDefaults.Web);
+                // ContentService.Api serializes enums as strings; match that contract so Refit queries/bodies round-trip cleanly.
                 options.Converters.Add(new JsonStringEnumConverter());
                 return options;
         }
 }
-
