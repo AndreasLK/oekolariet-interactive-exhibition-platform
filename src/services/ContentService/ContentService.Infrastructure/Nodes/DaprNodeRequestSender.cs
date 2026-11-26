@@ -6,6 +6,13 @@ namespace ContentService.Infrastructure.Nodes;
 /// <summary>
 /// Builds Dapr sidecar invocation URIs, attaches loop-prevention and actor headers, and dispatches pooled HTTP requests to peer nodes.
 /// </summary>
+/// <remarks>
+/// Non-standard Dapr integration: Uses pooled <see cref="IHttpClientFactory"/> against Dapr's local HTTP sidecar API
+/// (<c>127.0.0.1:3500/v1.0/invoke</c>) rather than <c>DaprClient</c>, and stamps <c>X-Node-Forwarded: true</c> so
+/// peer nodes never re-broadcast or forward in a loop.
+/// Gain: Zero gRPC/Dapr SDK coupling and full control over <see cref="HttpCompletionOption.ResponseHeadersRead"/> streaming.
+/// Loss: Relies on Dapr's v1.0 HTTP sidecar URL format and <c>contentservice-{nodeId}</c> app-id convention.
+/// </remarks>
 internal sealed class DaprNodeRequestSender
 {
         /// <summary>

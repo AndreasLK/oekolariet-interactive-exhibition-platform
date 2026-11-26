@@ -9,6 +9,13 @@ namespace ContentService.Infrastructure.Nodes;
 /// <summary>
 /// Implements stateless Dapr Pub/Sub scatter-gather coordination across an arbitrary pool of <c>ContentService</c> nodes with a 5-second default timeout.
 /// </summary>
+/// <remarks>
+/// Non-standard Dapr &amp; scatter-gather design:
+/// <list type="bullet">
+/// <item>Calls the Dapr HTTP sidecar (<c>/v1.0/publish</c>, <c>/v1.0/invoke</c>) via <see cref="IHttpClientFactory"/> instead of <c>DaprClient</c>. Gain: zero <c>Dapr.Client</c> dependency and clean fallback when no sidecar is running. Loss: Dapr HTTP routes are maintained manually.</item>
+/// <item>First-reply-wins via <see cref="PendingPoolReplyRegistry"/> instead of collecting all peer responses. Gain: low latency (no tail-latency wait). Loss: upload offers select the first healthy node with capacity rather than the globally least-utilized node.</item>
+/// </list>
+/// </remarks>
 internal sealed class DaprPoolCoordinator : IPoolCoordinator
 {
         /// <summary>
