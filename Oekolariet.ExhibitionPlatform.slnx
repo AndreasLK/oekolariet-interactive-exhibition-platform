@@ -35,9 +35,8 @@
     <Project Path="src/tests/EditorService/EditorService.Application.Tests/EditorService.Application.Tests.csproj" />
     <Project Path="src/tests/EditorService/EditorService.Domain.Tests/EditorService.Domain.Tests.csproj" />
   </Folder>
-  <Folder Name="/tests/" />
-  <Folder Name="/tests/AuthService/">
-    <Project Path="tests/AuthService/AuthService.Domain.Tests/AuthService.Domain.Tests.csproj" />
-    <Project Path="tests/AuthService/AuthService.Infrastructure.Tests/AuthService.Infrastructure.Tests.csproj" />
+  <Folder Name="/src/tests/AuthService/">
+    <Project Path="src/tests/AuthService/AuthService.Domain.Tests/AuthService.Domain.Tests.csproj" />
+    <Project Path="src/tests/AuthService/AuthService.Infrastructure.Tests/AuthService.Infrastructure.Tests.csproj" />
   </Folder>
 </Solution>
