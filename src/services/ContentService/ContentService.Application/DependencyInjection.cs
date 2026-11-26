@@ -48,6 +48,7 @@ public static class DependencyInjection
                 services.AddScoped<ListAlbumsUseCase>();
                 services.AddScoped<UpdateImageMetadataUseCase>();
                 services.AddScoped<GetImageStreamUseCase>();
+                services.AddScoped<GetImagePreviewUseCase>();
                 services.AddScoped<DeleteImageUseCase>();
 
                 services.AddScoped<CreateTemplateUseCase>();

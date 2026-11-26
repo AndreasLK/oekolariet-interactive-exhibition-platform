@@ -37,18 +37,25 @@ public sealed class UploadImageUseCase
         private readonly ContentStorageOptions _options;
 
         /// <summary>
+        /// Optional preview generator used to pre-compute lightweight gallery thumbnails during upload.
+        /// </summary>
+        private readonly IImagePreviewGenerator? _previewGenerator;
+
+        /// <summary>
         /// Captures persistence, quota, signature, and storage-limit dependencies so upload security and capacity checks stay testable without SQL Server.
         /// </summary>
         /// <param name="imageRepository">The image metadata and binary persistence repository.</param>
         /// <param name="quotaMonitor">The storage byte usage monitor.</param>
         /// <param name="signatureValidator">The image file-header signature validator.</param>
         /// <param name="options">The configured content storage options.</param>
+        /// <param name="previewGenerator">Optional preview generator for pre-computing gallery thumbnails.</param>
         /// <exception cref="ArgumentNullException">Thrown when any required dependency is <see langword="null"/>.</exception>
         public UploadImageUseCase(
                 IImageRepository imageRepository,
                 IStorageQuotaMonitor quotaMonitor,
                 IImageSignatureValidator signatureValidator,
-                IOptions<ContentStorageOptions> options)
+                IOptions<ContentStorageOptions> options,
+                IImagePreviewGenerator? previewGenerator = null)
         {
                 ArgumentNullException.ThrowIfNull(imageRepository);
                 ArgumentNullException.ThrowIfNull(quotaMonitor);
@@ -60,6 +67,7 @@ public sealed class UploadImageUseCase
                 this._quotaMonitor = quotaMonitor;
                 this._signatureValidator = signatureValidator;
                 this._options = options.Value;
+                this._previewGenerator = previewGenerator;
         }
 
         /// <summary>
@@ -115,6 +123,18 @@ public sealed class UploadImageUseCase
                         albumPath: command.AlbumPath,
                         tags: command.Tags);
                 ImageBinaryEntity binary = ImageBinaryEntity.Create(imageId: image.Id, data: payload);
+
+                // Pre-generate and save the lightweight preview on upload so gallery tiles never wait on resizing or download megabytes.
+                if (this._previewGenerator is not null)
+                {
+                        ImagePreviewPayload? preview = await this._previewGenerator.TryGeneratePreviewAsync(
+                                sourceBytes: payload,
+                                cancellationToken: cancellationToken);
+                        if (preview is not null)
+                        {
+                                binary.SetPreview(previewData: preview.Bytes, previewContentType: preview.ContentType);
+                        }
+                }
 
                 await this._imageRepository.AddAsync(
                         metadata: image,

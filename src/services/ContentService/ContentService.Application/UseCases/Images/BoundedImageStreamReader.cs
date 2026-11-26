@@ -22,7 +22,10 @@ internal static class BoundedImageStreamReader
                 long maxAllowedBytes,
                 CancellationToken cancellationToken)
         {
+                // Accumulate into a dynamically grown MemoryStream rather than pre-allocating from Content-Length, which an untrusted client can spoof.
                 using MemoryStream payloadStream = new();
+
+                // Use an 80 KiB (81,920-byte) buffer so the array stays below .NET's 85,000-byte Large Object Heap (LOH) threshold on the fast Small Object Heap.
                 byte[] buffer = new byte[ApplicationConstants.STREAM_BUFFER_SIZE_BYTES];
                 long totalBytesRead = 0;
 

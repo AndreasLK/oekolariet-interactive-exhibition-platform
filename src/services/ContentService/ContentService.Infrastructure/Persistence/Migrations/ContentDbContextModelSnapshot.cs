@@ -31,6 +31,13 @@ namespace ContentService.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varbinary(max)");
 
+                    b.Property<string>("PreviewContentType")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<byte[]>("PreviewData")
+                        .HasColumnType("varbinary(max)");
+
                     b.HasKey("ImageId");
 
                     b.ToTable("ImageBinaries", (string)null);
