@@ -12,6 +12,15 @@ internal static class LocateImageEventEndpoint
         /// <summary>
         /// Replies only if this node owns <c>imageId</c> in its local database.
         /// </summary>
+        /// <remarks>
+        /// Non-standard HTTP semantics: Unlike REST endpoints that return <c>400</c> or <c>404</c>, this handler always
+        /// returns <c>200 OK</c> on malformed events or local misses.
+        /// <para>
+        /// What we gain: Dapr Pub/Sub treats non-2xx responses as transient faults and retries/dead-letters them; returning
+        /// <c>200 OK</c> prevents cluster-wide retry storms during scatter-gather broadcasts.
+        /// What we lose: Callers must rely on their scatter-gather timeout when no node owns the image.
+        /// </para>
+        /// </remarks>
         /// <param name="rawEvent">The incoming CloudEvent or raw JSON payload.</param>
         /// <param name="imageQueryFacade">The image query facade.</param>
         /// <param name="platformQueryFacade">The platform health query facade.</param>
@@ -26,14 +35,14 @@ internal static class LocateImageEventEndpoint
                 CancellationToken cancellationToken)
         {
                 JsonElement payload = CloudEventPayloadReader.UnwrapCloudEventData(rawEvent: rawEvent);
-                if (!CloudEventPayloadReader.TryReadGuid(element: payload, propertyName: "correlationId", value: out Guid correlationId)
-                        || !CloudEventPayloadReader.TryReadGuid(element: payload, propertyName: "imageId", value: out Guid imageId))
+                if (!CloudEventPayloadReader.TryReadGuid(element: payload, propertyName: PoolEventConstants.CORRELATION_ID_PROPERTY, value: out Guid correlationId)
+                        || !CloudEventPayloadReader.TryReadGuid(element: payload, propertyName: PoolEventConstants.IMAGE_ID_PROPERTY, value: out Guid imageId))
                 {
                         return Results.Ok();
                 }
 
-                string? replyToAppId = CloudEventPayloadReader.ReadString(element: payload, propertyName: "replyToAppId");
-                string? replyTopic = CloudEventPayloadReader.ReadString(element: payload, propertyName: "replyTopic");
+                string? replyToAppId = CloudEventPayloadReader.ReadString(element: payload, propertyName: PoolEventConstants.REPLY_TO_APP_ID_PROPERTY);
+                string? replyTopic = CloudEventPayloadReader.ReadString(element: payload, propertyName: PoolEventConstants.REPLY_TOPIC_PROPERTY);
                 if (string.IsNullOrWhiteSpace(replyToAppId) && string.IsNullOrWhiteSpace(replyTopic))
                 {
                         return Results.Ok();

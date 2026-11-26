@@ -12,6 +12,10 @@ internal static class UploadOfferEventEndpoint
         /// <summary>
         /// Replies only if this node is healthy and has enough remaining quota for the requested upload.
         /// </summary>
+        /// <remarks>
+        /// Non-standard HTTP semantics: Always returns <c>200 OK</c> even when the node is full or the payload is
+        /// invalid so Dapr Pub/Sub does not retry or dead-letter scatter-gather probes (see <see cref="LocateImageEventEndpoint"/>).
+        /// </remarks>
         /// <param name="rawEvent">The incoming CloudEvent or raw JSON payload.</param>
         /// <param name="platformQueryFacade">The platform health query facade.</param>
         /// <param name="poolFacade">The pool facade used to send the reply.</param>
@@ -24,19 +28,19 @@ internal static class UploadOfferEventEndpoint
                 CancellationToken cancellationToken)
         {
                 JsonElement payload = CloudEventPayloadReader.UnwrapCloudEventData(rawEvent: rawEvent);
-                if (!CloudEventPayloadReader.TryReadGuid(element: payload, propertyName: "correlationId", value: out Guid correlationId))
+                if (!CloudEventPayloadReader.TryReadGuid(element: payload, propertyName: PoolEventConstants.CORRELATION_ID_PROPERTY, value: out Guid correlationId))
                 {
                         return Results.Ok();
                 }
 
-                string? replyToAppId = CloudEventPayloadReader.ReadString(element: payload, propertyName: "replyToAppId");
-                string? replyTopic = CloudEventPayloadReader.ReadString(element: payload, propertyName: "replyTopic");
+                string? replyToAppId = CloudEventPayloadReader.ReadString(element: payload, propertyName: PoolEventConstants.REPLY_TO_APP_ID_PROPERTY);
+                string? replyTopic = CloudEventPayloadReader.ReadString(element: payload, propertyName: PoolEventConstants.REPLY_TOPIC_PROPERTY);
                 if (string.IsNullOrWhiteSpace(replyToAppId) && string.IsNullOrWhiteSpace(replyTopic))
                 {
                         return Results.Ok();
                 }
 
-                long requiredBytes = CloudEventPayloadReader.ReadInt64(element: payload, propertyName: "requiredBytes");
+                long requiredBytes = CloudEventPayloadReader.ReadInt64(element: payload, propertyName: PoolEventConstants.REQUIRED_BYTES_PROPERTY);
                 StorageHealthDto health = await platformQueryFacade.GetStorageHealthAsync(cancellationToken: cancellationToken);
                 long remainingBytes = Math.Max(val1: 0L, val2: health.QuotaBytes - health.UsedBytes);
 
