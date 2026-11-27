@@ -162,7 +162,7 @@ public sealed class ContentServicePublishingAndHealthClientTests
                 {
                         Assert.Equal(expected: HttpMethod.Get, actual: request.Method);
                         Assert.Equal(
-                                expected: new Uri(baseUri: BASE_ADDRESS, relativeUri: $"api/images/{imageId:D}/preview"),
+                                expected: new Uri(baseUri: BASE_ADDRESS, relativeUri: $"api/v1/images/{imageId:D}/preview"),
                                 actual: request.RequestUri);
 
                         ByteArrayContent content = new(content: previewBytes);
