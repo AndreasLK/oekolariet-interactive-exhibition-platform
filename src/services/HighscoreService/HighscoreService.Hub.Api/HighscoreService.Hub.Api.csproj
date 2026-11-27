@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+        <PropertyGroup>
+                <TargetFramework>net11.0</TargetFramework>
+                <ImplicitUsings>enable</ImplicitUsings>
+                <Nullable>enable</Nullable>
+                <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        </PropertyGroup>
+
+        <ItemGroup>
+                <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.14" />
+                <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
+                <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13">
+                        <PrivateAssets>all</PrivateAssets>
+                        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+                </PackageReference>
+                <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="11.0.1" />
+        </ItemGroup>
+
+        <ItemGroup>
+                <ProjectReference Include="..\HighscoreService.Application\HighscoreService.Application.csproj" />
+                <ProjectReference Include="..\HighscoreService.Hub.Infrastructure\HighscoreService.Hub.Infrastructure.csproj" />
+                <ProjectReference Include="..\HighscoreService.Sdk\HighscoreService.Sdk.csproj" />
+        </ItemGroup>
+
+</Project>
+
