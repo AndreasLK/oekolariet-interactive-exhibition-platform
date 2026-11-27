@@ -1,27 +1,28 @@
 namespace ContentService.Sdk.Models;
 
 /// <summary>
-/// Request payload for creating a new exhibition layout template in ContentService.
+/// Payload for creating a new versioned exhibition template in ContentService.
 /// </summary>
 public sealed record class CreateContentTemplateRequest
 {
         /// <summary>
-        /// Gets the display name for the new template.
+        /// Gets the unique human-readable template name.
         /// </summary>
         public required string Name { get; init; }
 
         /// <summary>
-        /// Gets the Blazor UI component category targeted by this template.
+        /// Gets the target Blazor UI component category for this template.
         /// </summary>
         public required ContentTemplateComponentType ComponentType { get; init; }
 
         /// <summary>
-        /// Gets the raw JSON layout schema (<c>JsonUiNode</c> tree) for the template.
+        /// Gets the raw JSON schema payload defining layout structure and image references.
         /// </summary>
         public required string SchemaJson { get; init; }
 
         /// <summary>
-        /// Gets an optional audit actor identifier overriding the configured default actor.
+        /// Gets an optional actor identifier overriding <see cref="Options.ContentServiceClientOptions.DefaultActorId"/> for audit attribution.
         /// </summary>
         public string? ActorId { get; init; }
 }
+

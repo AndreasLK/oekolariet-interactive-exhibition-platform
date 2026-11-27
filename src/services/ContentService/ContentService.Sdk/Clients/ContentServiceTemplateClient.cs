@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 namespace ContentService.Sdk.Clients;
 
 /// <summary>
-/// Typed HTTP client implementing <see cref="IContentServiceTemplateClient"/> against ContentService's <c>/api/templates</c> endpoints.
+/// Typed <see cref="HttpClient"/> client communicating with <c>ContentService.Api</c> template endpoints.
 /// </summary>
 public sealed class ContentServiceTemplateClient : IContentServiceTemplateClient
 {
@@ -16,48 +16,59 @@ public sealed class ContentServiceTemplateClient : IContentServiceTemplateClient
         private readonly ContentServiceClientOptions _options;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ContentServiceTemplateClient"/> class.
+        /// Initializes a new instance of <see cref="ContentServiceTemplateClient"/>.
         /// </summary>
-        /// <param name="httpClient">The configured <see cref="HttpClient"/> instance.</param>
-        /// <param name="options">Client options supplying fallback base address and default actor identity.</param>
+        /// <param name="httpClient">The configured HTTP client targeting ContentService.</param>
+        /// <param name="options">Client configuration supplying optional default actor attribution or fallback base URI.</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="httpClient"/> or <paramref name="options"/> is <see langword="null"/>.</exception>
         public ContentServiceTemplateClient(
                 HttpClient httpClient,
                 IOptions<ContentServiceClientOptions> options)
         {
-                ArgumentNullException.ThrowIfNull(argument: httpClient);
-                ArgumentNullException.ThrowIfNull(argument: options);
-                ArgumentNullException.ThrowIfNull(argument: options.Value);
+                ArgumentNullException.ThrowIfNull(httpClient);
+                ArgumentNullException.ThrowIfNull(options);
 
                 this._httpClient = httpClient;
                 this._options = options.Value;
         }
 
         /// <inheritdoc />
+        public Task<ContentPagedResult<ContentTemplateMetadata>> ListTemplatesAsync(
+                int page = SdkConstants.DEFAULT_PAGE,
+                int pageSize = SdkConstants.DEFAULT_PAGE_SIZE,
+                ContentTemplateComponentType? componentType = null,
+                string? searchTerm = null,
+                CancellationToken cancellationToken = default) =>
+                this.ListTemplatesAsync(
+                        query: new ContentTemplateQuery
+                        {
+                                Page = page,
+                                PageSize = pageSize,
+                                ComponentType = componentType,
+                                SearchTerm = searchTerm
+                        },
+                        cancellationToken: cancellationToken);
+
+        /// <inheritdoc />
         public async Task<ContentPagedResult<ContentTemplateMetadata>> ListTemplatesAsync(
-                ContentTemplateQuery? query = null,
+                ContentTemplateQuery query,
                 CancellationToken cancellationToken = default)
         {
-                ContentTemplateQuery effectiveQuery = query ?? new ContentTemplateQuery();
+                ArgumentNullException.ThrowIfNull(argument: query);
+
                 Uri requestUri = ContentServiceEndpointUriResolver.BuildTemplatesListUri(
                         httpClient: this._httpClient,
                         options: this._options,
-                        query: effectiveQuery);
+                        query: query);
 
-                ContentPagedResult<ContentTemplateMetadata>? result = await this.SendAndReadJsonAsync<ContentPagedResult<ContentTemplateMetadata>>(
+                ContentPagedResult<ContentTemplateMetadata>? pagedResult = await this.SendAndReadJsonAsync<ContentPagedResult<ContentTemplateMetadata>>(
                         method: HttpMethod.Get,
                         requestUri: requestUri,
                         content: null,
                         actorId: null,
                         cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                return result ?? new ContentPagedResult<ContentTemplateMetadata>
-                {
-                        Items = [],
-                        Page = effectiveQuery.Page,
-                        PageSize = effectiveQuery.PageSize,
-                        TotalCount = 0
-                };
+                return pagedResult ?? throw new InvalidOperationException("ContentService returned an empty template list payload.");
         }
 
         /// <inheritdoc />
@@ -65,19 +76,19 @@ public sealed class ContentServiceTemplateClient : IContentServiceTemplateClient
                 Guid templateId,
                 CancellationToken cancellationToken = default)
         {
-                Uri requestUri = ContentServiceEndpointUriResolver.BuildTemplateItemUri(
+                Uri requestUri = ContentServiceEndpointUriResolver.BuildTemplateByIdUri(
                         httpClient: this._httpClient,
                         options: this._options,
                         templateId: templateId);
 
-                ContentTemplateMetadata? template = await this.SendAndReadJsonAsync<ContentTemplateMetadata>(
+                ContentTemplateMetadata? metadata = await this.SendAndReadJsonAsync<ContentTemplateMetadata>(
                         method: HttpMethod.Get,
                         requestUri: requestUri,
                         content: null,
                         actorId: null,
                         cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                return template ?? throw new InvalidOperationException("ContentService returned an empty template payload.");
+                return metadata ?? throw new InvalidOperationException("ContentService returned an empty template payload.");
         }
 
         /// <inheritdoc />
@@ -87,25 +98,23 @@ public sealed class ContentServiceTemplateClient : IContentServiceTemplateClient
         {
                 ArgumentNullException.ThrowIfNull(argument: request);
 
-                string? actorId = ActorHeaderResolver.ResolveValidActorId(
+                // Validate actor header before issuing the POST so non-ASCII characters fail fast on the client.
+                string? validActorId = ActorHeaderResolver.ResolveValidActorId(
                         explicitActorId: request.ActorId,
                         defaultActorId: this._options.DefaultActorId);
                 Uri requestUri = ContentServiceEndpointUriResolver.BuildTemplatesRootUri(
                         httpClient: this._httpClient,
                         options: this._options);
 
-                using JsonContent content = JsonContent.Create(
-                        inputValue: request with { ActorId = actorId },
-                        options: SdkConstants.JSON_SERIALIZER_OPTIONS);
-
-                ContentTemplateMetadata? created = await this.SendAndReadJsonAsync<ContentTemplateMetadata>(
+                using JsonContent jsonContent = JsonContent.Create(inputValue: request, options: SdkConstants.JSON_SERIALIZER_OPTIONS);
+                ContentTemplateMetadata? metadata = await this.SendAndReadJsonAsync<ContentTemplateMetadata>(
                         method: HttpMethod.Post,
                         requestUri: requestUri,
-                        content: content,
-                        actorId: actorId,
+                        content: jsonContent,
+                        actorId: validActorId,
                         cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                return created ?? throw new InvalidOperationException("ContentService returned an empty template creation payload.");
+                return metadata ?? throw new InvalidOperationException("ContentService returned an empty template payload.");
         }
 
         /// <inheritdoc />
@@ -116,26 +125,25 @@ public sealed class ContentServiceTemplateClient : IContentServiceTemplateClient
         {
                 ArgumentNullException.ThrowIfNull(argument: request);
 
-                string? actorId = ActorHeaderResolver.ResolveValidActorId(
+                // Validate actor header before issuing the PUT so non-ASCII characters fail fast on the client.
+                string? validActorId = ActorHeaderResolver.ResolveValidActorId(
                         explicitActorId: request.ActorId,
                         defaultActorId: this._options.DefaultActorId);
-                Uri requestUri = ContentServiceEndpointUriResolver.BuildTemplateItemUri(
+                Uri requestUri = ContentServiceEndpointUriResolver.BuildTemplateByIdUri(
                         httpClient: this._httpClient,
                         options: this._options,
                         templateId: templateId);
 
-                using JsonContent content = JsonContent.Create(
-                        inputValue: request with { ActorId = actorId },
-                        options: SdkConstants.JSON_SERIALIZER_OPTIONS);
-
-                ContentTemplateMetadata? updated = await this.SendAndReadJsonAsync<ContentTemplateMetadata>(
+                // Serializes ExpectedConcurrencyStamp alongside template data so ContentService can reject stale edits with 409 Conflict.
+                using JsonContent jsonContent = JsonContent.Create(inputValue: request, options: SdkConstants.JSON_SERIALIZER_OPTIONS);
+                ContentTemplateMetadata? metadata = await this.SendAndReadJsonAsync<ContentTemplateMetadata>(
                         method: HttpMethod.Put,
                         requestUri: requestUri,
-                        content: content,
-                        actorId: actorId,
+                        content: jsonContent,
+                        actorId: validActorId,
                         cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                return updated ?? throw new InvalidOperationException("ContentService returned an empty template update payload.");
+                return metadata ?? throw new InvalidOperationException("ContentService returned an empty template payload.");
         }
 
         /// <inheritdoc />
@@ -144,10 +152,10 @@ public sealed class ContentServiceTemplateClient : IContentServiceTemplateClient
                 string? actorId = null,
                 CancellationToken cancellationToken = default)
         {
-                string? effectiveActorId = ActorHeaderResolver.ResolveValidActorId(
+                string? validActorId = ActorHeaderResolver.ResolveValidActorId(
                         explicitActorId: actorId,
                         defaultActorId: this._options.DefaultActorId);
-                Uri requestUri = ContentServiceEndpointUriResolver.BuildTemplateItemUri(
+                Uri requestUri = ContentServiceEndpointUriResolver.BuildTemplateByIdUri(
                         httpClient: this._httpClient,
                         options: this._options,
                         templateId: templateId);
@@ -156,10 +164,13 @@ public sealed class ContentServiceTemplateClient : IContentServiceTemplateClient
                         method: HttpMethod.Delete,
                         requestUri: requestUri,
                         content: null,
-                        actorId: effectiveActorId,
+                        actorId: validActorId,
                         cancellationToken: cancellationToken).ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// Sends an HTTP request, maps non-success status codes to <see cref="Exceptions.ContentServiceApiException"/>, and deserializes the JSON payload.
+        /// </summary>
         private async Task<TResponse?> SendAndReadJsonAsync<TResponse>(
                 HttpMethod method,
                 Uri requestUri,
@@ -179,6 +190,9 @@ public sealed class ContentServiceTemplateClient : IContentServiceTemplateClient
                         cancellationToken: cancellationToken).ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// Sends an HTTP request with optional <c>X-Actor-Id</c> attribution and throws a mapped API exception when non-successful.
+        /// </summary>
         private async Task<HttpResponseMessage> SendAndEnsureSuccessAsync(
                 HttpMethod method,
                 Uri requestUri,
@@ -186,25 +200,27 @@ public sealed class ContentServiceTemplateClient : IContentServiceTemplateClient
                 string? actorId,
                 CancellationToken cancellationToken)
         {
-                using HttpRequestMessage request = new(method: method, requestUri: requestUri);
-                request.Content = content;
-
-                if (!string.IsNullOrWhiteSpace(value: actorId))
+                using HttpRequestMessage httpRequest = new(method: method, requestUri: requestUri)
                 {
-                        request.Headers.TryAddWithoutValidation(
-                                name: SdkConstants.ACTOR_HEADER_NAME,
-                                value: actorId);
+                        Content = content
+                };
+
+                if (actorId is not null)
+                {
+                        httpRequest.Headers.Add(name: SdkConstants.ACTOR_HEADER_NAME, value: actorId);
                 }
 
-                HttpResponseMessage response = await this._httpClient
-                        .SendAsync(request: request, completionOption: HttpCompletionOption.ResponseHeadersRead, cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
+                // ResponseHeadersRead lets EnsureSuccessOrThrowAsync inspect error status codes without pre-buffering large payloads.
+                HttpResponseMessage response = await this._httpClient.SendAsync(
+                        request: httpRequest,
+                        completionOption: HttpCompletionOption.ResponseHeadersRead,
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
 
                 try
                 {
-                        await HttpResponseErrorMapper
-                                .EnsureSuccessOrThrowAsync(response: response, cancellationToken: cancellationToken)
-                                .ConfigureAwait(false);
+                        await HttpResponseErrorMapper.EnsureSuccessOrThrowAsync(
+                                response: response,
+                                cancellationToken: cancellationToken).ConfigureAwait(false);
                         return response;
                 }
                 catch

@@ -36,7 +36,7 @@ public static class DependencyInjection
         }
 
         /// <summary>
-        /// Registers <see cref="IContentServiceImageClient"/> using an explicit <see cref="ContentServiceClientOptions"/> delegate.
+        /// Registers <see cref="IContentServiceImageClient"/> and <see cref="IContentServiceTemplateClient"/> using an explicit <see cref="ContentServiceClientOptions"/> delegate.
         /// </summary>
         /// <param name="services">The target service collection.</param>
         /// <param name="configureOptions">A delegate configuring <see cref="ContentServiceClientOptions"/>.</param>

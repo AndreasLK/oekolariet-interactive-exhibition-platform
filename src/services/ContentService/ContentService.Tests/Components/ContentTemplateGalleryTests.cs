@@ -93,7 +93,17 @@ public sealed class ContentTemplateGalleryTests : BunitContext
         private sealed class StubTemplateClient(IReadOnlyList<ContentTemplateMetadata> templates) : IContentServiceTemplateClient
         {
                 public Task<ContentPagedResult<ContentTemplateMetadata>> ListTemplatesAsync(
-                        ContentTemplateQuery? query = null,
+                        int page = 1,
+                        int pageSize = 25,
+                        ContentTemplateComponentType? componentType = null,
+                        string? searchTerm = null,
+                        CancellationToken cancellationToken = default) =>
+                        this.ListTemplatesAsync(
+                                query: new ContentTemplateQuery { Page = page, PageSize = pageSize, ComponentType = componentType, SearchTerm = searchTerm },
+                                cancellationToken: cancellationToken);
+
+                public Task<ContentPagedResult<ContentTemplateMetadata>> ListTemplatesAsync(
+                        ContentTemplateQuery query,
                         CancellationToken cancellationToken = default)
                 {
                         return Task.FromResult(result: new ContentPagedResult<ContentTemplateMetadata>

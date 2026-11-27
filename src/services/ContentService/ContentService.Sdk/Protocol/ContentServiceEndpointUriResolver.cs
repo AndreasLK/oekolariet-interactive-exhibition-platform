@@ -155,11 +155,11 @@ internal static class ContentServiceEndpointUriResolver
         }
 
         /// <summary>
-        /// Builds the templates root URI (<c>api/templates</c>) relative to the normalized base address.
+        /// Builds the template collection endpoint URI (<c>api/templates</c>) relative to the normalized base address.
         /// </summary>
         /// <param name="httpClient">The configured <see cref="HttpClient"/> instance.</param>
         /// <param name="options">Fallback client options supplying <see cref="ContentServiceClientOptions.BaseAddress"/>.</param>
-        /// <returns>The resolved absolute templates root <see cref="Uri"/>.</returns>
+        /// <returns>The resolved absolute templates collection <see cref="Uri"/>.</returns>
         public static Uri BuildTemplatesRootUri(
                 HttpClient httpClient,
                 ContentServiceClientOptions options)
@@ -169,12 +169,12 @@ internal static class ContentServiceEndpointUriResolver
         }
 
         /// <summary>
-        /// Builds the paginated template listing URI with optional component type and search filters.
+        /// Builds the paginated template listing URI with optional component-type and search filters.
         /// </summary>
         /// <param name="httpClient">The configured <see cref="HttpClient"/> instance.</param>
         /// <param name="options">Fallback client options supplying <see cref="ContentServiceClientOptions.BaseAddress"/>.</param>
         /// <param name="query">The template catalog query parameters.</param>
-        /// <returns>The resolved absolute template listing <see cref="Uri"/>.</returns>
+        /// <returns>The resolved absolute template catalog query <see cref="Uri"/>.</returns>
         public static Uri BuildTemplatesListUri(
                 HttpClient httpClient,
                 ContentServiceClientOptions options,
@@ -192,31 +192,26 @@ internal static class ContentServiceEndpointUriResolver
 
                 if (!string.IsNullOrWhiteSpace(value: query.SearchTerm))
                 {
-                        queryString = $"{queryString}&{SdkConstants.SEARCH_TERM_QUERY_PARAM}={Uri.EscapeDataString(stringToEscape: query.SearchTerm.Trim())}";
+                        string trimmedSearch = query.SearchTerm.Trim();
+                        queryString = $"{queryString}&{SdkConstants.SEARCH_TERM_QUERY_PARAM}={Uri.EscapeDataString(stringToEscape: trimmedSearch)}";
                 }
 
                 return new Uri(baseUri: normalizedBase, relativeUri: $"{SdkConstants.TEMPLATES_ROUTE_PREFIX}?{queryString}");
         }
 
         /// <summary>
-        /// Builds the template item URI (<c>api/templates/{templateId}</c>) after validating <paramref name="templateId"/>.
+        /// Builds a single-template resource URI (<c>api/templates/{templateId}</c>) after validating <paramref name="templateId"/>.
         /// </summary>
         /// <param name="httpClient">The configured <see cref="HttpClient"/> instance.</param>
         /// <param name="options">Fallback client options supplying <see cref="ContentServiceClientOptions.BaseAddress"/>.</param>
         /// <param name="templateId">The non-empty template identifier.</param>
-        /// <returns>The resolved absolute template item <see cref="Uri"/>.</returns>
-        public static Uri BuildTemplateItemUri(
+        /// <returns>The resolved absolute template resource <see cref="Uri"/>.</returns>
+        public static Uri BuildTemplateByIdUri(
                 HttpClient httpClient,
                 ContentServiceClientOptions options,
                 Guid templateId)
         {
-                if (templateId == Guid.Empty)
-                {
-                        throw new ArgumentException(
-                                message: "TemplateId cannot be empty.",
-                                paramName: nameof(templateId));
-                }
-
+                ValidateTemplateId(templateId: templateId);
                 Uri normalizedBase = ResolveNormalizedBaseUri(httpClient: httpClient, options: options);
                 return new Uri(baseUri: normalizedBase, relativeUri: $"{SdkConstants.TEMPLATES_ROUTE_PREFIX}/{templateId:D}");
         }
@@ -260,6 +255,20 @@ internal static class ContentServiceEndpointUriResolver
                         throw new ArgumentException(
                                 message: "ImageId cannot be empty.",
                                 paramName: nameof(imageId));
+                }
+        }
+
+        /// <summary>
+        /// Rejects <see cref="Guid.Empty"/> before issuing HTTP calls or constructing template URIs.
+        /// </summary>
+        /// <param name="templateId">The template identifier to validate.</param>
+        public static void ValidateTemplateId(Guid templateId)
+        {
+                if (templateId == Guid.Empty)
+                {
+                        throw new ArgumentException(
+                                message: "TemplateId cannot be empty.",
+                                paramName: nameof(templateId));
                 }
         }
 
