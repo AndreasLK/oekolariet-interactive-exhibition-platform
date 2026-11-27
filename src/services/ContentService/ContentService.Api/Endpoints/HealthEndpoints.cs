@@ -1,6 +1,8 @@
 using ContentService.Api.Common;
+using ContentService.Api.Mapper;
 using ContentService.Facade.Dtos;
 using ContentService.Facade.Interfaces;
+using ContentService.Sdk.Models;
 
 namespace ContentService.Api.Endpoints;
 
@@ -21,7 +23,7 @@ internal static class HealthEndpoints
                 // Register the storage quota health endpoint under the versioned API group.
                 endpoints.MapGet(pattern: ApiConstants.STORAGE_HEALTH_RELATIVE_ROUTE, handler: HandleGetStorageHealthAsync)
                         .WithTags(ApiConstants.HEALTH_OPENAPI_TAG)
-                        .Produces<StorageHealthDto>(StatusCodes.Status200OK);
+                        .Produces<ContentStorageHealthResponse>(StatusCodes.Status200OK);
 
                 return endpoints;
         }
@@ -31,13 +33,13 @@ internal static class HealthEndpoints
         /// </summary>
         /// <param name="queryFacade">The CQS platform query facade.</param>
         /// <param name="cancellationToken">Propagates HTTP request aborts to cancel pending SQL aggregation.</param>
-        /// <returns>An HTTP 200 OK response containing the <see cref="StorageHealthDto"/>.</returns>
+        /// <returns>An HTTP 200 OK response containing the <see cref="ContentStorageHealthResponse"/>.</returns>
         private static async Task<IResult> HandleGetStorageHealthAsync(
                 IContentPlatformQueryFacade queryFacade,
                 CancellationToken cancellationToken)
         {
-                // Query current storage utilization and return 200 OK.
+                // Query current storage utilization, map to the SDK response, and return 200 OK.
                 StorageHealthDto health = await queryFacade.GetStorageHealthAsync(cancellationToken: cancellationToken);
-                return Results.Ok(health);
+                return Results.Ok(value: PlatformMapper.ToResponse(dto: health));
         }
 }
