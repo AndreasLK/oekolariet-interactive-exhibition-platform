@@ -33,6 +33,7 @@ public sealed class ContentStorageOptionsValidator : IValidateOptions<ContentSto
 
                 List<string> failures = [];
                 ValidateStorageNodeId(storageNodeId: options.StorageNodeId, failures: failures);
+                ValidatePeerStorageNodeIds(peerStorageNodeIds: options.PeerStorageNodeIds, failures: failures);
                 ValidateSizeAndQuota(options: options, failures: failures);
                 ValidateThresholds(options: options, failures: failures);
 
@@ -61,6 +62,24 @@ public sealed class ContentStorageOptionsValidator : IValidateOptions<ContentSto
                 {
                         failures.Add(
                                 $"StorageNodeId '{storageNodeId}' must be at most {DomainConstants.MAX_STORAGE_NODE_ID_LENGTH} characters and use lowercase alphanumeric segments separated by single hyphens.");
+                }
+        }
+
+        /// <summary>
+        /// Validates all configured <see cref="ContentStorageOptions.PeerStorageNodeIds"/> entries against shard naming rules.
+        /// </summary>
+        /// <param name="peerStorageNodeIds">The configured peer storage node identifiers.</param>
+        /// <param name="failures">The failure message accumulator.</param>
+        private static void ValidatePeerStorageNodeIds(IReadOnlyList<string>? peerStorageNodeIds, List<string> failures)
+        {
+                if (peerStorageNodeIds is null)
+                {
+                        return;
+                }
+
+                foreach (string peerNodeId in peerStorageNodeIds)
+                {
+                        ValidateStorageNodeId(storageNodeId: peerNodeId, failures: failures);
                 }
         }
 
