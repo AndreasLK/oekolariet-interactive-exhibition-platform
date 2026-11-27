@@ -1,6 +1,7 @@
-using ContentService.Facade.Common;
+using ContentService.Api.Mapper;
 using ContentService.Facade.Dtos;
 using ContentService.Facade.Interfaces;
+using ContentService.Sdk.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ContentService.Api.Endpoints.Images;
@@ -20,7 +21,7 @@ internal static class ListImagesEndpoint
         /// <param name="includeSubalbums">Whether to include nested subalbums.</param>
         /// <param name="queryFacade">The image query facade.</param>
         /// <param name="cancellationToken">Propagates client disconnects.</param>
-        /// <returns>An HTTP 200 OK response containing a <see cref="PagedResultDto{T}"/> of image metadata.</returns>
+        /// <returns>An HTTP 200 OK response containing a <see cref="ContentPagedResponse{T}"/> of image metadata.</returns>
         public static async Task<IResult> HandleAsync(
                 [FromQuery] int? page,
                 [FromQuery] int? pageSize,
@@ -31,21 +32,19 @@ internal static class ListImagesEndpoint
                 CancellationToken cancellationToken)
         {
                 // Apply default pagination and include subalbums unless explicitly disabled by the caller.
-                ListImagesQueryDto query = new()
-                {
-                        Page = page ?? FacadeConstants.DEFAULT_PAGE,
-                        PageSize = pageSize ?? FacadeConstants.DEFAULT_PAGE_SIZE,
-                        SearchTerm = searchTerm,
-                        AlbumPath = albumPath,
-                        IncludeSubalbums = includeSubalbums ?? true
-                };
+                ListImagesQueryDto query = ImageMapper.ToQuery(
+                        page: page,
+                        pageSize: pageSize,
+                        searchTerm: searchTerm,
+                        albumPath: albumPath,
+                        includeSubalbums: includeSubalbums);
 
-                // Query the paginated image catalog and return 200 OK.
+                // Query the paginated image catalog and return the mapped SDK response.
                 PagedResultDto<ImageMetadataDto> result = await queryFacade.ListImagesAsync(
                         query: query,
                         cancellationToken: cancellationToken);
 
-                return Results.Ok(result);
+                return Results.Ok(value: ImageMapper.ToPagedResponse(pagedDto: result));
         }
 }
 

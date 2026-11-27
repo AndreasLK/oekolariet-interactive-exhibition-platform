@@ -1,8 +1,9 @@
 using ContentService.Api.Common;
-using ContentService.Api.Contracts;
+using ContentService.Api.Mapper;
 using ContentService.Application.Options;
 using ContentService.Facade.Dtos;
 using ContentService.Facade.Interfaces;
+using ContentService.Sdk.Models;
 using Microsoft.Extensions.Options;
 
 namespace ContentService.Api.Endpoints.Images;
@@ -21,10 +22,10 @@ internal static class UpdateImageMetadataEndpoint
         /// <param name="storageOptions">Configured local storage options.</param>
         /// <param name="commandFacade">The image command facade.</param>
         /// <param name="cancellationToken">Propagates client disconnects.</param>
-        /// <returns>An HTTP 200 OK response containing the updated <see cref="ImageMetadataDto"/>.</returns>
+        /// <returns>An HTTP 200 OK response containing the updated <see cref="ContentImageResponse"/>.</returns>
         public static async Task<IResult> HandleAsync(
                 string imageIdentifier,
-                UpdateImageMetadataRequest request,
+                ContentUpdateImageMetadataRequest request,
                 HttpContext httpContext,
                 IOptions<ContentStorageOptions> storageOptions,
                 IImageCommandFacade commandFacade,
@@ -37,24 +38,23 @@ internal static class UpdateImageMetadataEndpoint
                         localStorageNodeId: storageOptions.Value.StorageNodeId);
 
                 // Map the PATCH body, concurrency stamp, and actor header into the Facade command DTO.
-                UpdateImageMetadataCommandDto command = new()
-                {
-                        ImageId = imageId,
-                        StorageNodeId = storageNodeId,
-                        AllowPeerFallback = allowPeerFallback,
-                        AltText = request.AltText,
-                        Tags = request.Tags,
-                        AlbumPath = request.AlbumPath,
-                        ExpectedConcurrencyStamp = request.ExpectedConcurrencyStamp,
-                        ActorId = RequestActorResolver.ResolveActorId(httpContext: httpContext)
-                };
+                string actorId = RequestActorResolver.ResolveActorId(
+                        httpContext: httpContext,
+                        explicitActorId: request.ActorId);
 
-                // Apply the metadata update (locally or on the owning peer) and return 200 OK.
+                UpdateImageMetadataCommandDto command = ImageMapper.ToCommand(
+                        request: request,
+                        imageId: imageId,
+                        storageNodeId: storageNodeId,
+                        allowPeerFallback: allowPeerFallback,
+                        actorId: actorId);
+
+                // Apply the metadata update (locally or on the owning peer) and return the mapped SDK response.
                 ImageMetadataDto updated = await commandFacade.UpdateImageMetadataAsync(
                         command: command,
                         cancellationToken: cancellationToken);
 
-                return Results.Ok(updated);
+                return Results.Ok(value: ImageMapper.ToResponse(dto: updated));
         }
 }
 
