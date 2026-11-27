@@ -1,3 +1,5 @@
+using ContentService.Sdk.Common;
+
 namespace ContentService.Sdk.Options;
 
 /// <summary>
@@ -9,6 +11,11 @@ public sealed class ContentServiceClientOptions
         /// Gets or sets the absolute base URI of the ContentService HTTP API (e.g., <c>https://content.example.com</c> or <c>http://contentservice:8080</c>).
         /// </summary>
         public Uri? BaseAddress { get; set; }
+
+        /// <summary>
+        /// Gets or sets the API version URL segment targeted by the SDK (defaults to <c>v1</c>).
+        /// </summary>
+        public string ApiVersion { get; set; } = SdkConstants.DEFAULT_API_VERSION;
 
         /// <summary>
         /// Gets or sets an optional default actor identifier sent via <c>X-Actor-Id</c> when a request does not specify an actor.

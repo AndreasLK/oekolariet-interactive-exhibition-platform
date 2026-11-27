@@ -63,7 +63,7 @@ public sealed class ContentServiceImageDownloadTests
                 download.Dispose();
                 Assert.Equal(expected: 1, actual: trackedResponse!.DisposeCount);
                 Assert.Equal(
-                        expected: $"https://content.oekolariet.dk/content/api/images/{imageId:D}/content",
+                        expected: $"https://content.oekolariet.dk/content/api/v1/images/{imageId:D}/content",
                         actual: handler.LastRequest?.RequestUri?.AbsoluteUri);
         }
 

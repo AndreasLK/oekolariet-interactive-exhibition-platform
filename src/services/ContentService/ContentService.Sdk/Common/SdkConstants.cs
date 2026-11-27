@@ -14,9 +14,24 @@ internal static class SdkConstants
         public const string CONTENT_SERVICE_SECTION_NAME = "ContentService";
 
         /// <summary>
-        /// Relative route prefix for ContentService image endpoints (omits leading slash so subpath base URIs are preserved).
+        /// Default URL-segment API version targeted by the SDK when no override is configured.
         /// </summary>
-        public const string IMAGES_ROUTE_PREFIX = "api/images";
+        public const string DEFAULT_API_VERSION = "v1";
+
+        /// <summary>
+        /// Root API path segment (omits leading slash so subpath base URIs are preserved).
+        /// </summary>
+        public const string API_ROUTE_SEGMENT = "api";
+
+        /// <summary>
+        /// Image resource path segment appended after <c>api/{version}</c>.
+        /// </summary>
+        public const string IMAGES_RESOURCE_SEGMENT = "images";
+
+        /// <summary>
+        /// Relative route prefix for ContentService v1 image endpoints (omits leading slash so subpath base URIs are preserved).
+        /// </summary>
+        public const string IMAGES_ROUTE_PREFIX = "api/v1/images";
 
         /// <summary>
         /// Relative route prefix for ContentService template endpoints (omits leading slash so subpath base URIs are preserved).

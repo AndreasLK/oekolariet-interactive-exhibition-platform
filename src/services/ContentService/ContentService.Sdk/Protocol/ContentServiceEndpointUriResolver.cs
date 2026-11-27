@@ -20,7 +20,7 @@ internal static class ContentServiceEndpointUriResolver
                 ContentServiceClientOptions options)
         {
                 Uri normalizedBase = ResolveNormalizedBaseUri(httpClient: httpClient, options: options);
-                return new Uri(baseUri: normalizedBase, relativeUri: SdkConstants.IMAGES_ROUTE_PREFIX);
+                return new Uri(baseUri: normalizedBase, relativeUri: ResolveImagesRoutePrefix(options: options));
         }
 
         /// <summary>
@@ -54,7 +54,7 @@ internal static class ContentServiceEndpointUriResolver
                         queryString = $"{queryString}&{SdkConstants.INCLUDE_SUBALBUMS_QUERY_PARAM}={(query.IncludeSubalbums ? "true" : "false")}";
                 }
 
-                return new Uri(baseUri: normalizedBase, relativeUri: $"{SdkConstants.IMAGES_ROUTE_PREFIX}?{queryString}");
+                return new Uri(baseUri: normalizedBase, relativeUri: $"{ResolveImagesRoutePrefix(options: options)}?{queryString}");
         }
 
         /// <summary>
@@ -70,7 +70,7 @@ internal static class ContentServiceEndpointUriResolver
                 string? parentPath)
         {
                 Uri normalizedBase = ResolveNormalizedBaseUri(httpClient: httpClient, options: options);
-                string route = $"{SdkConstants.IMAGES_ROUTE_PREFIX}/{SdkConstants.IMAGE_ALBUMS_SUFFIX}";
+                string route = $"{ResolveImagesRoutePrefix(options: options)}/{SdkConstants.IMAGE_ALBUMS_SUFFIX}";
 
                 if (!string.IsNullOrWhiteSpace(value: parentPath))
                 {
@@ -96,7 +96,7 @@ internal static class ContentServiceEndpointUriResolver
                 Uri normalizedBase = ResolveNormalizedBaseUri(httpClient: httpClient, options: options);
                 return new Uri(
                         baseUri: normalizedBase,
-                        relativeUri: $"{SdkConstants.IMAGES_ROUTE_PREFIX}/{imageId:D}/{SdkConstants.IMAGE_METADATA_SUFFIX}");
+                        relativeUri: $"{ResolveImagesRoutePrefix(options: options)}/{imageId:D}/{SdkConstants.IMAGE_METADATA_SUFFIX}");
         }
 
         /// <summary>
@@ -113,7 +113,7 @@ internal static class ContentServiceEndpointUriResolver
         {
                 ValidateImageId(imageId: imageId);
                 Uri normalizedBase = ResolveNormalizedBaseUri(httpClient: httpClient, options: options);
-                return new Uri(baseUri: normalizedBase, relativeUri: $"{SdkConstants.IMAGES_ROUTE_PREFIX}/{imageId:D}");
+                return new Uri(baseUri: normalizedBase, relativeUri: $"{ResolveImagesRoutePrefix(options: options)}/{imageId:D}");
         }
 
         /// <summary>
@@ -132,7 +132,7 @@ internal static class ContentServiceEndpointUriResolver
                 Uri normalizedBase = ResolveNormalizedBaseUri(httpClient: httpClient, options: options);
                 return new Uri(
                         baseUri: normalizedBase,
-                        relativeUri: $"{SdkConstants.IMAGES_ROUTE_PREFIX}/{imageId:D}/{SdkConstants.IMAGE_CONTENT_SUFFIX}");
+                        relativeUri: $"{ResolveImagesRoutePrefix(options: options)}/{imageId:D}/{SdkConstants.IMAGE_CONTENT_SUFFIX}");
         }
 
         /// <summary>
@@ -293,6 +293,18 @@ internal static class ContentServiceEndpointUriResolver
                 return absolute.EndsWith('/')
                         ? baseAddress
                         : new Uri(uriString: $"{absolute}/", uriKind: UriKind.Absolute);
+        }
+
+        /// <summary>
+        /// Resolves the versioned relative image prefix (<c>api/{version}/images</c>) from <see cref="ContentServiceClientOptions.ApiVersion"/>.
+        /// </summary>
+        private static string ResolveImagesRoutePrefix(ContentServiceClientOptions options)
+        {
+                string versionSegment = string.IsNullOrWhiteSpace(options.ApiVersion)
+                        ? SdkConstants.DEFAULT_API_VERSION
+                        : options.ApiVersion.Trim();
+
+                return $"{SdkConstants.API_ROUTE_SEGMENT}/{versionSegment}/{SdkConstants.IMAGES_RESOURCE_SEGMENT}";
         }
 }
 

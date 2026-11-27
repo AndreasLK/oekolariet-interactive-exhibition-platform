@@ -86,6 +86,6 @@ internal sealed class StubContentImageClient : IContentServiceImageClient
                 throw new NotSupportedException();
 
         public Uri GetImageContentUri(Guid imageId) =>
-                new(uriString: $"https://localhost:49397/api/images/{imageId:D}/content", uriKind: UriKind.Absolute);
+                new(uriString: $"https://localhost:49397/api/v1/images/{imageId:D}/content", uriKind: UriKind.Absolute);
 }
 

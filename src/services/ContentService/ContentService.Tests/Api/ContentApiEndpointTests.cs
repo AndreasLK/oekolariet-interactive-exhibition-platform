@@ -41,7 +41,7 @@ public sealed class ContentApiEndpointTests
                 using HttpClient prodClient = prodFactory.CreateClient();
 
                 // Allowed origin gets CORS header even on 500 ProblemDetails, and detail is redacted in Production.
-                using HttpRequestMessage allowedOriginRequest = new(method: HttpMethod.Get, requestUri: $"/api/images/{Guid.NewGuid()}");
+                using HttpRequestMessage allowedOriginRequest = new(method: HttpMethod.Get, requestUri: $"/api/v1/images/{Guid.NewGuid()}");
                 allowedOriginRequest.Headers.Add(name: HeaderNames.Origin, value: ApiEndpointTestFixtures.ALLOWED_ORIGIN);
                 using HttpResponseMessage prodErrorResponse = await prodClient.SendAsync(request: allowedOriginRequest, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.InternalServerError, prodErrorResponse.StatusCode);
@@ -52,7 +52,7 @@ public sealed class ContentApiEndpointTests
                 Assert.DoesNotContain("Sensitive SQL detail", prodProblem?.Detail ?? string.Empty);
 
                 // Disallowed origin must NOT receive Access-Control-Allow-Origin.
-                using HttpRequestMessage disallowedOriginRequest = new(method: HttpMethod.Get, requestUri: $"/api/images/{Guid.NewGuid()}");
+                using HttpRequestMessage disallowedOriginRequest = new(method: HttpMethod.Get, requestUri: $"/api/v1/images/{Guid.NewGuid()}");
                 disallowedOriginRequest.Headers.Add(name: HeaderNames.Origin, value: ApiEndpointTestFixtures.DISALLOWED_ORIGIN);
                 using HttpResponseMessage disallowedResponse = await prodClient.SendAsync(request: disallowedOriginRequest, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.False(disallowedResponse.Headers.Contains(HeaderNames.AccessControlAllowOrigin));
@@ -68,7 +68,7 @@ public sealed class ContentApiEndpointTests
                 using HttpResponseMessage swaggerUiResponse = await devClient.GetAsync(requestUri: "/swagger/index.html", cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.OK, swaggerUiResponse.StatusCode);
 
-                using HttpResponseMessage devErrorResponse = await devClient.GetAsync(requestUri: $"/api/images/{Guid.NewGuid()}", cancellationToken: TestContext.Current.CancellationToken);
+                using HttpResponseMessage devErrorResponse = await devClient.GetAsync(requestUri: $"/api/v1/images/{Guid.NewGuid()}", cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.InternalServerError, devErrorResponse.StatusCode);
                 ProblemDetails? devProblem = await devErrorResponse.Content.ReadFromJsonAsync<ProblemDetails>(cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal("Sensitive SQL detail", devProblem?.Detail);
@@ -77,7 +77,7 @@ public sealed class ContentApiEndpointTests
                 InMemoryContentState authState = new();
                 await using FakeApiFactory authFactory = new(state: authState, authenticatedUserName: "authenticated-curator");
                 using HttpClient authClient = authFactory.CreateClient();
-                using HttpRequestMessage authCreateRequest = new(method: HttpMethod.Post, requestUri: "/api/templates")
+                using HttpRequestMessage authCreateRequest = new(method: HttpMethod.Post, requestUri: "/api/v1/templates")
                 {
                         Content = JsonContent.Create(
                                 inputValue: new CreateTemplateRequest(
@@ -131,7 +131,7 @@ public sealed class ContentApiEndpointTests
                 ContentImageMetadata fetched = await sdkClient.GetImageMetadataAsync(imageId: uploaded.Id, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(expected: uploaded.Id, actual: fetched.Id);
                 Assert.Equal(
-                        expected: new Uri(baseUri: httpClient.BaseAddress!, relativeUri: $"api/images/{uploaded.Id:D}/content"),
+                        expected: new Uri(baseUri: httpClient.BaseAddress!, relativeUri: $"api/v1/images/{uploaded.Id:D}/content"),
                         actual: sdkClient.GetImageContentUri(imageId: uploaded.Id));
 
                 // Verify download extracts FileNameStar and streams exact PNG bytes.
@@ -142,7 +142,7 @@ public sealed class ContentApiEndpointTests
                 Assert.Equal(expected: "økolariet æble.png", actual: downloaded.FileName);
                 Assert.Equal(expected: DomainConstants.CONTENT_TYPE_PNG, actual: downloaded.ContentType);
 
-                // Verify OpenAPI documents 415 on POST /api/images and SDK maps 404 ProblemDetails cleanly.
+                // Verify OpenAPI documents 415 on POST /api/v1/images and SDK maps 404 ProblemDetails cleanly.
                 string openApiJson = await httpClient.GetStringAsync(requestUri: "/openapi/v1.json", cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Contains(expectedSubstring: "\"415\"", actualString: openApiJson);
 

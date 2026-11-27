@@ -57,7 +57,7 @@ internal static class ApiEndpointTestFixtures
                 string contentType)
         {
                 MultipartFormDataContent form = CreateImageMultipart(bytes: bytes, fileName: fileName, contentType: contentType);
-                return client.PostAsync(requestUri: "/api/images", content: form);
+                return client.PostAsync(requestUri: "/api/v1/images", content: form);
         }
 
         public static ImageEntity CreateSeededImage(

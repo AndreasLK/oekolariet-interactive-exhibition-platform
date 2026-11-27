@@ -1,0 +1,11 @@
+apiVersion: dapr.io/v1alpha1
+kind: Configuration
+metadata:
+  name: contentservice-dapr-config
+spec:
+  tracing:
+    samplingRate: "1"
+  features:
+    - name: ServiceInvocationStreaming
+      enabled: true
+

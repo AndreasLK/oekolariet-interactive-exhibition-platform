@@ -215,7 +215,7 @@ public sealed class ContentApiIntegrationTests : IAsyncLifetime
                 Assert.True(preflightResponse.Headers.TryGetValues(HeaderNames.AccessControlAllowOrigin, out IEnumerable<string>? origins));
                 Assert.Contains(ALLOWED_ORIGIN, origins);
 
-                // Act 2: Cross-origin malformed JSON payload on POST /api/templates -> 400 ProblemDetails WITH CORS headers preserved
+                // Act 2: Cross-origin malformed JSON payload on POST /api/v1/templates -> 400 ProblemDetails WITH CORS headers preserved
                 using HttpRequestMessage badCrossOriginRequest = new(HttpMethod.Post, ApiIntegrationTestFixtures.TEMPLATES_ROUTE)
                 {
                         Content = new StringContent("{not-valid-json", Encoding.UTF8, MediaTypeNames.Application.Json)
@@ -230,7 +230,7 @@ public sealed class ContentApiIntegrationTests : IAsyncLifetime
                         response: badBodyResponse,
                         expectedStatusCode: HttpStatusCode.BadRequest);
 
-                // Act 3: Non-multipart JSON sent to POST /api/images -> 415 Unsupported Media Type
+                // Act 3: Non-multipart JSON sent to POST /api/v1/images -> 415 Unsupported Media Type
                 using StringContent jsonUploadBody = new("{}", Encoding.UTF8, MediaTypeNames.Application.Json);
                 using HttpResponseMessage unsupportedMediaResponse = await client.PostAsync(ApiIntegrationTestFixtures.IMAGES_ROUTE, jsonUploadBody, TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.UnsupportedMediaType, unsupportedMediaResponse.StatusCode);

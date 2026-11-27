@@ -18,7 +18,8 @@ internal static class PublishingEndpoints
         {
                 ArgumentNullException.ThrowIfNull(endpoints);
 
-                endpoints.MapPost(pattern: ApiConstants.PUBLISH_BUNDLES_ROUTE, handler: HandleResolvePublishBundleAsync)
+                // Register POST bundle resolution so large implementation JSON payloads are sent in the request body.
+                endpoints.MapPost(pattern: ApiConstants.PUBLISH_BUNDLES_RELATIVE_ROUTE, handler: HandleResolvePublishBundleAsync)
                         .WithTags(ApiConstants.PUBLISHING_OPENAPI_TAG)
                         .Produces<PublishBundleDto>(StatusCodes.Status200OK)
                         .ProducesProblem(StatusCodes.Status400BadRequest)
@@ -39,6 +40,7 @@ internal static class PublishingEndpoints
                 IContentPlatformQueryFacade queryFacade,
                 CancellationToken cancellationToken)
         {
+                // Resolve all referenced assets, compute the bundle SHA-256 checksum, and return 200 OK.
                 PublishBundleDto bundle = await queryFacade.ResolvePublishBundleAsync(
                         query: query,
                         cancellationToken: cancellationToken);

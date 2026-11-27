@@ -18,7 +18,8 @@ internal static class HealthEndpoints
         {
                 ArgumentNullException.ThrowIfNull(endpoints);
 
-                endpoints.MapGet(pattern: ApiConstants.STORAGE_HEALTH_ROUTE, handler: HandleGetStorageHealthAsync)
+                // Register the storage quota health endpoint under the versioned API group.
+                endpoints.MapGet(pattern: ApiConstants.STORAGE_HEALTH_RELATIVE_ROUTE, handler: HandleGetStorageHealthAsync)
                         .WithTags(ApiConstants.HEALTH_OPENAPI_TAG)
                         .Produces<StorageHealthDto>(StatusCodes.Status200OK);
 
@@ -35,6 +36,7 @@ internal static class HealthEndpoints
                 IContentPlatformQueryFacade queryFacade,
                 CancellationToken cancellationToken)
         {
+                // Query current storage utilization and return 200 OK.
                 StorageHealthDto health = await queryFacade.GetStorageHealthAsync(cancellationToken: cancellationToken);
                 return Results.Ok(health);
         }

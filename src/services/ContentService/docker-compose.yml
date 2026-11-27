@@ -1,0 +1,137 @@
+services:
+  # Redis broker backing Dapr Pub/Sub for stateless scatter-gather across all ContentService nodes
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  # Dapr placement service (required by Dapr sidecars in self-hosted Docker Compose mode)
+  dapr-placement:
+    image: daprio/dapr:1.15.4
+    command: ["./placement", "--port", "50006"]
+    ports:
+      - "50006:50006"
+
+  # SQL Server instance for Storage Node 1
+  sql-node-1:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SQL_SA_PASSWORD:-Oekolariet_Dev123!}"
+    ports:
+      - "14331:1433"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $${MSSQL_SA_PASSWORD} -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # SQL Server instance for Storage Node 2
+  sql-node-2:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SQL_SA_PASSWORD:-Oekolariet_Dev123!}"
+    ports:
+      - "14332:1433"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $${MSSQL_SA_PASSWORD} -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ContentService Storage Node 1 (no PeerStorageNodeIds needed; discovers peers via Dapr Pub/Sub)
+  contentservice-node-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      sql-node-1:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_URLS: "http://+:8080"
+      DAPR_HTTP_PORT: "3500"
+      Database__AutoMigrateOnStartup: "true"
+      ConnectionStrings__ContentDatabase: "Server=sql-node-1,1433;Database=OekolarietContentNode1;User Id=sa;Password=${SQL_SA_PASSWORD:-Oekolariet_Dev123!};TrustServerCertificate=True"
+      ContentStorage__StorageNodeId: "node-1"
+      ContentStorage__PublicBaseUrl: "http://localhost:5101"
+      ContentStorage__PoolRequestTimeoutSeconds: "5"
+    ports:
+      - "5101:8080"
+
+  contentservice-node-1-dapr:
+    image: daprio/daprd:1.15.4
+    command:
+      - "./daprd"
+      - "--app-id"
+      - "contentservice-node-1"
+      - "--app-port"
+      - "8080"
+      - "--dapr-http-port"
+      - "3500"
+      - "--dapr-http-max-request-size"
+      - "16"
+      - "--placement-host-address"
+      - "dapr-placement:50006"
+      - "--resources-path"
+      - "/dapr/components"
+      - "--config"
+      - "/dapr/config.yaml"
+    volumes:
+      - ./dapr:/dapr:ro
+    depends_on:
+      - contentservice-node-1
+      - dapr-placement
+      - redis
+    network_mode: "service:contentservice-node-1"
+
+  # ContentService Storage Node 2 (no PeerStorageNodeIds needed; discovers peers via Dapr Pub/Sub)
+  contentservice-node-2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      sql-node-2:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_URLS: "http://+:8080"
+      DAPR_HTTP_PORT: "3500"
+      Database__AutoMigrateOnStartup: "true"
+      ConnectionStrings__ContentDatabase: "Server=sql-node-2,1433;Database=OekolarietContentNode2;User Id=sa;Password=${SQL_SA_PASSWORD:-Oekolariet_Dev123!};TrustServerCertificate=True"
+      ContentStorage__StorageNodeId: "node-2"
+      ContentStorage__PublicBaseUrl: "http://localhost:5102"
+      ContentStorage__PoolRequestTimeoutSeconds: "5"
+    ports:
+      - "5102:8080"
+
+  contentservice-node-2-dapr:
+    image: daprio/daprd:1.15.4
+    command:
+      - "./daprd"
+      - "--app-id"
+      - "contentservice-node-2"
+      - "--app-port"
+      - "8080"
+      - "--dapr-http-port"
+      - "3500"
+      - "--dapr-http-max-request-size"
+      - "16"
+      - "--placement-host-address"
+      - "dapr-placement:50006"
+      - "--resources-path"
+      - "/dapr/components"
+      - "--config"
+      - "/dapr/config.yaml"
+    volumes:
+      - ./dapr:/dapr:ro
+    depends_on:
+      - contentservice-node-2
+      - dapr-placement
+      - redis
+    network_mode: "service:contentservice-node-2"
