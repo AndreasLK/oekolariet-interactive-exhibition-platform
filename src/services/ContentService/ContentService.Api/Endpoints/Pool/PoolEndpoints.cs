@@ -1,3 +1,4 @@
+using ContentService.Api.Common;
 using ContentService.Api.Contracts;
 using ContentService.Api.Endpoints.Pool;
 using ContentService.Facade.Dtos;
@@ -21,6 +22,14 @@ internal static class PoolEndpoints
         /// <summary>
         /// Maps the version-neutral <c>/dapr/subscribe</c> discovery endpoint so Dapr sidecars automatically subscribe each node to pool topics.
         /// </summary>
+        /// <remarks>
+        /// Non-standard Dapr subscription: Instead of <c>[Topic]</c> attributes (which require <c>Dapr.AspNetCore</c>
+        /// and MVC controller metadata), we serve <c>/dapr/subscribe</c> directly from Minimal APIs.
+        /// <para>
+        /// What we gain: Zero MVC/Dapr.AspNetCore coupling and dynamic <c>PubSubName</c> binding from <see cref="IConfiguration"/>.
+        /// What we lose: Topic-to-route mappings live here rather than next to each handler method.
+        /// </para>
+        /// </remarks>
         /// <param name="endpoints">The ASP.NET Core endpoint route builder.</param>
         /// <param name="configuration">Application configuration providing the Pub/Sub component name.</param>
         /// <returns>The updated endpoint route builder.</returns>
@@ -32,7 +41,8 @@ internal static class PoolEndpoints
                 ArgumentNullException.ThrowIfNull(configuration);
 
                 // Resolve the configured Dapr Pub/Sub component name, falling back to the default component.
-                string pubSubName = configuration.GetValue<string>("ContentStorage:PubSubName") ?? "contentservice-pubsub";
+                string pubSubName = configuration.GetValue<string>(ApiConstants.CONTENT_STORAGE_PUBSUB_CONFIG_KEY)
+                        ?? ApiConstants.DEFAULT_PUBSUB_NAME;
 
                 // Return the static subscription list Dapr sidecars poll at startup; excluded from OpenAPI.
                 endpoints.MapGet(pattern: DAPR_SUBSCRIBE_ROUTE, handler: () => Results.Ok(new[]

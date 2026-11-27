@@ -9,6 +9,8 @@ namespace ContentService.Infrastructure.Nodes;
 /// </summary>
 internal static class DaprNodeFailureMapper
 {
+        private const string PROBLEM_DETAIL_PROPERTY = "detail";
+        private const string PROBLEM_TITLE_PROPERTY = "title";
         /// <summary>
         /// Translates remote RFC 7807 <c>ProblemDetails</c> failures back into local domain exceptions so <c>GlobalExceptionHandler</c> preserves 400/404/409 semantics.
         /// </summary>
@@ -60,13 +62,13 @@ internal static class DaprNodeFailureMapper
                 try
                 {
                         using JsonDocument document = JsonDocument.Parse(rawBody);
-                        if (document.RootElement.TryGetProperty(propertyName: "detail", value: out JsonElement detailElement)
+                        if (document.RootElement.TryGetProperty(propertyName: PROBLEM_DETAIL_PROPERTY, value: out JsonElement detailElement)
                                 && detailElement.ValueKind == JsonValueKind.String)
                         {
                                 return detailElement.GetString() ?? rawBody;
                         }
 
-                        if (document.RootElement.TryGetProperty(propertyName: "title", value: out JsonElement titleElement)
+                        if (document.RootElement.TryGetProperty(propertyName: PROBLEM_TITLE_PROPERTY, value: out JsonElement titleElement)
                                 && titleElement.ValueKind == JsonValueKind.String)
                         {
                                 return titleElement.GetString() ?? rawBody;
