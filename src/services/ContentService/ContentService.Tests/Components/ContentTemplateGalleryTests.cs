@@ -51,9 +51,12 @@ public sealed class ContentTemplateGalleryTests : BunitContext
                 nextButton.Click();
 
                 // Assert 1: page 2 is requested and rendered
-                Assert.Equal(expected: SECOND_PAGE, actual: recordedQueries[^1].Page);
-                Assert.Contains(expectedSubstring: "Side 2 af 2", actualString: cut.Markup);
-                Assert.Contains(expectedSubstring: "Template Gamma", actualString: cut.Markup);
+                cut.WaitForAssertion(assertion: () =>
+                {
+                        Assert.Equal(expected: SECOND_PAGE, actual: recordedQueries[^1].Page);
+                        Assert.Contains(expectedSubstring: "Side 2 af 2", actualString: cut.Markup);
+                        Assert.Contains(expectedSubstring: "Template Gamma", actualString: cut.Markup);
+                });
 
                 // Act 2: switch component type filter while on page 2
                 AngleSharp.Dom.IElement filterPill = cut.FindAll(cssSelector: "button, span, div")
@@ -61,8 +64,11 @@ public sealed class ContentTemplateGalleryTests : BunitContext
                 filterPill.Click();
 
                 // Assert 2: query resets to page 1
-                Assert.Equal(expected: FIRST_PAGE, actual: recordedQueries[^1].Page);
-                Assert.Equal(expected: ContentTemplateComponentType.InfoScreen, actual: recordedQueries[^1].ComponentType);
+                cut.WaitForAssertion(assertion: () =>
+                {
+                        Assert.Equal(expected: FIRST_PAGE, actual: recordedQueries[^1].Page);
+                        Assert.Equal(expected: ContentTemplateComponentType.InfoScreen, actual: recordedQueries[^1].ComponentType);
+                });
         }
 
         private static ContentTemplateMetadata CreateTemplate(string name) => new()
