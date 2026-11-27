@@ -1,8 +1,10 @@
 using ContentService.Application.Common;
 using ContentService.Application.Interfaces;
 using ContentService.Application.Models;
+using ContentService.Application.Options;
 using ContentService.Domain.Entities;
 using ContentService.Domain.Exceptions;
+using Microsoft.Extensions.Options;
 
 namespace ContentService.Application.UseCases.Images;
 
@@ -11,20 +13,12 @@ namespace ContentService.Application.UseCases.Images;
 /// </summary>
 public sealed class GetImagePreviewUseCase
 {
-        /// <summary>
-        /// Provides image metadata and verifies whether the image has been soft-deleted.
-        /// </summary>
         private readonly IImageRepository _imageRepository;
-
-        /// <summary>
-        /// Reads and persists image binary and preview payloads.
-        /// </summary>
         private readonly IImageBinaryStore _imageBinaryStore;
-
-        /// <summary>
-        /// Optional preview generator used to backfill previews for images uploaded before preview persistence existed.
-        /// </summary>
         private readonly IImagePreviewGenerator? _previewGenerator;
+        private readonly IStorageNodeClient? _storageNodeClient;
+        private readonly ContentStorageOptions? _options;
+        private readonly IPoolCoordinator? _poolCoordinator;
 
         /// <summary>
         /// Captures repository, binary store, and preview generator dependencies.
@@ -32,11 +26,16 @@ public sealed class GetImagePreviewUseCase
         /// <param name="imageRepository">The image metadata repository.</param>
         /// <param name="imageBinaryStore">The binary and preview stream store.</param>
         /// <param name="previewGenerator">Optional preview generator for lazy backfill.</param>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="imageRepository"/> or <paramref name="imageBinaryStore"/> is <see langword="null"/>.</exception>
+        /// <param name="storageNodeClient">Optional peer storage node client.</param>
+        /// <param name="options">Optional content storage options.</param>
+        /// <param name="poolCoordinator">Optional stateless Dapr Pub/Sub pool coordinator.</param>
         public GetImagePreviewUseCase(
                 IImageRepository imageRepository,
                 IImageBinaryStore imageBinaryStore,
-                IImagePreviewGenerator? previewGenerator = null)
+                IImagePreviewGenerator? previewGenerator = null,
+                IStorageNodeClient? storageNodeClient = null,
+                IOptions<ContentStorageOptions>? options = null,
+                IPoolCoordinator? poolCoordinator = null)
         {
                 ArgumentNullException.ThrowIfNull(imageRepository);
                 ArgumentNullException.ThrowIfNull(imageBinaryStore);
@@ -44,6 +43,9 @@ public sealed class GetImagePreviewUseCase
                 this._imageRepository = imageRepository;
                 this._imageBinaryStore = imageBinaryStore;
                 this._previewGenerator = previewGenerator;
+                this._storageNodeClient = storageNodeClient;
+                this._options = options?.Value;
+                this._poolCoordinator = poolCoordinator;
         }
 
         /// <summary>
@@ -52,9 +54,6 @@ public sealed class GetImagePreviewUseCase
         /// <param name="query">The image query identifying the target image.</param>
         /// <param name="cancellationToken">A token to cancel database reads or preview generation.</param>
         /// <returns>An <see cref="ImageStreamResult"/> carrying the preview stream and effective MIME type.</returns>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="query"/> is <see langword="null"/>.</exception>
-        /// <exception cref="DomainValidationException">Thrown when <see cref="GetImageStreamQuery.ImageId"/> is <see cref="Guid.Empty"/>.</exception>
-        /// <exception cref="KeyNotFoundException">Thrown when the image is missing or soft-deleted.</exception>
         public async Task<ImageStreamResult> ExecuteAsync(
                 GetImageStreamQuery query,
                 CancellationToken cancellationToken)
@@ -66,12 +65,32 @@ public sealed class GetImagePreviewUseCase
                         throw new DomainValidationException("Image ID cannot be empty.");
                 }
 
+                if (this._storageNodeClient is not null
+                        && StorageNodeTargetResolver.IsRemoteNode(
+                                targetStorageNodeId: query.StorageNodeId,
+                                localStorageNodeId: this._options?.StorageNodeId))
+                {
+                        ImageStreamResult? remotePreview = await this._storageNodeClient.OpenImageStreamAsync(
+                                storageNodeId: query.StorageNodeId!,
+                                imageId: query.ImageId,
+                                isPreview: true,
+                                cancellationToken: cancellationToken);
+
+                        return remotePreview
+                                ?? throw new KeyNotFoundException($"Image '{query.StorageNodeId}_{query.ImageId}' was not found.");
+                }
+
                 ImageEntity? image = await this._imageRepository.GetByIdAsync(
                         id: query.ImageId,
                         cancellationToken: cancellationToken);
                 if (image is null || image.IsDeleted)
                 {
-                        throw new KeyNotFoundException($"Image '{query.ImageId}' was not found.");
+                        ImageStreamResult? peerPreview = await this.TryOpenPeerPreviewAsync(
+                                query: query,
+                                cancellationToken: cancellationToken);
+
+                        return peerPreview
+                                ?? throw new KeyNotFoundException($"Image '{query.ImageId}' was not found.");
                 }
 
                 ImageMetadataResult metadata = ContentResultMapper.ToMetadataResult(image: image);
@@ -90,51 +109,35 @@ public sealed class GetImagePreviewUseCase
                         return new ImageStreamResult(metadata: previewMetadata, content: existingPreview.Content);
                 }
 
-                // Backfill path: read the original once, generate and persist the preview, or fall back to original bytes.
-                Stream? originalStream = await this._imageBinaryStore.OpenReadAsync(
-                        imageId: image.Id,
+                return await ImagePreviewBackfiller.BackfillOrFallbackAsync(
+                        imageBinaryStore: this._imageBinaryStore,
+                        previewGenerator: this._previewGenerator,
+                        metadata: metadata,
                         cancellationToken: cancellationToken);
-                if (originalStream is null)
+        }
+
+        /// <summary>
+        /// Probes peer nodes via Dapr when a bare-GUID preview is absent locally.
+        /// </summary>
+        private Task<ImageStreamResult?> TryOpenPeerPreviewAsync(
+                GetImageStreamQuery query,
+                CancellationToken cancellationToken)
+        {
+                if (this._storageNodeClient is null || query.StorageNodeId is not null)
                 {
-                        throw new KeyNotFoundException($"Binary payload for image '{query.ImageId}' was not found.");
+                        return Task.FromResult<ImageStreamResult?>(null);
                 }
 
-                if (this._previewGenerator is null)
-                {
-                        return new ImageStreamResult(metadata: metadata, content: originalStream);
-                }
-
-                byte[] originalBytes;
-                await using (originalStream)
-                {
-                        using MemoryStream copyBuffer = new();
-                        await originalStream.CopyToAsync(destination: copyBuffer, cancellationToken: cancellationToken);
-                        originalBytes = copyBuffer.ToArray();
-                }
-
-                ImagePreviewPayload? generated = await this._previewGenerator.TryGeneratePreviewAsync(
-                        sourceBytes: originalBytes,
+                return StorageNodeTargetResolver.ResolveAcrossPoolAsync(
+                        imageId: query.ImageId,
+                        options: this._options,
+                        allowPeerFallback: query.AllowPeerFallback,
+                        poolCoordinator: this._poolCoordinator,
+                        fetchFromNodeAsync: (peerNodeId, ct) => this._storageNodeClient.OpenImageStreamAsync(
+                                storageNodeId: peerNodeId,
+                                imageId: query.ImageId,
+                                isPreview: true,
+                                cancellationToken: ct),
                         cancellationToken: cancellationToken);
-                if (generated is null)
-                {
-                        return new ImageStreamResult(
-                                metadata: metadata,
-                                content: new MemoryStream(buffer: originalBytes, writable: false));
-                }
-
-                await this._imageBinaryStore.SavePreviewAsync(
-                        imageId: image.Id,
-                        previewBytes: generated.Bytes,
-                        contentType: generated.ContentType,
-                        cancellationToken: cancellationToken);
-
-                ImageMetadataResult generatedMetadata = metadata with
-                {
-                        ContentType = generated.ContentType,
-                        SizeBytes = generated.Bytes.Length
-                };
-                return new ImageStreamResult(
-                        metadata: generatedMetadata,
-                        content: new MemoryStream(buffer: generated.Bytes, writable: false));
         }
 }

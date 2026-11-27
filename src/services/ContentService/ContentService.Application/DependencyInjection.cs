@@ -8,6 +8,7 @@ using ContentService.Application.UseCases.Templates;
 using ContentService.Application.Validation;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace ContentService.Application;
@@ -41,9 +42,14 @@ public static class DependencyInjection
                 // Header signature validation is stateless and thread-safe, so one shared instance works across all requests.
                 services.AddSingleton<IImageSignatureValidator, ImageHeaderSignatureValidator>();
 
+                // Register a local-only fallback so Application tests run without Infrastructure, while Infrastructure replaces it with Dapr implementations.
+                services.TryAddSingleton<IStorageNodeClient, NullStorageNodeClient>();
+                services.TryAddSingleton<IPoolCoordinator, NullPoolCoordinator>();
+
                 // Register use cases as scoped so each HTTP request shares one scoped repository/DbContext instance.
                 services.AddScoped<UploadImageUseCase>();
                 services.AddScoped<GetImageMetadataUseCase>();
+                services.AddScoped<GetImagesMetadataBatchUseCase>();
                 services.AddScoped<ListImagesUseCase>();
                 services.AddScoped<ListAlbumsUseCase>();
                 services.AddScoped<UpdateImageMetadataUseCase>();
@@ -56,6 +62,7 @@ public static class DependencyInjection
                 services.AddScoped<GetTemplateUseCase>();
                 services.AddScoped<ListTemplatesUseCase>();
                 services.AddScoped<DeleteTemplateUseCase>();
+                services.AddScoped<CheckImageTemplateReferenceUseCase>();
 
                 services.AddScoped<ResolvePublishBundleUseCase>();
                 services.AddScoped<GetStorageHealthUseCase>();

@@ -1,10 +1,12 @@
 using ContentService.Application.Interfaces;
 using ContentService.Application.Common;
 using ContentService.Application.Models;
+using ContentService.Application.Options;
 using ContentService.Domain.Common;
 using ContentService.Domain.Entities;
 using ContentService.Domain.Exceptions;
 using ContentService.Domain.ValueObjects;
+using Microsoft.Extensions.Options;
 
 namespace ContentService.Application.UseCases.Templates;
 
@@ -24,20 +26,36 @@ public sealed class UpdateTemplateUseCase
         private readonly IImageRepository _imageRepository;
 
         /// <summary>
+        /// Optional peer storage node client used when updated templates reference images on other ContentService nodes.
+        /// </summary>
+        private readonly IStorageNodeClient? _storageNodeClient;
+
+        /// <summary>
+        /// Optional local storage node identifier used to distinguish local vs. peer node references.
+        /// </summary>
+        private readonly string? _localStorageNodeId;
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="UpdateTemplateUseCase"/> class.
         /// </summary>
         /// <param name="templateRepository">The template persistence repository.</param>
         /// <param name="imageRepository">The image metadata repository.</param>
+        /// <param name="storageNodeClient">Optional peer storage node client for cross-node image verification.</param>
+        /// <param name="options">Optional content storage options supplying the local storage node identifier.</param>
         /// <exception cref="ArgumentNullException">Thrown when any required dependency is <see langword="null"/>.</exception>
         public UpdateTemplateUseCase(
                 ITemplateRepository templateRepository,
-                IImageRepository imageRepository)
+                IImageRepository imageRepository,
+                IStorageNodeClient? storageNodeClient = null,
+                IOptions<ContentStorageOptions>? options = null)
         {
                 ArgumentNullException.ThrowIfNull(templateRepository);
                 ArgumentNullException.ThrowIfNull(imageRepository);
 
                 this._templateRepository = templateRepository;
                 this._imageRepository = imageRepository;
+                this._storageNodeClient = storageNodeClient;
+                this._localStorageNodeId = options?.Value.StorageNodeId;
         }
 
         /// <summary>
@@ -91,7 +109,9 @@ public sealed class UpdateTemplateUseCase
                 await ReferencedImageVerifier.VerifyAndResolveAsync(
                         imageRepository: this._imageRepository,
                         references: referencedPictures,
-                        cancellationToken: cancellationToken);
+                        cancellationToken: cancellationToken,
+                        storageNodeClient: this._storageNodeClient,
+                        localStorageNodeId: this._localStorageNodeId);
 
                 // UpdateSchema rotates template.ConcurrencyStamp in memory and trims Name; pass the original ExpectedConcurrencyStamp so the repository enforces optimistic concurrency.
                 template.UpdateSchema(

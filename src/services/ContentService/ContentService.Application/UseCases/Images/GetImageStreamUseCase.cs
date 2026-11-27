@@ -1,8 +1,10 @@
 using ContentService.Application.Common;
 using ContentService.Application.Interfaces;
 using ContentService.Application.Models;
+using ContentService.Application.Options;
 using ContentService.Domain.Entities;
 using ContentService.Domain.Exceptions;
+using Microsoft.Extensions.Options;
 
 namespace ContentService.Application.UseCases.Images;
 
@@ -22,20 +24,44 @@ public sealed class GetImageStreamUseCase
         private readonly IImageBinaryStore _imageBinaryStore;
 
         /// <summary>
+        /// Optional peer storage node client used to stream images stored on other nodes.
+        /// </summary>
+        private readonly IStorageNodeClient? _storageNodeClient;
+
+        /// <summary>
+        /// Optional content storage options supplying local and peer storage node IDs.
+        /// </summary>
+        private readonly ContentStorageOptions? _options;
+
+        /// <summary>
+        /// Optional stateless Dapr Pub/Sub pool coordinator.
+        /// </summary>
+        private readonly IPoolCoordinator? _poolCoordinator;
+
+        /// <summary>
         /// Captures metadata and binary store dependencies so image downloads stay decoupled from SQL Server details.
         /// </summary>
         /// <param name="imageRepository">The image metadata repository.</param>
         /// <param name="imageBinaryStore">The binary stream store.</param>
+        /// <param name="storageNodeClient">Optional peer storage node client.</param>
+        /// <param name="options">Optional content storage options.</param>
+        /// <param name="poolCoordinator">Optional stateless Dapr Pub/Sub pool coordinator.</param>
         /// <exception cref="ArgumentNullException">Thrown when any required dependency is <see langword="null"/>.</exception>
         public GetImageStreamUseCase(
                 IImageRepository imageRepository,
-                IImageBinaryStore imageBinaryStore)
+                IImageBinaryStore imageBinaryStore,
+                IStorageNodeClient? storageNodeClient = null,
+                IOptions<ContentStorageOptions>? options = null,
+                IPoolCoordinator? poolCoordinator = null)
         {
                 ArgumentNullException.ThrowIfNull(imageRepository);
                 ArgumentNullException.ThrowIfNull(imageBinaryStore);
 
                 this._imageRepository = imageRepository;
                 this._imageBinaryStore = imageBinaryStore;
+                this._storageNodeClient = storageNodeClient;
+                this._options = options?.Value;
+                this._poolCoordinator = poolCoordinator;
         }
 
         /// <summary>
@@ -58,13 +84,33 @@ public sealed class GetImageStreamUseCase
                         throw new DomainValidationException("Image ID cannot be empty.");
                 }
 
+                if (this._storageNodeClient is not null
+                        && StorageNodeTargetResolver.IsRemoteNode(
+                                targetStorageNodeId: query.StorageNodeId,
+                                localStorageNodeId: this._options?.StorageNodeId))
+                {
+                        ImageStreamResult? remoteStream = await this._storageNodeClient.OpenImageStreamAsync(
+                                storageNodeId: query.StorageNodeId!,
+                                imageId: query.ImageId,
+                                isPreview: false,
+                                cancellationToken: cancellationToken);
+
+                        return remoteStream
+                                ?? throw new KeyNotFoundException($"Image '{query.StorageNodeId}_{query.ImageId}' was not found.");
+                }
+
                 ImageEntity? image = await this._imageRepository.GetByIdAsync(
                         id: query.ImageId,
                         cancellationToken: cancellationToken);
-                // Treat soft-deleted images as missing so deleted assets cannot be downloaded.
+                // Treat soft-deleted images as missing; fall back to peer nodes for bare-GUID lookups.
                 if (image is null || image.IsDeleted)
                 {
-                        throw new KeyNotFoundException($"Image '{query.ImageId}' was not found.");
+                        ImageStreamResult? peerStream = await this.TryOpenPeerStreamAsync(
+                                query: query,
+                                cancellationToken: cancellationToken);
+
+                        return peerStream
+                                ?? throw new KeyNotFoundException($"Image '{query.ImageId}' was not found.");
                 }
 
                 ImageMetadataResult metadata = ContentResultMapper.ToMetadataResult(image: image);
@@ -86,5 +132,30 @@ public sealed class GetImageStreamUseCase
                         await contentStream.DisposeAsync();
                         throw;
                 }
+        }
+
+        /// <summary>
+        /// Probes peer nodes via Dapr when a bare-GUID image is absent locally.
+        /// </summary>
+        private Task<ImageStreamResult?> TryOpenPeerStreamAsync(
+                GetImageStreamQuery query,
+                CancellationToken cancellationToken)
+        {
+                if (this._storageNodeClient is null || query.StorageNodeId is not null)
+                {
+                        return Task.FromResult<ImageStreamResult?>(null);
+                }
+
+                return StorageNodeTargetResolver.ResolveAcrossPoolAsync(
+                        imageId: query.ImageId,
+                        options: this._options,
+                        allowPeerFallback: query.AllowPeerFallback,
+                        poolCoordinator: this._poolCoordinator,
+                        fetchFromNodeAsync: (peerNodeId, ct) => this._storageNodeClient.OpenImageStreamAsync(
+                                storageNodeId: peerNodeId,
+                                imageId: query.ImageId,
+                                isPreview: false,
+                                cancellationToken: ct),
+                        cancellationToken: cancellationToken);
         }
 }
