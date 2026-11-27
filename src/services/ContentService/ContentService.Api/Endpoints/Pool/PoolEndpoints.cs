@@ -1,7 +1,7 @@
 using ContentService.Api.Common;
 using ContentService.Api.Contracts;
 using ContentService.Api.Endpoints.Pool;
-using ContentService.Facade.Dtos;
+using ContentService.Sdk.Models;
 
 namespace ContentService.Api.Endpoints;
 
@@ -86,7 +86,7 @@ internal static class PoolEndpoints
                 // Map the public/SDK-facing upload-offer endpoint for selecting a healthy storage node.
                 endpoints.MapPost(pattern: REQUEST_UPLOAD_OFFER_ROUTE, handler: RequestUploadOfferEndpoint.HandleAsync)
                         .WithTags(POOL_OPENAPI_TAG)
-                        .Produces<PoolNodeOfferDto>(StatusCodes.Status200OK)
+                        .Produces<ContentPoolNodeOfferResponse>(StatusCodes.Status200OK)
                         .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
                 return endpoints;

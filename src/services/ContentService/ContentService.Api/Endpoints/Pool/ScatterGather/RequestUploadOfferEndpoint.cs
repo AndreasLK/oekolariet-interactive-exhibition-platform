@@ -1,6 +1,7 @@
-using ContentService.Api.Contracts;
+using ContentService.Api.Mapper;
 using ContentService.Facade.Dtos;
 using ContentService.Facade.Interfaces;
+using ContentService.Sdk.Models;
 
 namespace ContentService.Api.Endpoints.Pool;
 
@@ -15,9 +16,9 @@ internal static class RequestUploadOfferEndpoint
         /// <param name="request">The upload offer request specifying required bytes.</param>
         /// <param name="poolFacade">The pool facade.</param>
         /// <param name="cancellationToken">Propagates client disconnects.</param>
-        /// <returns>An HTTP 200 OK with <see cref="PoolNodeOfferDto"/> or 503 Service Unavailable.</returns>
+        /// <returns>An HTTP 200 OK with <see cref="ContentPoolNodeOfferResponse"/> or 503 Service Unavailable.</returns>
         public static async Task<IResult> HandleAsync(
-                UploadOfferRequestBody request,
+                ContentRequestUploadOfferRequest request,
                 IPoolFacade poolFacade,
                 CancellationToken cancellationToken)
         {
@@ -26,9 +27,9 @@ internal static class RequestUploadOfferEndpoint
                         requiredBytes: request.RequiredBytes,
                         cancellationToken: cancellationToken);
 
-                // Return 200 OK with the winning node offer, or 503 if no node responded with enough capacity.
+                // Return 200 OK with the mapped SDK offer, or 503 if no node responded with enough capacity.
                 return offer is not null
-                        ? Results.Ok(offer)
+                        ? Results.Ok(value: PlatformMapper.ToResponse(dto: offer))
                         : Results.Problem(
                                 statusCode: StatusCodes.Status503ServiceUnavailable,
                                 title: "No healthy storage node available.",
