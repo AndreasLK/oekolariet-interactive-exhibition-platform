@@ -1,9 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
-using ContentService.Api.Contracts;
 using ContentService.Application.Models;
 using ContentService.Domain.Entities;
 using ContentService.Domain.Enums;
+using ContentService.Sdk.Models;
 using ContentService.Tests.Api.Fakes;
 
 namespace ContentService.Tests.Api;
@@ -37,9 +37,9 @@ public sealed class TemplateAndHealthEndpointTests
                 using HttpClient client = factory.CreateClient();
 
                 // Act & Assert: Create template -> 201; duplicate name -> 400; invalid componentType query -> 400.
-                CreateTemplateRequest createRequest = new(
+                ContentCreateTemplateRequest createRequest = new(
                         Name: "Quiz Card",
-                        ComponentType: ContentService.Facade.Dtos.TemplateComponentTypeDto.QuizTemplate,
+                        ComponentType: ContentTemplateComponentType.QuizTemplate,
                         SchemaJson: $"{{\"img\":\"{image.Reference}\"}}");
                 using HttpResponseMessage createResponse = await client.PostAsJsonAsync(requestUri: "/api/v1/templates", value: createRequest, options: ApiEndpointTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
@@ -53,19 +53,19 @@ public sealed class TemplateAndHealthEndpointTests
                 Assert.Equal(HttpStatusCode.BadRequest, invalidEnumListResponse.StatusCode);
 
                 // Update template: missing -> 404; empty stamp -> 409; valid -> 200; stale stamp -> 409.
-                using HttpResponseMessage missingPutResponse = await client.PutAsJsonAsync(requestUri: $"/api/v1/templates/{Guid.NewGuid()}", value: new UpdateTemplateRequest(Name: "New", SchemaJson: "{}", ExpectedConcurrencyStamp: Guid.NewGuid()), options: ApiEndpointTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
+                using HttpResponseMessage missingPutResponse = await client.PutAsJsonAsync(requestUri: $"/api/v1/templates/{Guid.NewGuid()}", value: new ContentUpdateTemplateRequest(Name: "New", SchemaJson: "{}", ExpectedConcurrencyStamp: Guid.NewGuid()), options: ApiEndpointTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.NotFound, missingPutResponse.StatusCode);
 
-                using HttpResponseMessage emptyStampPutResponse = await client.PutAsJsonAsync(requestUri: $"/api/v1/templates/{created.Id}", value: new UpdateTemplateRequest(Name: "New", SchemaJson: "{}", ExpectedConcurrencyStamp: Guid.Empty), options: ApiEndpointTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
+                using HttpResponseMessage emptyStampPutResponse = await client.PutAsJsonAsync(requestUri: $"/api/v1/templates/{created.Id}", value: new ContentUpdateTemplateRequest(Name: "New", SchemaJson: "{}", ExpectedConcurrencyStamp: Guid.Empty), options: ApiEndpointTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.Conflict, emptyStampPutResponse.StatusCode);
 
-                using HttpResponseMessage updateResponse = await client.PutAsJsonAsync(requestUri: $"/api/v1/templates/{created.Id}", value: new UpdateTemplateRequest(
+                using HttpResponseMessage updateResponse = await client.PutAsJsonAsync(requestUri: $"/api/v1/templates/{created.Id}", value: new ContentUpdateTemplateRequest(
                                 Name: "Quiz Card v2",
                                 SchemaJson: $"{{\"img\":\"{image.Reference}\"}}",
                                 ExpectedConcurrencyStamp: created.ConcurrencyStamp), options: ApiEndpointTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
 
-                using HttpResponseMessage staleUpdateResponse = await client.PutAsJsonAsync(requestUri: $"/api/v1/templates/{created.Id}", value: new UpdateTemplateRequest(
+                using HttpResponseMessage staleUpdateResponse = await client.PutAsJsonAsync(requestUri: $"/api/v1/templates/{created.Id}", value: new ContentUpdateTemplateRequest(
                                 Name: "Quiz Card stale",
                                 SchemaJson: "{}",
                                 ExpectedConcurrencyStamp: created.ConcurrencyStamp), options: ApiEndpointTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
