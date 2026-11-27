@@ -2,10 +2,10 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Net.Mime;
 using System.Text;
-using ContentService.Api.Contracts;
 using ContentService.Application.Models;
 using ContentService.Domain.Common;
 using ContentService.Domain.Enums;
+using ContentService.Sdk.Models;
 using ContentService.Tests.Application.Persistence;
 using ContentService.Tests.Common;
 using Microsoft.AspNetCore.Http;
@@ -55,9 +55,9 @@ public sealed class ContentApiIntegrationTests : IAsyncLifetime
                         name: ApiIntegrationTestFixtures.ACTOR_HEADER_NAME,
                         value: ApiIntegrationTestFixtures.TEST_ACTOR_ID);
 
-                CreateTemplateRequest createRequest = new(
+                ContentCreateTemplateRequest createRequest = new(
                         Name: "Water Exhibit",
-                        ComponentType: ContentService.Facade.Dtos.TemplateComponentTypeDto.InfoScreen,
+                        ComponentType: ContentTemplateComponentType.InfoScreen,
                         SchemaJson: "{}");
 
                 // Act 1: Create -> 201
@@ -82,7 +82,7 @@ public sealed class ContentApiIntegrationTests : IAsyncLifetime
                 Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
 
                 // Act 4: Update -> 200, Stale token -> 409 ProblemDetails
-                UpdateTemplateRequest updateRequest = new(
+                ContentUpdateTemplateRequest updateRequest = new(
                         Name: "Water Exhibit V2",
                         SchemaJson: "{\"version\":2}",
                         ExpectedConcurrencyStamp: created.ConcurrencyStamp);
