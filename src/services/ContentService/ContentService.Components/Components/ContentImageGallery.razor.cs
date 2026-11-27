@@ -60,6 +60,18 @@ public sealed partial class ContentImageGallery : ComponentBase, IDisposable
         public EventCallback<ContentImageMetadata> OnImageSelected { get; set; }
 
         /// <summary>
+        /// Gets or sets the controlled selected image identifier used by picker modals with explicit confirmation.
+        /// </summary>
+        [Parameter]
+        public Guid? SelectedImageId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the callback invoked when pending selection changes (including deselection) without immediately confirming.
+        /// </summary>
+        [Parameter]
+        public EventCallback<ContentImageMetadata?> OnSelectionChanged { get; set; }
+
+        /// <summary>
         /// Gets or sets a value indicating whether hold-to-confirm soft deletion is enabled inside the detail modal.
         /// </summary>
         /// <remarks>
@@ -109,6 +121,11 @@ public sealed partial class ContentImageGallery : ComponentBase, IDisposable
         /// <inheritdoc />
         protected override Task OnParametersSetAsync()
         {
+                if (this.OnSelectionChanged.HasDelegate)
+                {
+                        this._selectedImageId = this.SelectedImageId;
+                }
+
                 // Blazor calls OnParametersSetAsync right after OnInitializedAsync; skip until the first render has initialized state.
                 if (!this._hasInitialized)
                 {
@@ -289,8 +306,19 @@ public sealed partial class ContentImageGallery : ComponentBase, IDisposable
                 await this.LoadCurrentSelectionAsync(page: FIRST_PAGE);
         }
 
-        private void HandleTileClicked(ContentImageMetadata image)
+        private bool IsSelectionEnabled() =>
+                this.OnImageSelected.HasDelegate || this.OnSelectionChanged.HasDelegate;
+
+        private async Task HandleTileClickedAsync(ContentImageMetadata image)
         {
+                // In deferred-selection picker mode, clicking the preview toggles selection just like the blue dot.
+                if (this.OnSelectionChanged.HasDelegate)
+                {
+                        bool isSelected = this._selectedImageId != image.Id;
+                        await this.HandleTileSelectionToggledAsync(image: image, isSelected: isSelected);
+                        return;
+                }
+
                 this._inspectedImage = image;
                 this._isDetailModalOpen = true;
         }
@@ -299,13 +327,19 @@ public sealed partial class ContentImageGallery : ComponentBase, IDisposable
                 ContentImageMetadata image,
                 bool isSelected)
         {
-                if (!this.OnImageSelected.HasDelegate)
+                if (!this.IsSelectionEnabled())
                 {
                         return;
                 }
 
                 this._selectedImageId = isSelected ? image.Id : null;
-                if (isSelected)
+
+                if (this.OnSelectionChanged.HasDelegate)
+                {
+                        await this.OnSelectionChanged.InvokeAsync(arg: isSelected ? image : null);
+                }
+
+                if (isSelected && this.OnImageSelected.HasDelegate)
                 {
                         await this.OnImageSelected.InvokeAsync(arg: image);
                 }
