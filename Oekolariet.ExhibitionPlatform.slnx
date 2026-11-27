@@ -5,10 +5,6 @@
   <Folder Name="/src/" />
   <Folder Name="/src/Services/" />
   <Folder Name="/src/Services/ContentService/">
-    <File Path="src/services/ContentService/.env.example" />
-    <File Path="src/services/ContentService/docker-compose.yml" />
-    <File Path="src/services/ContentService/Dockerfile" />
-    <File Path="src/services/ContentService/README.md" />
     <Project Path="src/services/ContentService/ContentService.Api/ContentService.Api.csproj" />
     <Project Path="src/services/ContentService/ContentService.Application/ContentService.Application.csproj" />
     <Project Path="src/services/ContentService/ContentService.Components/ContentService.Components.csproj" />
@@ -34,7 +30,20 @@
     <Project Path="src/services/AuthService/AuthService.Domain/AuthService.Domain.csproj" />
     <Project Path="src/services/AuthService/AuthService.Infrastructure/AuthService.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/src/Services/HighscoreService/">
+    <Project Path="src/services/HighscoreService/HighscoreService.Application/HighscoreService.Application.csproj" />
+    <Project Path="src/services/HighscoreService/HighscoreService.Domain/HighscoreService.Domain.csproj" />
+    <Project Path="src/services/HighscoreService/HighscoreService.Facade/HighscoreService.Facade.csproj" />
+    <Project Path="src/services/HighscoreService/HighscoreService.Hub.Api/HighscoreService.Hub.Api.csproj" />
+    <Project Path="src/services/HighscoreService/HighscoreService.Hub.Infrastructure/HighscoreService.Hub.Infrastructure.csproj" />
+    <Project Path="src/services/HighscoreService/HighscoreService.Screen.Api/HighscoreService.Screen.Api.csproj" />
+    <Project Path="src/services/HighscoreService/HighscoreService.Screen.Infrastructure/HighscoreService.Screen.Infrastructure.csproj" />
+    <Project Path="src/services/HighscoreService/HighscoreService.Sdk/HighscoreService.Sdk.csproj" />
+  </Folder>
   <Folder Name="/src/tests/" />
+  <Folder Name="/src/tests/HighscoreService/">
+    <Project Path="src/tests/HighscoreService/HighscoreService.Tests/HighscoreService.Tests.csproj" />
+  </Folder>
   <Folder Name="/src/tests/EditorService/">
     <Project Path="src/tests/EditorService/EditorService.Application.Tests/EditorService.Application.Tests.csproj" />
     <Project Path="src/tests/EditorService/EditorService.Domain.Tests/EditorService.Domain.Tests.csproj" />

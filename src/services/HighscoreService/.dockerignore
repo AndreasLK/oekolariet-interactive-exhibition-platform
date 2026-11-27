@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/*.db
+**/*.db-journal
+**/*.db-wal
+**/*.db-shm
+.env
+.env.*
+docker-compose.yml
+**/appsettings.Development.json
+
