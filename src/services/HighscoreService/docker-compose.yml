@@ -1,0 +1,91 @@
+# Runs the Highscore Hub (SQL Server), two Screen nodes (SQLite), and MSSQL together.
+# Start: docker compose up --build   (from src/services/HighscoreService)
+services:
+
+  highscore-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: highscore-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${HIGHSCORE_DB_PASSWORD:-Oekolariet!2026}
+    ports:
+      - "1434:1433"
+    volumes:
+      - highscore-db-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" -b"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  highscore-hub-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: highscore-hub-api
+    restart: on-failure
+    environment:
+      APP_DLL: hub/HighscoreService.Hub.Api.dll
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      PathBase: /highscore
+      Cors__AllowedOrigins__0: https://oekolariet.dk
+      ConnectionStrings__HighscoreDatabase: "Server=highscore-db,1433;Database=OekolarietHighscores;User Id=sa;Password=${HIGHSCORE_DB_PASSWORD:-Oekolariet!2026};TrustServerCertificate=True;"
+    ports:
+      - "5280:8080"
+    depends_on:
+      highscore-db:
+        condition: service_healthy
+
+  highscore-screen-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: highscore-screen-1
+    environment:
+      APP_DLL: screen/HighscoreService.Screen.Api.dll
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__HighscoreDatabase: "Data Source=/app/data/highscores_screen.db"
+      ScreenSync__NodeId: screen-1
+      ScreenSync__CentralHubBaseUrl: http://highscore-hub-api:8080
+      ScreenSync__AdvertisedBaseUrl: http://highscore-screen-1:8080
+      ScreenSync__EnableUdpDiscovery: "true"
+      ScreenSync__SyncIntervalSeconds: 5
+    ports:
+      - "5281:8080"
+    volumes:
+      - highscore-screen-1-data:/app/data
+    depends_on:
+      highscore-hub-api:
+        condition: service_healthy
+
+  highscore-screen-2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: highscore-screen-2
+    environment:
+      APP_DLL: screen/HighscoreService.Screen.Api.dll
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__HighscoreDatabase: "Data Source=/app/data/highscores_screen.db"
+      ScreenSync__NodeId: screen-2
+      ScreenSync__CentralHubBaseUrl: http://highscore-hub-api:8080
+      ScreenSync__AdvertisedBaseUrl: http://highscore-screen-2:8080
+      ScreenSync__EnableUdpDiscovery: "true"
+      ScreenSync__SyncIntervalSeconds: 5
+    ports:
+      - "5282:8080"
+    volumes:
+      - highscore-screen-2-data:/app/data
+    depends_on:
+      highscore-hub-api:
+        condition: service_healthy
+
+volumes:
+  highscore-db-data:
+  highscore-screen-1-data:
+  highscore-screen-2-data:
+

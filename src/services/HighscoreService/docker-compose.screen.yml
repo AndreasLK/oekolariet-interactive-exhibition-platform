@@ -1,0 +1,26 @@
+# Runs a single Highscore Screen node (edge/kiosk) with local SQLite persistence.
+# Start: docker compose -f docker-compose.screen.yml up -d
+services:
+
+  highscore-screen:
+    image: ghcr.io/andreaslk/oekolariet-interactive-exhibition-platform/highscoreservice:${IMAGE_TAG:-staging}
+    container_name: ${SCREEN_CONTAINER_NAME:-highscore-screen}
+    restart: unless-stopped
+    environment:
+      APP_DLL: screen/HighscoreService.Screen.Api.dll
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__HighscoreDatabase: "Data Source=/app/data/highscores_screen.db"
+      ScreenSync__NodeId: ${SCREEN_NODE_ID:-screen-1}
+      ScreenSync__CentralHubBaseUrl: ${CENTRAL_HUB_URL:-http://hub.local:5280}
+      ScreenSync__AdvertisedBaseUrl: ${SCREEN_ADVERTISED_URL:-http://screen-1.local:5281}
+      ScreenSync__EnableUdpDiscovery: ${ENABLE_UDP_DISCOVERY:-true}
+      ScreenSync__SyncIntervalSeconds: ${SYNC_INTERVAL_SECONDS:-5}
+    ports:
+      - "${SCREEN_PORT:-5281}:8080"
+    volumes:
+      - highscore-screen-data:/app/data
+
+volumes:
+  highscore-screen-data:
+
