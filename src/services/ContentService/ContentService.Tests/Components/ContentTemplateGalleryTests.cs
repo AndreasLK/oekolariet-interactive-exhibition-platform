@@ -1,96 +1,88 @@
 using ALKsPersonalUI;
+using ALKsPersonalUI.Overlays;
 using Bunit;
 using ContentService.Components.Components;
 using ContentService.Sdk.Clients;
 using ContentService.Sdk.Models;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
 namespace ContentService.Tests.Components;
 
 /// <summary>
-/// Verifies template preview selection and management visibility in <see cref="ContentTemplateGallery"/>.
+/// bUnit component tests verifying pagination navigation and filter page resets in <see cref="ContentTemplateGallery"/>.
 /// </summary>
 public sealed class ContentTemplateGalleryTests : BunitContext
 {
-        private const string SAMPLE_SCHEMA_JSON = """
-                {
-                  "Type": "Text",
-                  "Props": { "Value": "Sample Template Content" }
-                }
-                """;
+        private const int TEST_PAGE_SIZE = 2;
+        private const int TOTAL_TEMPLATE_COUNT = 3;
+        private const int FIRST_PAGE = 1;
+        private const int SECOND_PAGE = 2;
 
         /// <summary>
-        /// Ensures clicking a template preview in selection mode marks it selected and invokes <see cref="ContentTemplateGallery.OnTemplateSelected"/>.
+        /// Verifies that clicking Næste requests page 2, updates the page indicator, and resets to page 1 when filtering.
         /// </summary>
         [Fact]
-        public void ContentTemplateGallery_ClickPreviewWhenSelectable_InvokesOnTemplateSelected()
+        public void Pagination_WhenNextClickedAndFilterChanged_NavigatesToPageTwoAndResetsToPageOne()
         {
-                ContentTemplateResponse template = CreateTemplate(name: "Waste Quiz");
-                this.Services.AddSingleton<IContentServiceTemplateClient>(implementationInstance: new StubTemplateClient(templates: [template]));
-                this.Services.AddPersonalUILibrary();
+                // Arrange
+                List<ContentTemplateQuery> recordedQueries = [];
+                ContentTemplateResponse first = CreateTemplate(name: "Template Alpha");
+                ContentTemplateResponse second = CreateTemplate(name: "Template Beta");
+                ContentTemplateResponse third = CreateTemplate(name: "Template Gamma");
 
-                ContentTemplateResponse? selected = null;
-                IRenderedComponent<ContentTemplateGallery> cut = this.Render<ContentTemplateGallery>(
-                        parameters => parameters.Add(p => p.OnTemplateSelected, item => selected = item));
-
-                cut.WaitForAssertion(
-                        assertion: () => Assert.NotNull(@object: cut.Find(cssSelector: ".template-tile-check")));
-
-                cut.Find(cssSelector: ".template-tile-check").Click();
-
-                cut.WaitForAssertion(assertion: () =>
-                {
-                        Assert.NotNull(@object: selected);
-                        Assert.Equal(expected: template.Id, actual: selected.Id);
-                        Assert.NotNull(@object: cut.Find(cssSelector: ".template-tile-selected"));
-                        Assert.Equal(expected: "true", actual: cut.Find(cssSelector: ".template-tile-check").GetAttribute(name: "aria-pressed"));
-                });
-        }
-
-        /// <summary>
-        /// Ensures management actions are hidden when <see cref="ContentTemplateGallery.AllowManage"/> is <see langword="false"/>.
-        /// </summary>
-        [Fact]
-        public void ContentTemplateGallery_AllowManageFalse_HidesCreateEditAndArchiveButtons()
-        {
-                ContentTemplateResponse template = CreateTemplate(name: "Read-Only Template");
-                this.Services.AddSingleton<IContentServiceTemplateClient>(implementationInstance: new StubTemplateClient(templates: [template]));
-                this.Services.AddPersonalUILibrary();
+                this.JSInterop.Mode = JSRuntimeMode.Loose;
+                this.Services.AddPersonalUILibrary(configure: static _ => { });
+                this.Services.AddScoped<ToastService>();
+                this.Services.AddSingleton<IContentServiceTemplateClient>(
+                        implementationInstance: new PagedStubTemplateClient(
+                                allTemplates: [first, second, third],
+                                recordedQueries: recordedQueries));
 
                 IRenderedComponent<ContentTemplateGallery> cut = this.Render<ContentTemplateGallery>(
-                        parameters => parameters
-                                .Add(p => p.AllowManage, false)
-                                .Add(p => p.OnTemplateSelected, _ => { }));
+                        parameterBuilder: parameters => parameters.Add(parameterSelector: component => component.PageSize, value: TEST_PAGE_SIZE));
 
-                cut.WaitForAssertion(
-                        assertion: () => Assert.Contains(expectedSubstring: "Read-Only Template", actualString: cut.Markup, comparisonType: StringComparison.Ordinal));
+                Assert.Contains(expectedSubstring: "Side 1 af 2", actualString: cut.Markup);
+                Assert.Contains(expectedSubstring: "Template Alpha", actualString: cut.Markup);
+                Assert.DoesNotContain(expectedSubstring: "Template Gamma", actualString: cut.Markup);
 
-                Assert.DoesNotContain(expectedSubstring: "New Template", actualString: cut.Markup, comparisonType: StringComparison.Ordinal);
-                Assert.DoesNotContain(expectedSubstring: ">Edit<", actualString: cut.Markup, comparisonType: StringComparison.Ordinal);
-                Assert.DoesNotContain(expectedSubstring: ">Archive<", actualString: cut.Markup, comparisonType: StringComparison.Ordinal);
+                // Act 1: navigate to page 2
+                AngleSharp.Dom.IElement nextButton = cut.FindAll(cssSelector: "button")
+                        .First(predicate: button => button.TextContent.Trim() == "Næste");
+                nextButton.Click();
+
+                // Assert 1: page 2 is requested and rendered
+                Assert.Equal(expected: SECOND_PAGE, actual: recordedQueries[^1].Page);
+                Assert.Contains(expectedSubstring: "Side 2 af 2", actualString: cut.Markup);
+                Assert.Contains(expectedSubstring: "Template Gamma", actualString: cut.Markup);
+
+                // Act 2: switch component type filter while on page 2
+                AngleSharp.Dom.IElement filterPill = cut.FindAll(cssSelector: "button, span, div")
+                        .First(predicate: element => element.TextContent.Trim() == ContentTemplateComponentType.InfoScreen.ToString());
+                filterPill.Click();
+
+                // Assert 2: query resets to page 1
+                Assert.Equal(expected: FIRST_PAGE, actual: recordedQueries[^1].Page);
+                Assert.Equal(expected: ContentTemplateComponentType.InfoScreen, actual: recordedQueries[^1].ComponentType);
         }
 
-        private static ContentTemplateResponse CreateTemplate(string name)
+        private static ContentTemplateResponse CreateTemplate(string name) => new()
         {
-                DateTimeOffset now = DateTimeOffset.UtcNow;
-                return new ContentTemplateResponse
-                {
-                        Id = Guid.NewGuid(),
-                        ExternalId = $"template_{Guid.NewGuid():N}",
-                        Name = name,
-                        ComponentType = ContentTemplateComponentType.InfoScreen,
-                        SchemaJson = SAMPLE_SCHEMA_JSON,
-                        SchemaVersion = 1,
-                        IsArchived = false,
-                        ReferencedPictureReferences = [],
-                        CreatedAt = now,
-                        UpdatedAt = now,
-                        ConcurrencyStamp = Guid.NewGuid()
-                };
-        }
+                Id = Guid.NewGuid(),
+                ExternalId = $"tpl-{name.ToLowerInvariant().Replace(oldValue: " ", newValue: "-")}",
+                Name = name,
+                ComponentType = ContentTemplateComponentType.InfoScreen,
+                SchemaVersion = 1,
+                SchemaJson = "{\"Type\":\"Column\",\"Children\":[]}",
+                IsArchived = false,
+                ReferencedPictureReferences = [],
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ConcurrencyStamp = Guid.NewGuid()
+        };
 
-        private sealed class StubTemplateClient(IReadOnlyList<ContentTemplateResponse> templates) : IContentServiceTemplateClient
+        private sealed class PagedStubTemplateClient(
+                IReadOnlyList<ContentTemplateResponse> allTemplates,
+                List<ContentTemplateQuery> recordedQueries) : IContentServiceTemplateClient
         {
                 public Task<ContentPagedResponse<ContentTemplateResponse>> ListTemplatesAsync(
                         int page = 1,
@@ -99,19 +91,31 @@ public sealed class ContentTemplateGalleryTests : BunitContext
                         string? searchTerm = null,
                         CancellationToken cancellationToken = default) =>
                         this.ListTemplatesAsync(
-                                query: new ContentTemplateQuery { Page = page, PageSize = pageSize, ComponentType = componentType, SearchTerm = searchTerm },
+                                query: new ContentTemplateQuery
+                                {
+                                        Page = page,
+                                        PageSize = pageSize,
+                                        ComponentType = componentType,
+                                        SearchTerm = searchTerm
+                                },
                                 cancellationToken: cancellationToken);
 
                 public Task<ContentPagedResponse<ContentTemplateResponse>> ListTemplatesAsync(
                         ContentTemplateQuery query,
                         CancellationToken cancellationToken = default)
                 {
+                        recordedQueries.Add(item: query);
+                        List<ContentTemplateResponse> pageItems = allTemplates
+                                .Skip(count: (query.Page - 1) * query.PageSize)
+                                .Take(count: query.PageSize)
+                                .ToList();
+
                         return Task.FromResult(result: new ContentPagedResponse<ContentTemplateResponse>
                         {
-                                Items = templates,
-                                Page = 1,
-                                PageSize = 12,
-                                TotalCount = templates.Count
+                                Items = pageItems,
+                                Page = query.Page,
+                                PageSize = query.PageSize,
+                                TotalCount = TOTAL_TEMPLATE_COUNT
                         });
                 }
 

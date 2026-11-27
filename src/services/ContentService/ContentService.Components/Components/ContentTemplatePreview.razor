@@ -4,7 +4,10 @@
                 @if (!this._isPreviewLoaded)
                 {
                         <div class="template-preview-empty">
-                                <OrbitalLoader LoadingText="@this.LoadingMessage" />
+                                <Column Gap="0.75rem" HorizontalAlignment="HorizontalAlignment.Center">
+                                        <SimpleSpinner Size="1.75rem" />
+                                        <ALKsPersonalUI.Layout.Text Value="@this.LoadingMessage" Variant="TypographyVariant.Caption" Muted="true" />
+                                </Column>
                         </div>
                 }
                 else if (!string.IsNullOrWhiteSpace(value: this._parseError))

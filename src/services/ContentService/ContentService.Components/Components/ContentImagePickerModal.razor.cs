@@ -9,10 +9,12 @@ namespace ContentService.Components.Components;
 /// </summary>
 public sealed partial class ContentImagePickerModal : ComponentBase
 {
-        private const string DEFAULT_TITLE = "Select Image";
+        private const string DEFAULT_TITLE = "Vælg billede";
         private const int DEFAULT_PAGE_SIZE = 24;
-        private const double MODAL_MAX_WIDTH_PX = 1080;
         private const string BODY_MAX_HEIGHT = "70vh";
+
+        private ContentImageResponse? _pendingSelectedImage;
+        private bool _wasOpen;
 
         /// <summary>
         /// Gets or sets a value indicating whether the image picker modal is open.
@@ -74,9 +76,35 @@ public sealed partial class ContentImagePickerModal : ComponentBase
         [Parameter]
         public bool CloseOnSelect { get; set; } = true;
 
-        private async Task HandleImageSelectedAsync(ContentImageResponse image)
+        /// <inheritdoc />
+        protected override void OnParametersSet()
         {
-                await this.OnImageSelected.InvokeAsync(arg: image);
+                // Clear any stale pending selection whenever the modal closes or freshly opens.
+                if (!this.IsOpen)
+                {
+                        this._wasOpen = false;
+                        this._pendingSelectedImage = null;
+                        return;
+                }
+
+                if (!this._wasOpen)
+                {
+                        this._wasOpen = true;
+                        this._pendingSelectedImage = null;
+                }
+        }
+
+        private void HandlePendingSelectionChanged(ContentImageResponse? image) =>
+                this._pendingSelectedImage = image;
+
+        private async Task HandleConfirmSelectionAsync()
+        {
+                if (this._pendingSelectedImage is null)
+                {
+                        return;
+                }
+
+                await this.OnImageSelected.InvokeAsync(arg: this._pendingSelectedImage);
                 if (this.CloseOnSelect)
                 {
                         await this.IsOpenChanged.InvokeAsync(arg: false);
@@ -87,7 +115,6 @@ public sealed partial class ContentImagePickerModal : ComponentBase
 
         private UIModifier BuildModalModifier() =>
                 UIModifier.New
-                        .MaxWidth(px: MODAL_MAX_WIDTH_PX)
                         .FillMaxWidth();
 
         private UIModifier BuildBodyModifier() =>

@@ -44,7 +44,7 @@ public sealed class ContentImageGalleryTests : BunitContext
                         parameterBuilder: parameters => parameters.Add(parameterSelector: component => component.PageSize, value: TEST_PAGE_SIZE));
 
                 // Assert
-                Assert.Contains(expectedSubstring: "2 image(s)", actualString: cut.Markup);
+                Assert.Contains(expectedSubstring: "2 billede(r)", actualString: cut.Markup);
                 Assert.Contains(expectedSubstring: "forest.png", actualString: cut.Markup);
                 Assert.Contains(expectedSubstring: "ocean.jpg", actualString: cut.Markup);
         }
@@ -136,7 +136,7 @@ public sealed class ContentImageGalleryTests : BunitContext
                         parameterBuilder: parameters => parameters.Add(parameterSelector: component => component.PageSize, value: TEST_PAGE_SIZE));
 
                 // Act
-                AngleSharp.Dom.IElement searchBox = cut.Find(cssSelector: "input[aria-label='Search images']");
+                AngleSharp.Dom.IElement searchBox = cut.Find(cssSelector: "input[aria-label='Søg i billeder']");
                 await searchBox.InputAsync(eventArgs: new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = "whale" });
                 await Task.Delay(millisecondsDelay: SEARCH_DEBOUNCE_WAIT_MS, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
@@ -172,7 +172,7 @@ public sealed class ContentImageGalleryTests : BunitContext
                 IReadOnlyList<ToastMessage> activeToasts = toasts.GetToasts();
                 Assert.Single(collection: activeToasts);
                 Assert.Equal(expected: ToastVariant.Danger, actual: activeToasts[0].Variant);
-                Assert.Contains(expectedSubstring: "No exhibition images have been uploaded yet.", actualString: cut.Markup);
+                Assert.Contains(expectedSubstring: "Der er ikke uploadet nogen udstillingsbilleder endnu.", actualString: cut.Markup);
         }
 
         /// <summary>
@@ -205,7 +205,7 @@ public sealed class ContentImageGalleryTests : BunitContext
 
                 // Act
                 AngleSharp.Dom.IElement nextButton = cut.FindAll(cssSelector: "button")
-                        .First(predicate: button => button.TextContent.Contains(value: "Next", comparisonType: StringComparison.Ordinal));
+                        .First(predicate: button => button.TextContent.Contains(value: "Næste", comparisonType: StringComparison.Ordinal));
                 nextButton.Click();
 
                 // Assert

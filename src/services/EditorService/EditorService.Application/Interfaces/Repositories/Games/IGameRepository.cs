@@ -1,4 +1,5 @@
 using EditorService.Domain.Entities;
+using EditorService.Domain.Entities.SortingGames;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -15,6 +16,12 @@ namespace EditorService.Application.Interfaces.Repositories.Games
                 /// <param name="cancellationToken">Stops the call if the request is cancelled.</param>
                 /// <returns>The game, or <see langword="null"/>.</returns>
                 public Task<GameEntity?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+
+                /// <summary>Gets a sorting game by its id, with all its categories and items.</summary>
+                /// <param name="id">The id of the game.</param>
+                /// <param name="cancellationToken">Stops the call if the request is cancelled.</param>
+                /// <returns>The sorting game, or <see langword="null"/> if it does not exist or is not a sorting game.</returns>
+                public Task<SortingGameEntity?> GetSortingGameByIdAsync(Guid id, CancellationToken cancellationToken);
 
                 /// <summary>Saves a new game.</summary>
                 /// <param name="game">The game to save.</param>

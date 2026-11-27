@@ -1,27 +1,28 @@
 namespace ContentService.Sdk.Models;
 
 /// <summary>
-/// Request payload for updating an existing exhibition layout template in ContentService.
+/// Payload for updating an existing template's name and schema JSON with optimistic concurrency checking.
 /// </summary>
 public sealed record class UpdateContentTemplateRequest
 {
         /// <summary>
-        /// Gets the updated display name for the template.
+        /// Gets the updated template name.
         /// </summary>
         public required string Name { get; init; }
 
         /// <summary>
-        /// Gets the updated raw JSON layout schema (<c>JsonUiNode</c> tree).
+        /// Gets the updated raw JSON schema payload.
         /// </summary>
         public required string SchemaJson { get; init; }
 
         /// <summary>
-        /// Gets the expected optimistic concurrency stamp observed when the template was loaded.
+        /// Gets the optimistic concurrency token observed when the template was loaded.
         /// </summary>
         public required Guid ExpectedConcurrencyStamp { get; init; }
 
         /// <summary>
-        /// Gets an optional audit actor identifier overriding the configured default actor.
+        /// Gets an optional actor identifier overriding <see cref="Options.ContentServiceClientOptions.DefaultActorId"/> for audit attribution.
         /// </summary>
         public string? ActorId { get; init; }
 }
+

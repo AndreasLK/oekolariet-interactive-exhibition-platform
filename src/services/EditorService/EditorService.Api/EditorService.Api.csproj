@@ -11,6 +11,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+          <!-- All package versions are pinned (no "10.*"), so new third-party code only comes in when we choose to update.
+       This reduces the risk of supply chain attacks. -->
     <PackageReference Include="Asp.Versioning.Mvc" Version="10.2.1" />
     <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="10.2.1" />
     <PackageReference Include="Asp.Versioning.OpenApi" Version="10.2.3" />

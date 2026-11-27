@@ -1,6 +1,8 @@
 using EditorService.Application.Interfaces.Repositories.Games;
 using EditorService.Domain.Entities;
+using EditorService.Domain.Entities.SortingGames;
 using EditorService.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 
 namespace EditorService.Infrastructure.Repositories.Games
@@ -26,6 +28,18 @@ namespace EditorService.Infrastructure.Repositories.Games
                 {
                         // Looks up the game by its primary key. EF Core tracks it, so changes are saved later.
                         return await this._dbContext.Games.FindAsync(keyValues: [id], cancellationToken: cancellationToken);
+                }
+
+                /// <inheritdoc/>
+                public async Task<SortingGameEntity?> GetSortingGameByIdAsync(Guid id, CancellationToken cancellationToken)
+                {
+                        // OfType only looks at sorting games, so a quiz with the same id gives null.
+                        // Categories and items are owned by the game, so EF Core loads them automatically.
+                        // EF Core tracks the game, so changes from the handler are saved later.
+                        return await this._dbContext.Games
+                                .OfType<SortingGameEntity>()
+                                .Where(predicate: game => game.Id == id)
+                                .FirstOrDefaultAsync(cancellationToken: cancellationToken);
                 }
 
                 /// <inheritdoc/>

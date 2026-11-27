@@ -1,7 +1,9 @@
 using EditorService.Application.Interfaces.Queries.Games;
+using EditorService.Application.Interfaces.Queries.SortingGames;
 using EditorService.Application.Interfaces.Repositories.Games;
 using EditorService.Infrastructure.Persistence;
 using EditorService.Infrastructure.Queries.Games;
+using EditorService.Infrastructure.Queries.SortingGames;
 using EditorService.Infrastructure.Repositories.Games;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,6 +34,9 @@ namespace EditorService.Infrastructure.DependencyInjection
 
                         // When the Api asks for IGameQueries, it gets the EF Core version.
                         services.AddScoped<IGameQueries, GameQueries>();
+
+                        // When the Api asks for ISortingGameQueries, it gets the EF Core version.
+                        services.AddScoped<ISortingGameQueries, SortingGameQueries>();
 
                         return services;
                 }

@@ -57,6 +57,9 @@ builder.Services
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+// Health check: lets Docker ask "are you alive?" on /health.
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
 app.UseExceptionHandler();
@@ -66,6 +69,9 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Answers 200 "Healthy" when the service is running.
+app.MapHealthChecks(pattern: "/health");
 
 // Swagger only in Development. Must come after MapControllers, so the API versions can be found.
 if (app.Environment.IsDevelopment())

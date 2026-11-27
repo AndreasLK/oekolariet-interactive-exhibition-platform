@@ -1,10 +1,14 @@
+using EditorService.Application.CommandHandlers.EditLocks;
 using EditorService.Application.CommandHandlers.Games;
+using EditorService.Application.CommandHandlers.SortingGames;
+using EditorService.Application.CommandHandlers.SortingGames.CategoryRecievers;
+using EditorService.Application.Interfaces.CommandHandlers.EditLocks;
 using EditorService.Application.Interfaces.CommandHandlers.Games;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using EditorService.Application.Interfaces.CommandHandlers.SortingGames.CategoryItems;
+using EditorService.Application.Interfaces.CommandHandlers.SortingGames.CategoryRecievers;
+using EditorService.Application.CommandHandlers.SortingGames.CategoryItems;
 
 namespace EditorService.Application.DependencyInjection
 {
@@ -26,12 +30,28 @@ namespace EditorService.Application.DependencyInjection
                         services.TryAddSingleton(instance: TimeProvider.System);
 
                         // One line per command handler.
+                        // Games
                         services.AddScoped<ICreateSortingGameCommandHandler, CreateSortingGameCommandHandler>();
                         services.AddScoped<IRenameGameCommandHandler, RenameGameCommandHandler>();
                         services.AddScoped<IUpdateGameTemplateCommandHandler, UpdateGameTemplateCommandHandler>();
                         services.AddScoped<IUpdateGameThemeCommandHandler, UpdateGameThemeCommandHandler>();
                         services.AddScoped<IPublishGameCommandHandler, PublishGameCommandHandler>();
                         services.AddScoped<IDeleteGameCommandHandler, DeleteGameCommandHandler>();
+
+                        // Categories
+                        services.AddScoped<IAddCategoryReceiverCommandHandler, AddCategoryReceiverCommandHandler>();
+                        services.AddScoped<IUpdateCategoryReceiverCommandHandler, UpdateCategoryReceiverCommandHandler>();
+                        services.AddScoped<IRemoveCategoryReceiverCommandHandler, RemoveCategoryReceiverCommandHandler>();
+                        services.AddScoped<IAddCategoryItemCommandHandler, AddCategoryItemCommandHandler>();
+                        services.AddScoped<IUpdateCategoryItemCommandHandler, UpdateCategoryItemCommandHandler>();
+                        services.AddScoped<IRemoveCategoryItemCommandHandler, RemoveCategoryItemCommandHandler>();
+
+                        // Locks
+                        services.AddScoped<IAcquireLockCommandHandler, AcquireLockCommandHandler>();
+                        services.AddScoped<IRenewLockCommandHandler, RenewLockCommandHandler>();
+                        services.AddScoped<IReleaseLockCommandHandler, ReleaseLockCommandHandler>();
+
+
 
                         return services;
                 }

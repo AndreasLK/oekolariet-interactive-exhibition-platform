@@ -12,7 +12,7 @@ namespace ContentService.Components.Components;
 /// </summary>
 public sealed partial class ContentTemplateGallery : ComponentBase
 {
-        private const int DEFAULT_PAGE = 1;
+        private const int FIRST_PAGE = 1;
         private const int MIN_PAGE_SIZE = 1;
         private const int DEFAULT_PAGE_SIZE = 12;
         private const double EDITOR_MODAL_MAX_WIDTH_PX = 960;
@@ -33,6 +33,8 @@ public sealed partial class ContentTemplateGallery : ComponentBase
 
         private readonly List<ContentTemplateResponse> _templates = [];
         private int _totalCount;
+        private int _currentPage = FIRST_PAGE;
+        private int _totalPages;
         private string? _searchTerm;
         private ContentTemplateComponentType? _selectedType;
         private ContentTemplateComponentType? _appliedDefaultComponentType;
@@ -61,6 +63,18 @@ public sealed partial class ContentTemplateGallery : ComponentBase
         /// </remarks>
         [Parameter]
         public EventCallback<ContentTemplateResponse> OnTemplateSelected { get; set; }
+
+        /// <summary>
+        /// Gets or sets the controlled selected template identifier used by picker modals with explicit confirmation.
+        /// </summary>
+        [Parameter]
+        public Guid? SelectedTemplateId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the callback invoked when pending selection changes (including deselection) without immediately confirming.
+        /// </summary>
+        [Parameter]
+        public EventCallback<ContentTemplateResponse?> OnSelectionChanged { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether create, edit, and archive actions are enabled.
@@ -93,6 +107,11 @@ public sealed partial class ContentTemplateGallery : ComponentBase
         /// <inheritdoc />
         protected override Task OnParametersSetAsync()
         {
+                if (this.OnSelectionChanged.HasDelegate)
+                {
+                        this._selectedTemplateId = this.SelectedTemplateId;
+                }
+
                 if (!this._hasInitialized)
                 {
                         return Task.CompletedTask;
@@ -106,6 +125,8 @@ public sealed partial class ContentTemplateGallery : ComponentBase
 
                 this._appliedDefaultComponentType = this.DefaultComponentType;
                 this._selectedType = this.DefaultComponentType;
+                // Reset to page 1 when the host changes the default component type filter.
+                this._currentPage = FIRST_PAGE;
                 return this.LoadTemplatesAsync();
         }
 
@@ -118,7 +139,7 @@ public sealed partial class ContentTemplateGallery : ComponentBase
                         ContentPagedResponse<ContentTemplateResponse> page = await this.TemplateClient.ListTemplatesAsync(
                                 query: new ContentTemplateQuery
                                 {
-                                        Page = DEFAULT_PAGE,
+                                        Page = this._currentPage,
                                         PageSize = clampedPageSize,
                                         ComponentType = this._selectedType,
                                         SearchTerm = this._searchTerm
@@ -127,6 +148,9 @@ public sealed partial class ContentTemplateGallery : ComponentBase
                         this._templates.Clear();
                         this._templates.AddRange(collection: page.Items);
                         this._totalCount = page.TotalCount;
+                        this._totalPages = page.TotalPages;
+                        // Clamp the active page if archiving or filtering reduces the total page count below it.
+                        this._currentPage = Math.Min(val1: this._currentPage, val2: Math.Max(val1: FIRST_PAGE, val2: this._totalPages));
                 }
                 catch (Exception ex) when (ex is ContentServiceApiException or HttpRequestException or InvalidOperationException)
                 {
@@ -141,16 +165,42 @@ public sealed partial class ContentTemplateGallery : ComponentBase
         private Task HandleSearchChangedAsync(string? value)
         {
                 this._searchTerm = value;
+                // Reset to page 1 so a narrowed search never stays on an out-of-range page.
+                this._currentPage = FIRST_PAGE;
                 return this.LoadTemplatesAsync();
         }
 
         private Task HandleFilterTypeAsync(ContentTemplateComponentType? componentType)
         {
                 this._selectedType = componentType;
+                // Reset to page 1 so switching component types starts from the beginning of the filtered list.
+                this._currentPage = FIRST_PAGE;
                 return this.LoadTemplatesAsync();
         }
 
         private Task HandleRefreshClickedAsync() => this.LoadTemplatesAsync();
+
+        private Task HandlePreviousPageClickedAsync()
+        {
+                if (this._isLoading || this._currentPage <= FIRST_PAGE)
+                {
+                        return Task.CompletedTask;
+                }
+
+                this._currentPage--;
+                return this.LoadTemplatesAsync();
+        }
+
+        private Task HandleNextPageClickedAsync()
+        {
+                if (this._isLoading || this._currentPage >= this._totalPages)
+                {
+                        return Task.CompletedTask;
+                }
+
+                this._currentPage++;
+                return this.LoadTemplatesAsync();
+        }
 
         private void HandleOpenCreateModal()
         {
@@ -238,20 +288,46 @@ public sealed partial class ContentTemplateGallery : ComponentBase
                 }
         }
 
+        private const double CARD_PADDING_PX = 16;
+        private const double CARD_BORDER_RADIUS_PX = 12;
+        private const double SELECTED_CARD_BORDER_PX = 2;
+        private const double DEFAULT_CARD_BORDER_PX = 1;
+
+        private bool IsSelectionEnabled() =>
+                this.OnTemplateSelected.HasDelegate || this.OnSelectionChanged.HasDelegate;
+
         private async Task HandleTemplateSelectionToggledAsync(ContentTemplateResponse template)
         {
-                if (!this.OnTemplateSelected.HasDelegate)
+                if (!this.IsSelectionEnabled())
                 {
                         return;
                 }
 
-                // Toggle selection state cleanly and notify the host only when an item is actively selected.
+                // Toggle selection state cleanly and notify the host of either the selected template or deselection.
                 bool isSelecting = this._selectedTemplateId != template.Id;
                 this._selectedTemplateId = isSelecting ? template.Id : null;
-                if (isSelecting)
+
+                if (this.OnSelectionChanged.HasDelegate)
+                {
+                        await this.OnSelectionChanged.InvokeAsync(arg: isSelecting ? template : null);
+                }
+
+                if (isSelecting && this.OnTemplateSelected.HasDelegate)
                 {
                         await this.OnTemplateSelected.InvokeAsync(arg: template);
                 }
+        }
+
+        private UIModifier BuildTemplateCardModifier(bool isSelected)
+        {
+                UIModifier modifier = UIModifier.New
+                        .FillMaxWidth()
+                        .Padding(uniformPx: CARD_PADDING_PX)
+                        .BorderRadius(px: CARD_BORDER_RADIUS_PX);
+
+                return isSelected
+                        ? modifier.Border(thicknessPx: SELECTED_CARD_BORDER_PX, borderColor: "var(--ui-accent, #7c3aed)")
+                        : modifier.Border(thicknessPx: DEFAULT_CARD_BORDER_PX, borderColor: "var(--ui-border, rgba(255, 255, 255, 0.14))");
         }
 
         private UIModifier BuildEditorModalModifier() =>

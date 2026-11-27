@@ -109,6 +109,20 @@ internal static class ContentServiceEndpointUriResolver
         }
 
         /// <summary>
+        /// Rejects <see cref="Guid.Empty"/> before issuing HTTP calls or constructing template URIs.
+        /// </summary>
+        /// <param name="templateId">The template identifier to validate.</param>
+        public static void ValidateTemplateId(Guid templateId)
+        {
+                if (templateId == Guid.Empty)
+                {
+                        throw new ArgumentException(
+                                message: "TemplateId cannot be empty.",
+                                paramName: nameof(templateId));
+                }
+        }
+
+        /// <summary>
         /// Resolves an absolute base URI guaranteed to end with a trailing slash so RFC 3986 relative resolution keeps subpaths intact.
         /// </summary>
         /// <remarks>

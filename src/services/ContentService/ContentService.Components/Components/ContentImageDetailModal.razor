@@ -14,7 +14,7 @@
                                         <Image Source="@this.ImageSource"
                                                Alt="@this.ResolveAltText()"
                                                Fit="ImageFit.Contain"
-                                               FallbackText="Image preview unavailable"
+                                               FallbackText="Forhåndsvisning ikke tilgængelig"
                                                Modifier="@this.BuildPreviewImageModifier()" />
                                 </Box>
 
@@ -32,7 +32,7 @@
                                         <Grid Columns="@DETAIL_GRID_COLUMNS" Gap="0.75rem" Modifier="@UIModifier.New.FillMaxWidth()">
                                                 <Column Gap="0.2rem">
                                                         <Text Value="Album" Variant="TypographyVariant.Caption" Muted="true" />
-                                                        <Pill Text="@(this.Image.AlbumPath ?? "Root")"
+                                                        <Pill Text="@(this.Image.AlbumPath ?? "Rod")"
                                                               Variant="@(string.IsNullOrWhiteSpace(value: this.Image.AlbumPath) ? Pill.PillVariant.Neutral : Pill.PillVariant.Accent)" />
                                                 </Column>
                                                 <Column Gap="0.2rem">
@@ -41,18 +41,18 @@
                                                               Variant="TypographyVariant.Body" />
                                                 </Column>
                                                 <Column Gap="0.2rem">
-                                                        <Text Value="Uploaded" Variant="TypographyVariant.Caption" Muted="true" />
+                                                        <Text Value="Uploadet" Variant="TypographyVariant.Caption" Muted="true" />
                                                         <Text Value="@this.Image.CreatedAt.ToLocalTime().ToString(format: "yyyy-MM-dd HH:mm")" Variant="TypographyVariant.Body" />
                                                 </Column>
                                                 <Column Gap="0.2rem">
-                                                        <Text Value="Picture Reference" Variant="TypographyVariant.Caption" Muted="true" />
+                                                        <Text Value="Billedreference" Variant="TypographyVariant.Caption" Muted="true" />
                                                         <Text Value="@this.Image.PictureReference" Variant="TypographyVariant.Mono" Wrap="true" />
                                                 </Column>
                                         </Grid>
 
                                         <Column Gap="0.2rem">
-                                                <Text Value="Description / Alt Text" Variant="TypographyVariant.Caption" Muted="true" />
-                                                <Text Value="@(string.IsNullOrWhiteSpace(value: this.Image.AltText) ? "No description added." : this.Image.AltText)"
+                                                <Text Value="Beskrivelse / Alt-tekst" Variant="TypographyVariant.Caption" Muted="true" />
+                                                <Text Value="@(string.IsNullOrWhiteSpace(value: this.Image.AltText) ? "Ingen beskrivelse tilføjet." : this.Image.AltText)"
                                                       Variant="TypographyVariant.Body"
                                                       Muted="@string.IsNullOrWhiteSpace(value: this.Image.AltText)"
                                                       Wrap="true" />
@@ -62,7 +62,7 @@
                                                 <Text Value="Tags:" Variant="TypographyVariant.Caption" Muted="true" />
                                                 @if (this.Image.Tags.Count == 0)
                                                 {
-                                                        <ALKsPersonalUI.Layout.Text Value="None" Variant="TypographyVariant.Caption" Muted="true" />
+                                                        <ALKsPersonalUI.Layout.Text Value="Ingen" Variant="TypographyVariant.Caption" Muted="true" />
                                                 }
                                                 else
                                                 {
@@ -85,7 +85,7 @@
                         @if (this.AllowDelete && this.Image is not null && !this._isEditing)
                         {
                                 @* ALKsPersonalUI ActionButton suppresses normal clicks when HoldToConfirmDurationMilliseconds > 0 and invokes OnClick after holding pointer down. *@
-                                <ActionButton Text="Hold to Delete"
+                                <ActionButton Text="Hold for at slette"
                                               Variant="ActionButton.ButtonVariant.Outline"
                                               HoldToConfirmDurationMilliseconds="@HOLD_TO_DELETE_DURATION_MS"
                                               IsLoading="@this.IsDeleting"
@@ -96,19 +96,19 @@
 
                         @if (this.AllowEditMetadata && this.Image is not null && !this._isEditing)
                         {
-                                <ActionButton Text="Edit Details"
+                                <ActionButton Text="Rediger detaljer"
                                               Variant="ActionButton.ButtonVariant.Outline"
                                               OnClick="@this.HandleStartEdit" />
                         }
 
-                        <ActionButton Text="Close"
+                        <ActionButton Text="Luk"
                                       Variant="ActionButton.ButtonVariant.Ghost"
                                       IsDisabled="@(this.IsSavingMetadata || this.IsDeleting)"
                                       OnClick="@this.HandleCloseClickedAsync" />
 
                         @if (this.ShowSelectButton && this.Image is not null && !this._isEditing)
                         {
-                                <ActionButton Text="Select Image"
+                                <ActionButton Text="Vælg billede"
                                               Variant="ActionButton.ButtonVariant.Solid"
                                               OnClick="@this.HandleSelectClickedAsync" />
                         }

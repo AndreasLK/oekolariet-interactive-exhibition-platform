@@ -23,6 +23,8 @@ public sealed partial class Home : ComponentBase, IDisposable
         /// Uses an 80 KiB (81,920-byte) stream buffer so allocations stay below .NET's 85,000-byte Large Object Heap (LOH) threshold in Blazor WASM's constrained browser memory.
         /// </summary>
         private const int STREAM_COPY_BUFFER_BYTES = 81920;
+        private const double ZERO_PX = 0;
+        private const double PAGE_VERTICAL_PADDING_PX = 16;
         private const double PANEL_PADDING_PX = 16;
         private const double PANEL_BORDER_RADIUS_PX = 12;
         private const double PANEL_BORDER_THICKNESS_PX = 1;
@@ -176,6 +178,11 @@ public sealed partial class Home : ComponentBase, IDisposable
                         this._isTestingDownload = false;
                 }
         }
+
+        private UIModifier BuildPageModifier() =>
+                UIModifier.New
+                        .FillMaxWidth()
+                        .Padding(verticalPx: PAGE_VERTICAL_PADDING_PX, horizontalPx: ZERO_PX);
 
         private UIModifier BuildTestPanelModifier() =>
                 UIModifier.New

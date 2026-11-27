@@ -40,9 +40,17 @@ public sealed class ContentPickerModalTests : BunitContext
                                 .Add(p => p.OnTemplateSelected, value => picked = value));
 
                 cut.WaitForAssertion(
-                        assertion: () => Assert.NotNull(@object: cut.Find(cssSelector: ".template-tile-check")));
+                        assertion: () => Assert.Contains(
+                                collection: cut.FindAll(cssSelector: "button"),
+                                filter: button => button.TextContent.Trim() is "○" or "✓"));
 
-                cut.Find(cssSelector: ".template-tile-check").Click();
+                cut.FindAll(cssSelector: "button")
+                        .First(predicate: button => button.TextContent.Trim() is "○" or "✓")
+                        .Click();
+
+                cut.FindAll(cssSelector: "button")
+                        .First(predicate: button => button.TextContent.Trim() == "Vælg")
+                        .Click();
 
                 cut.WaitForAssertion(assertion: () =>
                 {
