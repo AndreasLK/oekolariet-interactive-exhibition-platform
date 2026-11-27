@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+        <PropertyGroup>
+                <TargetFramework>net11.0</TargetFramework>
+                <OutputType>Exe</OutputType>
+                <ImplicitUsings>enable</ImplicitUsings>
+                <Nullable>enable</Nullable>
+                <IsPackable>false</IsPackable>
+        </PropertyGroup>
+
+        <ItemGroup>
+                <PackageReference Include="coverlet.collector" Version="6.0.4" />
+                <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.14" />
+                <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+                <PackageReference Include="Testcontainers.MsSql" Version="4.17.0" />
+                <PackageReference Include="xunit.v3.mtp-off" Version="4.0.3" />
+                <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+        </ItemGroup>
+
+        <ItemGroup>
+                <Using Include="Xunit" />
+        </ItemGroup>
+
+        <ItemGroup>
+                <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+        </ItemGroup>
+
+        <ItemGroup>
+                <ProjectReference Include="..\..\..\services\HighscoreService\HighscoreService.Application\HighscoreService.Application.csproj" />
+                <ProjectReference Include="..\..\..\services\HighscoreService\HighscoreService.Domain\HighscoreService.Domain.csproj" />
+                <ProjectReference Include="..\..\..\services\HighscoreService\HighscoreService.Facade\HighscoreService.Facade.csproj" />
+                <ProjectReference Include="..\..\..\services\HighscoreService\HighscoreService.Hub.Api\HighscoreService.Hub.Api.csproj" />
+                <ProjectReference Include="..\..\..\services\HighscoreService\HighscoreService.Hub.Infrastructure\HighscoreService.Hub.Infrastructure.csproj" />
+                <ProjectReference Include="..\..\..\services\HighscoreService\HighscoreService.Screen.Api\HighscoreService.Screen.Api.csproj" />
+                <ProjectReference Include="..\..\..\services\HighscoreService\HighscoreService.Screen.Infrastructure\HighscoreService.Screen.Infrastructure.csproj" />
+                <ProjectReference Include="..\..\..\services\HighscoreService\HighscoreService.Sdk\HighscoreService.Sdk.csproj" />
+        </ItemGroup>
+
+</Project>
