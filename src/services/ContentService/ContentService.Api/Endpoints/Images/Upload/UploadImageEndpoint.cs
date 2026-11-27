@@ -1,6 +1,8 @@
 using ContentService.Api.Common;
+using ContentService.Api.Mapper;
 using ContentService.Facade.Dtos;
 using ContentService.Facade.Interfaces;
+using ContentService.Sdk.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ContentService.Api.Endpoints.Images;
@@ -51,7 +53,7 @@ internal static class UploadImageEndpoint
                 // Emit the concrete v1 path with the shard-aware ExternalId ({node}_{guid}) so follow-up GETs route to the owning node.
                 return Results.Created(
                         uri: $"{ApiConstants.V1_IMAGES_ROUTE_PREFIX}/{created.ExternalId}",
-                        value: created);
+                        value: ImageMapper.ToResponse(dto: created));
         }
 }
 

@@ -1,5 +1,5 @@
-using ContentService.Api.Contracts;
 using ContentService.Facade.Interfaces;
+using ContentService.Sdk.Models;
 
 namespace ContentService.Api.Endpoints.Templates;
 
@@ -14,7 +14,7 @@ internal static class CheckImageTemplateReferenceEndpoint
         /// <param name="id">The image identifier to check.</param>
         /// <param name="queryFacade">The CQS template query facade.</param>
         /// <param name="cancellationToken">Propagates client disconnects.</param>
-        /// <returns>An HTTP 200 OK response containing <see cref="ImageReferenceCheckResponse"/>.</returns>
+        /// <returns>An HTTP 200 OK response containing <see cref="ContentImageTemplateReferenceResponse"/>.</returns>
         public static async Task<IResult> HandleAsync(
                 Guid id,
                 ITemplateQueryFacade queryFacade,
@@ -24,7 +24,7 @@ internal static class CheckImageTemplateReferenceEndpoint
                         imageId: id,
                         cancellationToken: cancellationToken);
 
-                return Results.Ok(new ImageReferenceCheckResponse(IsReferenced: isReferenced));
+                return Results.Ok(value: new ContentImageTemplateReferenceResponse(IsReferenced: isReferenced));
         }
 }
 

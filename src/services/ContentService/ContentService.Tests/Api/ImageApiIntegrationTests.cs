@@ -1,11 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
-using ContentService.Api.Contracts;
 using ContentService.Application.Common;
 using ContentService.Application.Models;
 using ContentService.Domain.Common;
 using ContentService.Domain.Enums;
+using ContentService.Sdk.Models;
 using ContentService.Tests.Application.Persistence;
 using Microsoft.Net.Http.Headers;
 
@@ -193,9 +193,9 @@ public sealed class ImageApiIntegrationTests : IAsyncLifetime
                 ImageMetadataResult? image = await uploadResponse.Content.ReadFromJsonAsync<ImageMetadataResult>(options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.NotNull(image);
 
-                CreateTemplateRequest createTemplate = new(
+                ContentCreateTemplateRequest createTemplate = new(
                         Name: "Referencing Template",
-                        ComponentType: ContentService.Facade.Dtos.TemplateComponentTypeDto.QuizTemplate,
+                        ComponentType: ContentTemplateComponentType.QuizTemplate,
                         SchemaJson: $"{{\"hero\":\"{image.PictureReference}\"}}");
                 using HttpResponseMessage templateResponse = await client.PostAsJsonAsync(requestUri: ApiIntegrationTestFixtures.TEMPLATES_ROUTE, value: createTemplate, options: ApiIntegrationTestFixtures.API_JSON_OPTIONS, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.Equal(HttpStatusCode.Created, templateResponse.StatusCode);

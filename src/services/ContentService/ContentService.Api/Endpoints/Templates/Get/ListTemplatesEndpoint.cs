@@ -1,6 +1,7 @@
-using ContentService.Facade.Common;
+using ContentService.Api.Mapper;
 using ContentService.Facade.Dtos;
 using ContentService.Facade.Interfaces;
+using ContentService.Sdk.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ContentService.Api.Endpoints.Templates;
@@ -19,30 +20,28 @@ internal static class ListTemplatesEndpoint
         /// <param name="searchTerm">Optional template name search filter.</param>
         /// <param name="queryFacade">The CQS template query facade.</param>
         /// <param name="cancellationToken">Propagates client disconnects during listing.</param>
-        /// <returns>An HTTP 200 OK response containing a <see cref="PagedResultDto{T}"/> of templates.</returns>
+        /// <returns>An HTTP 200 OK response containing a <see cref="ContentPagedResponse{T}"/> of templates.</returns>
         public static async Task<IResult> HandleAsync(
                 [FromQuery] int? page,
                 [FromQuery] int? pageSize,
-                [FromQuery] TemplateComponentTypeDto? componentType,
+                [FromQuery] ContentTemplateComponentType? componentType,
                 [FromQuery] string? searchTerm,
                 ITemplateQueryFacade queryFacade,
                 CancellationToken cancellationToken)
         {
                 // Apply default pagination bounds when query parameters are omitted.
-                ListTemplatesQueryDto query = new()
-                {
-                        Page = page ?? FacadeConstants.DEFAULT_PAGE,
-                        PageSize = pageSize ?? FacadeConstants.DEFAULT_PAGE_SIZE,
-                        ComponentType = componentType,
-                        SearchTerm = searchTerm
-                };
+                ListTemplatesQueryDto query = TemplateMapper.ToQuery(
+                        page: page,
+                        pageSize: pageSize,
+                        componentType: componentType,
+                        searchTerm: searchTerm);
 
-                // Query the paginated template catalog and return 200 OK.
+                // Query the paginated template catalog and return the mapped SDK response.
                 PagedResultDto<TemplateMetadataDto> result = await queryFacade.ListTemplatesAsync(
                         query: query,
                         cancellationToken: cancellationToken);
 
-                return Results.Ok(result);
+                return Results.Ok(value: TemplateMapper.ToPagedResponse(pagedDto: result));
         }
 }
 

@@ -1,6 +1,8 @@
+using ContentService.Api.Mapper;
 using ContentService.Application.Options;
 using ContentService.Facade.Dtos;
 using ContentService.Facade.Interfaces;
+using ContentService.Sdk.Models;
 using Microsoft.Extensions.Options;
 
 namespace ContentService.Api.Endpoints.Images;
@@ -18,7 +20,7 @@ internal static class GetImageMetadataEndpoint
         /// <param name="storageOptions">Configured local storage options.</param>
         /// <param name="queryFacade">The image query facade.</param>
         /// <param name="cancellationToken">Propagates client disconnects.</param>
-        /// <returns>An HTTP 200 OK response containing the <see cref="ImageMetadataDto"/>.</returns>
+        /// <returns>An HTTP 200 OK response containing the <see cref="ContentImageResponse"/>.</returns>
         public static async Task<IResult> HandleAsync(
                 string imageIdentifier,
                 HttpContext httpContext,
@@ -32,14 +34,14 @@ internal static class GetImageMetadataEndpoint
                         httpContext: httpContext,
                         localStorageNodeId: storageOptions.Value.StorageNodeId);
 
-                // Fetch image metadata locally or via peer forwarding, then return 200 OK.
+                // Fetch image metadata locally or via peer forwarding, then return the mapped SDK response.
                 ImageMetadataDto metadata = await queryFacade.GetImageMetadataAsync(
                         imageId: imageId,
                         cancellationToken: cancellationToken,
                         storageNodeId: storageNodeId,
                         allowPeerFallback: allowPeerFallback);
 
-                return Results.Ok(metadata);
+                return Results.Ok(value: ImageMapper.ToResponse(dto: metadata));
         }
 }
 

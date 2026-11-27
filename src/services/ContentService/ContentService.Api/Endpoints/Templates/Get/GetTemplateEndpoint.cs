@@ -1,3 +1,4 @@
+using ContentService.Api.Mapper;
 using ContentService.Facade.Dtos;
 using ContentService.Facade.Interfaces;
 
@@ -14,7 +15,7 @@ internal static class GetTemplateEndpoint
         /// <param name="id">The unique template identifier.</param>
         /// <param name="queryFacade">The CQS template query facade.</param>
         /// <param name="cancellationToken">Propagates client disconnects during lookup.</param>
-        /// <returns>An HTTP 200 OK response containing the template.</returns>
+        /// <returns>An HTTP 200 OK response containing the mapped template response.</returns>
         public static async Task<IResult> HandleAsync(
                 Guid id,
                 ITemplateQueryFacade queryFacade,
@@ -24,7 +25,7 @@ internal static class GetTemplateEndpoint
                         templateId: id,
                         cancellationToken: cancellationToken);
 
-                return Results.Ok(template);
+                return Results.Ok(value: TemplateMapper.ToResponse(dto: template));
         }
 }
 

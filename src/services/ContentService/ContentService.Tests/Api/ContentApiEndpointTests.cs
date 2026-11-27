@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using ContentService.Api.Contracts;
 using ContentService.Domain.Common;
 using ContentService.Domain.Entities;
 using ContentService.Domain.Enums;
@@ -80,9 +79,9 @@ public sealed class ContentApiEndpointTests
                 using HttpRequestMessage authCreateRequest = new(method: HttpMethod.Post, requestUri: "/api/v1/templates")
                 {
                         Content = JsonContent.Create(
-                                inputValue: new CreateTemplateRequest(
+                                inputValue: new ContentCreateTemplateRequest(
                                         Name: "Auth Precedence",
-                                        ComponentType: ContentService.Facade.Dtos.TemplateComponentTypeDto.Custom,
+                                        ComponentType: ContentTemplateComponentType.Custom,
                                         SchemaJson: "{}",
                                         ActorId: "spoofed-body-actor"),
                                 options: ApiEndpointTestFixtures.API_JSON_OPTIONS)

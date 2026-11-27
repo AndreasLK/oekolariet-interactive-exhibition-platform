@@ -1,8 +1,6 @@
 using ContentService.Api.Common;
-using ContentService.Api.Contracts;
 using ContentService.Api.Endpoints.Templates;
-using ContentService.Facade.Common;
-using ContentService.Facade.Dtos;
+using ContentService.Sdk.Models;
 
 namespace ContentService.Api.Endpoints;
 
@@ -26,25 +24,25 @@ internal static class TemplateEndpoints
 
                 // Map CRUD and image-reference endpoints with explicit OpenAPI status responses.
                 group.MapPost(pattern: ApiConstants.GROUP_ROOT_ROUTE, handler: CreateTemplateEndpoint.HandleAsync)
-                        .Produces<TemplateMetadataDto>(StatusCodes.Status201Created)
+                        .Produces<ContentTemplateResponse>(StatusCodes.Status201Created)
                         .ProducesProblem(StatusCodes.Status400BadRequest)
                         .ProducesProblem(StatusCodes.Status404NotFound);
 
                 group.MapGet(pattern: ApiConstants.GROUP_ROOT_ROUTE, handler: ListTemplatesEndpoint.HandleAsync)
-                        .Produces<PagedResultDto<TemplateMetadataDto>>(StatusCodes.Status200OK)
+                        .Produces<ContentPagedResponse<ContentTemplateResponse>>(StatusCodes.Status200OK)
                         .ProducesProblem(StatusCodes.Status400BadRequest);
 
                 group.MapGet(pattern: ApiConstants.RESOURCE_ID_ROUTE, handler: GetTemplateEndpoint.HandleAsync)
-                        .Produces<TemplateMetadataDto>(StatusCodes.Status200OK)
+                        .Produces<ContentTemplateResponse>(StatusCodes.Status200OK)
                         .ProducesProblem(StatusCodes.Status400BadRequest)
                         .ProducesProblem(StatusCodes.Status404NotFound);
 
                 group.MapGet(pattern: "/image-references/{id:guid}", handler: CheckImageTemplateReferenceEndpoint.HandleAsync)
-                        .Produces<ImageReferenceCheckResponse>(StatusCodes.Status200OK)
+                        .Produces<ContentImageTemplateReferenceResponse>(StatusCodes.Status200OK)
                         .ProducesProblem(StatusCodes.Status400BadRequest);
 
                 group.MapPut(pattern: ApiConstants.RESOURCE_ID_ROUTE, handler: UpdateTemplateEndpoint.HandleAsync)
-                        .Produces<TemplateMetadataDto>(StatusCodes.Status200OK)
+                        .Produces<ContentTemplateResponse>(StatusCodes.Status200OK)
                         .ProducesProblem(StatusCodes.Status400BadRequest)
                         .ProducesProblem(StatusCodes.Status404NotFound)
                         .ProducesProblem(StatusCodes.Status409Conflict);

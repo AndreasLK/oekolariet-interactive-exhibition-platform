@@ -1,7 +1,8 @@
 using ContentService.Api.Common;
-using ContentService.Api.Contracts;
+using ContentService.Api.Mapper;
 using ContentService.Facade.Dtos;
 using ContentService.Facade.Interfaces;
+using ContentService.Sdk.Models;
 
 namespace ContentService.Api.Endpoints.Templates;
 
@@ -18,32 +19,30 @@ internal static class UpdateTemplateEndpoint
         /// <param name="httpContext">The active HTTP context used to resolve trusted actor identity.</param>
         /// <param name="commandFacade">The CQS template command facade.</param>
         /// <param name="cancellationToken">Propagates client disconnects during transactional update.</param>
-        /// <returns>An HTTP 200 OK response containing the updated <see cref="TemplateMetadataDto"/>.</returns>
+        /// <returns>An HTTP 200 OK response containing the updated <see cref="ContentTemplateResponse"/>.</returns>
         public static async Task<IResult> HandleAsync(
                 Guid id,
-                UpdateTemplateRequest request,
+                ContentUpdateTemplateRequest request,
                 HttpContext httpContext,
                 ITemplateCommandFacade commandFacade,
                 CancellationToken cancellationToken)
         {
                 // Bind the route ID, concurrency stamp, and resolved actor into the update command.
-                UpdateTemplateCommandDto command = new()
-                {
-                        TemplateId = id,
-                        Name = request.Name,
-                        SchemaJson = request.SchemaJson,
-                        ExpectedConcurrencyStamp = request.ExpectedConcurrencyStamp,
-                        ActorId = RequestActorResolver.ResolveActorId(
-                                httpContext: httpContext,
-                                explicitActorId: request.ActorId)
-                };
+                string actorId = RequestActorResolver.ResolveActorId(
+                        httpContext: httpContext,
+                        explicitActorId: request.ActorId);
 
-                // Persist the updated template and return 200 OK.
+                UpdateTemplateCommandDto command = TemplateMapper.ToCommand(
+                        request: request,
+                        templateId: id,
+                        actorId: actorId);
+
+                // Persist the updated template and return the mapped SDK response.
                 TemplateMetadataDto updated = await commandFacade.UpdateTemplateAsync(
                         command: command,
                         cancellationToken: cancellationToken);
 
-                return Results.Ok(updated);
+                return Results.Ok(value: TemplateMapper.ToResponse(dto: updated));
         }
 }
 

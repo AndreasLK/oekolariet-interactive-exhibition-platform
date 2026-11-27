@@ -1,5 +1,7 @@
+using ContentService.Api.Mapper;
 using ContentService.Facade.Dtos;
 using ContentService.Facade.Interfaces;
+using ContentService.Sdk.Models;
 
 namespace ContentService.Api.Endpoints.Images;
 
@@ -14,7 +16,7 @@ internal static class GetImagesMetadataBatchEndpoint
         /// <param name="imageIds">The image identifiers to query.</param>
         /// <param name="queryFacade">The image query facade.</param>
         /// <param name="cancellationToken">Propagates client disconnects.</param>
-        /// <returns>An HTTP 200 OK response containing matching <see cref="ImageMetadataDto"/> entries.</returns>
+        /// <returns>An HTTP 200 OK response containing matching <see cref="ContentImageResponse"/> entries.</returns>
         public static async Task<IResult> HandleAsync(
                 IReadOnlyCollection<Guid> imageIds,
                 IImageQueryFacade queryFacade,
@@ -24,7 +26,7 @@ internal static class GetImagesMetadataBatchEndpoint
                         imageIds: imageIds,
                         cancellationToken: cancellationToken);
 
-                return Results.Ok(results);
+                return Results.Ok(value: ImageMapper.ToResponseList(dtos: results));
         }
 }
 
