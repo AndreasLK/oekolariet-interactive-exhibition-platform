@@ -23,6 +23,7 @@
                 <ProjectReference Include="..\ContentService.Domain\ContentService.Domain.csproj" />
                 <ProjectReference Include="..\ContentService.Facade\ContentService.Facade.csproj" />
                 <ProjectReference Include="..\ContentService.Infrastructure\ContentService.Infrastructure.csproj" />
+                <ProjectReference Include="..\ContentService.Sdk\ContentService.Sdk.csproj" />
         </ItemGroup>
 
 </Project>
