@@ -1,5 +1,6 @@
 using ContentService.Application.Interfaces;
 using ContentService.Infrastructure.Images;
+using ContentService.Infrastructure.Nodes;
 using ContentService.Infrastructure.Persistence;
 using ContentService.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -57,6 +58,11 @@ public static class DependencyInjection
                 services.AddScoped<ITemplateRepository, SqlServerTemplateRepository>();
                 services.AddScoped<IStorageQuotaMonitor, SqlServerStorageQuotaMonitor>();
                 services.AddSingleton<IImagePreviewGenerator, SkiaImagePreviewGenerator>();
+
+                // Register pooled HTTP client and Dapr peer-node/pub-sub clients for stateless cross-node pool calls.
+                services.AddHttpClient(name: DaprStorageNodeClient.DAPR_HTTP_CLIENT_NAME);
+                services.AddSingleton<IStorageNodeClient, DaprStorageNodeClient>();
+                services.AddSingleton<IPoolCoordinator, DaprPoolCoordinator>();
 
                 return services;
         }

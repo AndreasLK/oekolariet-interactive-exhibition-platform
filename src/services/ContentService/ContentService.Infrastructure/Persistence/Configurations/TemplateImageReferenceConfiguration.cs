@@ -30,10 +30,9 @@ internal sealed class TemplateImageReferenceConfiguration : IEntityTypeConfigura
                 // Index ImageId separately because TemplateId is first in the composite key; without this, DeleteImageUseCase would scan the whole table.
                 builder.HasIndex(reference => reference.ImageId);
 
-                // Restrict blocks physical SQL deletion of an Image row whenever any template still links to it (so templates and images never cascade-delete each other).
-                builder.HasOne<ImageEntity>()
-                        .WithMany()
-                        .HasForeignKey(reference => reference.ImageId)
-                        .OnDelete(DeleteBehavior.Restrict);
+                // WHY: Do NOT configure a local SQL Server foreign key to Images here.
+                // In multi-node deployments, a template stored on node-1 can reference an image stored on node-2's separate database;
+                // a local SQL FK would crash cross-node template saves with SQL Error 547.
+                // Cross-node referential integrity is enforced at the application layer via ReferencedImageVerifier and DeleteImageUseCase.
         }
 }
