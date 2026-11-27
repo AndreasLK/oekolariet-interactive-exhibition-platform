@@ -8,7 +8,9 @@
                 @if (this.IsOpen)
                 {
                         <Box Modifier="@this.BuildBodyModifier()">
-                                <ContentTemplateGallery OnTemplateSelected="@this.HandleTemplateSelectedAsync"
+                                @* Use OnSelectionChanged so toggling the blue dot or preview updates pending selection without closing the modal. *@
+                                <ContentTemplateGallery SelectedTemplateId="@this._pendingSelectedTemplate?.Id"
+                                                        OnSelectionChanged="@this.HandlePendingSelectionChanged"
                                                         DefaultComponentType="@this.DefaultComponentType"
                                                         AllowManage="@this.AllowManage"
                                                         PageSize="@this.PageSize" />
@@ -16,10 +18,17 @@
                 }
         </ChildContent>
         <FooterContent>
-                <Row HorizontalArrangement="Arrangement.End" Modifier="@UIModifier.New.FillMaxWidth()">
-                        <ActionButton Text="Close"
+                <Row HorizontalArrangement="Arrangement.End"
+                     VerticalAlignment="VerticalAlignment.Center"
+                     Gap="0.75rem"
+                     Modifier="@UIModifier.New.FillMaxWidth()">
+                        <ActionButton Text="Luk"
                                       Variant="ActionButton.ButtonVariant.Outline"
                                       OnClick="@this.HandleCloseAsync" />
+                        <ActionButton Text="Vælg"
+                                      Variant="ActionButton.ButtonVariant.Solid"
+                                      IsDisabled="@(this._pendingSelectedTemplate is null)"
+                                      OnClick="@this.HandleConfirmSelectionAsync" />
                 </Row>
         </FooterContent>
 </Modal>

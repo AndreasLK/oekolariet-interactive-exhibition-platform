@@ -9,10 +9,12 @@ namespace ContentService.Components.Components;
 /// </summary>
 public sealed partial class ContentTemplatePickerModal : ComponentBase
 {
-        private const string DEFAULT_TITLE = "Select Template";
+        private const string DEFAULT_TITLE = "Vælg skabelon";
         private const int DEFAULT_PAGE_SIZE = 12;
-        private const double MODAL_MAX_WIDTH_PX = 1080;
         private const string BODY_MAX_HEIGHT = "70vh";
+
+        private ContentTemplateMetadata? _pendingSelectedTemplate;
+        private bool _wasOpen;
 
         /// <summary>
         /// Gets or sets a value indicating whether the template picker modal is open.
@@ -62,9 +64,35 @@ public sealed partial class ContentTemplatePickerModal : ComponentBase
         [Parameter]
         public bool CloseOnSelect { get; set; } = true;
 
-        private async Task HandleTemplateSelectedAsync(ContentTemplateMetadata template)
+        /// <inheritdoc />
+        protected override void OnParametersSet()
         {
-                await this.OnTemplateSelected.InvokeAsync(arg: template);
+                // Clear any stale pending selection whenever the modal closes or freshly opens.
+                if (!this.IsOpen)
+                {
+                        this._wasOpen = false;
+                        this._pendingSelectedTemplate = null;
+                        return;
+                }
+
+                if (!this._wasOpen)
+                {
+                        this._wasOpen = true;
+                        this._pendingSelectedTemplate = null;
+                }
+        }
+
+        private void HandlePendingSelectionChanged(ContentTemplateMetadata? template) =>
+                this._pendingSelectedTemplate = template;
+
+        private async Task HandleConfirmSelectionAsync()
+        {
+                if (this._pendingSelectedTemplate is null)
+                {
+                        return;
+                }
+
+                await this.OnTemplateSelected.InvokeAsync(arg: this._pendingSelectedTemplate);
                 if (this.CloseOnSelect)
                 {
                         await this.IsOpenChanged.InvokeAsync(arg: false);
@@ -75,7 +103,6 @@ public sealed partial class ContentTemplatePickerModal : ComponentBase
 
         private UIModifier BuildModalModifier() =>
                 UIModifier.New
-                        .MaxWidth(px: MODAL_MAX_WIDTH_PX)
                         .FillMaxWidth();
 
         private UIModifier BuildBodyModifier() =>
