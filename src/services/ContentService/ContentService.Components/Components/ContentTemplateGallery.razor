@@ -69,7 +69,7 @@
         else
         {
                 <Grid MinColumnWidth="@TEMPLATE_CARD_MIN_WIDTH" Gap="1rem" Modifier="@UIModifier.New.FillMaxWidth()">
-                        @foreach (ContentTemplateMetadata template in this._templates)
+                        @foreach (ContentTemplateResponse template in this._templates)
                         {
                                 bool isSelectable = this.IsSelectionEnabled();
                                 bool isSelected = isSelectable && this._selectedTemplateId == template.Id;

@@ -13,7 +13,7 @@ public sealed partial class ContentTemplatePickerModal : ComponentBase
         private const int DEFAULT_PAGE_SIZE = 12;
         private const string BODY_MAX_HEIGHT = "70vh";
 
-        private ContentTemplateMetadata? _pendingSelectedTemplate;
+        private ContentTemplateResponse? _pendingSelectedTemplate;
         private bool _wasOpen;
 
         /// <summary>
@@ -38,7 +38,7 @@ public sealed partial class ContentTemplatePickerModal : ComponentBase
         /// Gets or sets the callback invoked when the user selects a template.
         /// </summary>
         [Parameter]
-        public EventCallback<ContentTemplateMetadata> OnTemplateSelected { get; set; }
+        public EventCallback<ContentTemplateResponse> OnTemplateSelected { get; set; }
 
         /// <summary>
         /// Gets or sets the optional default component type filter applied when the picker opens.
@@ -82,7 +82,7 @@ public sealed partial class ContentTemplatePickerModal : ComponentBase
                 }
         }
 
-        private void HandlePendingSelectionChanged(ContentTemplateMetadata? template) =>
+        private void HandlePendingSelectionChanged(ContentTemplateResponse? template) =>
                 this._pendingSelectedTemplate = template;
 
         private async Task HandleConfirmSelectionAsync()

@@ -31,7 +31,7 @@ public sealed partial class ContentTemplateGallery : ComponentBase
                 }
                 """;
 
-        private readonly List<ContentTemplateMetadata> _templates = [];
+        private readonly List<ContentTemplateResponse> _templates = [];
         private int _totalCount;
         private int _currentPage = FIRST_PAGE;
         private int _totalPages;
@@ -44,7 +44,7 @@ public sealed partial class ContentTemplateGallery : ComponentBase
         private bool _isEditorOpen;
         private bool _isPreviewTabActive;
         private bool _isSaving;
-        private ContentTemplateMetadata? _editingTemplate;
+        private ContentTemplateResponse? _editingTemplate;
         private string _draftName = string.Empty;
         private ContentTemplateComponentType _draftComponentType = ContentTemplateComponentType.InfoScreen;
         private string _draftSchemaJson = DEFAULT_TEMPLATE_JSON;
@@ -62,7 +62,7 @@ public sealed partial class ContentTemplateGallery : ComponentBase
         /// Setting this parameter enables selection mode on template cards, matching <see cref="ContentImageGallery.OnImageSelected"/>.
         /// </remarks>
         [Parameter]
-        public EventCallback<ContentTemplateMetadata> OnTemplateSelected { get; set; }
+        public EventCallback<ContentTemplateResponse> OnTemplateSelected { get; set; }
 
         /// <summary>
         /// Gets or sets the controlled selected template identifier used by picker modals with explicit confirmation.
@@ -74,7 +74,7 @@ public sealed partial class ContentTemplateGallery : ComponentBase
         /// Gets or sets the callback invoked when pending selection changes (including deselection) without immediately confirming.
         /// </summary>
         [Parameter]
-        public EventCallback<ContentTemplateMetadata?> OnSelectionChanged { get; set; }
+        public EventCallback<ContentTemplateResponse?> OnSelectionChanged { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether create, edit, and archive actions are enabled.
@@ -136,7 +136,7 @@ public sealed partial class ContentTemplateGallery : ComponentBase
                 try
                 {
                         int clampedPageSize = Math.Max(val1: MIN_PAGE_SIZE, val2: this.PageSize);
-                        ContentPagedResult<ContentTemplateMetadata> page = await this.TemplateClient.ListTemplatesAsync(
+                        ContentPagedResponse<ContentTemplateResponse> page = await this.TemplateClient.ListTemplatesAsync(
                                 query: new ContentTemplateQuery
                                 {
                                         Page = this._currentPage,
@@ -212,7 +212,7 @@ public sealed partial class ContentTemplateGallery : ComponentBase
                 this._isEditorOpen = true;
         }
 
-        private void HandleOpenEditModal(ContentTemplateMetadata template)
+        private void HandleOpenEditModal(ContentTemplateResponse template)
         {
                 this._editingTemplate = template;
                 this._draftName = template.Name;
@@ -243,24 +243,21 @@ public sealed partial class ContentTemplateGallery : ComponentBase
                 {
                         if (this._editingTemplate is null)
                         {
-                                await this.TemplateClient.CreateTemplateAsync(request: new CreateContentTemplateRequest
-                                {
-                                        Name = this._draftName.Trim(),
-                                        ComponentType = this._draftComponentType,
-                                        SchemaJson = this._draftSchemaJson
-                                });
+                                await this.TemplateClient.CreateTemplateAsync(command: new ContentCreateTemplateRequest(
+                                        Name: this._draftName.Trim(),
+                                        ComponentType: this._draftComponentType,
+                                        SchemaJson: this._draftSchemaJson));
                                 this.Toasts.ShowSuccess(messageText: $"Created template '{this._draftName.Trim()}'.");
                         }
                         else
                         {
+                                // Pass ExpectedConcurrencyStamp so concurrent edits by another curator fail with 409 Conflict instead of silently overwriting.
                                 await this.TemplateClient.UpdateTemplateAsync(
                                         templateId: this._editingTemplate.Id,
-                                        request: new UpdateContentTemplateRequest
-                                        {
-                                                Name = this._draftName.Trim(),
-                                                SchemaJson = this._draftSchemaJson,
-                                                ExpectedConcurrencyStamp = this._editingTemplate.ConcurrencyStamp
-                                        });
+                                        command: new ContentUpdateTemplateRequest(
+                                                Name: this._draftName.Trim(),
+                                                SchemaJson: this._draftSchemaJson,
+                                                ExpectedConcurrencyStamp: this._editingTemplate.ConcurrencyStamp));
                                 this.Toasts.ShowSuccess(messageText: $"Updated template '{this._draftName.Trim()}'.");
                         }
 
@@ -277,7 +274,7 @@ public sealed partial class ContentTemplateGallery : ComponentBase
                 }
         }
 
-        private async Task HandleArchiveTemplateAsync(ContentTemplateMetadata template)
+        private async Task HandleArchiveTemplateAsync(ContentTemplateResponse template)
         {
                 try
                 {
@@ -299,7 +296,7 @@ public sealed partial class ContentTemplateGallery : ComponentBase
         private bool IsSelectionEnabled() =>
                 this.OnTemplateSelected.HasDelegate || this.OnSelectionChanged.HasDelegate;
 
-        private async Task HandleTemplateSelectionToggledAsync(ContentTemplateMetadata template)
+        private async Task HandleTemplateSelectionToggledAsync(ContentTemplateResponse template)
         {
                 if (!this.IsSelectionEnabled())
                 {

@@ -47,7 +47,7 @@ public sealed class ContentImageDisplayFormatterTests
                         minute: 0,
                         second: 0,
                         offset: TimeSpan.Zero);
-                ContentImageMetadata metadata = new()
+                ContentImageResponse metadata = new()
                 {
                         Id = Guid.NewGuid(),
                         PictureReference = $"picture.node-1.{Guid.NewGuid():D}",

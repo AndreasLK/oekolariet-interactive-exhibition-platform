@@ -4,20 +4,31 @@ using ContentService.Sdk.Models;
 namespace ContentService.Sdk.Clients;
 
 /// <summary>
-/// Typed client contract for managing exhibition templates via <c>ContentService.Api</c>.
+/// Typed HTTP client contract for creating, listing, retrieving, updating, archiving,
+/// and checking image references on ContentService exhibition templates.
 /// </summary>
 public interface IContentServiceTemplateClient
 {
         /// <summary>
-        /// Lists active exhibition templates with pagination and optional component-type or name filtering.
+        /// Creates a new exhibition template in ContentService.
         /// </summary>
-        /// <param name="page">1-based page number (defaults to 1).</param>
-        /// <param name="pageSize">Maximum items per page (defaults to 25).</param>
-        /// <param name="componentType">Optional component type filter.</param>
-        /// <param name="searchTerm">Optional search text matched against template names.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>A paginated catalog page of template metadata.</returns>
-        public Task<ContentPagedResult<ContentTemplateMetadata>> ListTemplatesAsync(
+        /// <param name="command">The template name, target component type, schema JSON, and optional actor attribution.</param>
+        /// <param name="cancellationToken">A token to cancel the HTTP request.</param>
+        /// <returns>The newly persisted <see cref="ContentTemplateResponse"/>.</returns>
+        public Task<ContentTemplateResponse> CreateTemplateAsync(
+                ContentCreateTemplateRequest command,
+                CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Lists active exhibition templates using 1-based pagination and optional filtering.
+        /// </summary>
+        /// <param name="page">The 1-based page index to retrieve.</param>
+        /// <param name="pageSize">The maximum number of items per page.</param>
+        /// <param name="componentType">Optional component category filter.</param>
+        /// <param name="searchTerm">Optional case-insensitive template name filter.</param>
+        /// <param name="cancellationToken">A token to cancel the HTTP request.</param>
+        /// <returns>A <see cref="ContentPagedResponse{T}"/> containing the requested page of templates.</returns>
+        public Task<ContentPagedResponse<ContentTemplateResponse>> ListTemplatesAsync(
                 int page = SdkConstants.DEFAULT_PAGE,
                 int pageSize = SdkConstants.DEFAULT_PAGE_SIZE,
                 ContentTemplateComponentType? componentType = null,
@@ -25,55 +36,56 @@ public interface IContentServiceTemplateClient
                 CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Lists active exhibition templates using structured filter and pagination criteria.
+        /// Lists active exhibition templates matching pagination, component type, and search filters.
         /// </summary>
-        /// <param name="query">Structured query criteria including component type and search filters.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>A paginated catalog page of template metadata.</returns>
-        public Task<ContentPagedResult<ContentTemplateMetadata>> ListTemplatesAsync(
+        /// <param name="query">The template catalog query parameters.</param>
+        /// <param name="cancellationToken">A token to cancel the HTTP request.</param>
+        /// <returns>A <see cref="ContentPagedResponse{T}"/> containing matching template responses.</returns>
+        public Task<ContentPagedResponse<ContentTemplateResponse>> ListTemplatesAsync(
                 ContentTemplateQuery query,
                 CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Retrieves metadata and schema JSON for a single template by identifier.
+        /// Retrieves the metadata and JSON schema for a specific exhibition template.
         /// </summary>
-        /// <param name="templateId">The unique template identifier.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>The template metadata and schema payload.</returns>
-        public Task<ContentTemplateMetadata> GetTemplateAsync(
+        /// <param name="templateId">The unique identifier of the template.</param>
+        /// <param name="cancellationToken">A token to cancel the HTTP request.</param>
+        /// <returns>The <see cref="ContentTemplateResponse"/> for the requested template.</returns>
+        public Task<ContentTemplateResponse> GetTemplateAsync(
                 Guid templateId,
                 CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Creates a new versioned exhibition template.
+        /// Updates an existing exhibition template with optimistic concurrency protection.
         /// </summary>
-        /// <param name="request">Template creation payload including name, component type, and schema JSON.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>The created template metadata.</returns>
-        public Task<ContentTemplateMetadata> CreateTemplateAsync(
-                CreateContentTemplateRequest request,
-                CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Updates an existing template's name and schema JSON using optimistic concurrency control.
-        /// </summary>
-        /// <param name="templateId">The unique template identifier.</param>
-        /// <param name="request">Updated template metadata and expected concurrency stamp.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>The updated template metadata with its rotated concurrency stamp.</returns>
-        public Task<ContentTemplateMetadata> UpdateTemplateAsync(
+        /// <param name="templateId">The unique identifier of the template to update.</param>
+        /// <param name="command">The updated template name, schema JSON, and expected concurrency stamp.</param>
+        /// <param name="cancellationToken">A token to cancel the HTTP request.</param>
+        /// <returns>The updated <see cref="ContentTemplateResponse"/> with an incremented schema version and rotated stamp.</returns>
+        public Task<ContentTemplateResponse> UpdateTemplateAsync(
                 Guid templateId,
-                UpdateContentTemplateRequest request,
+                ContentUpdateTemplateRequest command,
                 CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Archives an existing exhibition template.
+        /// Archives an active exhibition template in ContentService.
         /// </summary>
-        /// <param name="templateId">The unique template identifier.</param>
-        /// <param name="actorId">Optional actor identifier overriding configured default attribution.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <param name="templateId">The unique identifier of the template to archive.</param>
+        /// <param name="actorId">Optional audit actor identifier overriding <c>ContentServiceClientOptions.DefaultActorId</c>.</param>
+        /// <param name="cancellationToken">A token to cancel the HTTP request.</param>
+        /// <returns>A task representing the asynchronous archival operation.</returns>
         public Task DeleteTemplateAsync(
                 Guid templateId,
                 string? actorId = null,
+                CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Checks whether any active template on the node references a given exhibition image.
+        /// </summary>
+        /// <param name="imageId">The unique identifier of the image to check.</param>
+        /// <param name="cancellationToken">A token to cancel the HTTP request.</param>
+        /// <returns>A <see cref="ContentImageTemplateReferenceResponse"/> indicating whether any active template references <paramref name="imageId"/>.</returns>
+        public Task<ContentImageTemplateReferenceResponse> IsImageReferencedByTemplateAsync(
+                Guid imageId,
                 CancellationToken cancellationToken = default);
 }

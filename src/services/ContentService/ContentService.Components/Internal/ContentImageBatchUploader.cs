@@ -18,6 +18,14 @@ internal sealed record SelectedImageFile(
 /// <summary>
 /// Streams queued <see cref="SelectedImageFile"/> batches sequentially to <see cref="IContentServiceImageClient"/> with bounded WASM memory usage.
 /// </summary>
+/// <remarks>
+/// Non-standard sequential upload: Instead of <c>Task.WhenAll</c>, files are streamed one at a time.
+/// <para>
+/// What we gain: Peak Blazor WebAssembly memory stays bounded to a single 10 MiB <c>IBrowserFile</c> stream
+/// instead of up to 50 concurrent streams (500 MiB) that would OOM the browser tab.
+/// What we lose: Total wall-clock upload time is the sum of individual file uploads rather than parallel.
+/// </para>
+/// </remarks>
 internal static class ContentImageBatchUploader
 {
         private const int BYTES_PER_KIBIBYTE = 1024;
@@ -36,7 +44,14 @@ internal static class ContentImageBatchUploader
         /// <summary>
         /// Uploads queued files sequentially so browser WASM memory only holds one active file stream at a time.
         /// </summary>
-        public static async Task<(List<ContentImageMetadata> Uploaded, int FailedCount)> UploadBatchAsync(
+        /// <param name="imageClient">The ContentService image SDK client.</param>
+        /// <param name="toasts">Toast service used to surface per-file validation or transport failures.</param>
+        /// <param name="files">The queued files selected by the user.</param>
+        /// <param name="baseAlbumPath">Optional root album path prepended to each file's relative folder.</param>
+        /// <param name="altText">Optional shared alt text applied to all files in the batch.</param>
+        /// <param name="tags">Optional shared comma-separated tags applied to all files in the batch.</param>
+        /// <returns>The list of successfully uploaded images and the count of failed files.</returns>
+        public static async Task<(List<ContentImageResponse> Uploaded, int FailedCount)> UploadBatchAsync(
                 IContentServiceImageClient imageClient,
                 ToastService toasts,
                 IReadOnlyList<SelectedImageFile> files,
@@ -44,12 +59,12 @@ internal static class ContentImageBatchUploader
                 string altText,
                 string tags)
         {
-                List<ContentImageMetadata> uploaded = [];
+                List<ContentImageResponse> uploaded = [];
                 int failedCount = 0;
 
                 foreach (SelectedImageFile selectedFile in files)
                 {
-                        ContentImageMetadata? created = await TryUploadSingleFileAsync(
+                        ContentImageResponse? created = await TryUploadSingleFileAsync(
                                 imageClient: imageClient,
                                 toasts: toasts,
                                 selectedFile: selectedFile,
@@ -69,7 +84,7 @@ internal static class ContentImageBatchUploader
                 return (uploaded, failedCount);
         }
 
-        private static async Task<ContentImageMetadata?> TryUploadSingleFileAsync(
+        private static async Task<ContentImageResponse?> TryUploadSingleFileAsync(
                 IContentServiceImageClient imageClient,
                 ToastService toasts,
                 SelectedImageFile selectedFile,
@@ -90,7 +105,7 @@ internal static class ContentImageBatchUploader
                                 rawContentType: selectedFile.File.ContentType,
                                 fileName: fileName);
 
-                        UploadImageRequest request = new()
+                        ContentUploadImageRequest request = new()
                         {
                                 Content = payloadStream,
                                 FileName = fileName,
@@ -100,7 +115,7 @@ internal static class ContentImageBatchUploader
                                 Tags = string.IsNullOrWhiteSpace(value: tags) ? null : tags.Trim()
                         };
 
-                        return await imageClient.UploadImageAsync(request: request);
+                        return await imageClient.UploadImageAsync(command: request);
                 }
                 catch (IOException ex)
                 {
@@ -130,6 +145,9 @@ internal static class ContentImageBatchUploader
         /// <summary>
         /// Merges the base album path with any folder-upload subdirectory prefix extracted from <see cref="SelectedImageFile.RelativePath"/>.
         /// </summary>
+        /// <param name="baseAlbumPath">Optional base album path chosen in the upload modal.</param>
+        /// <param name="selectedFile">The selected file whose relative path may contain nested folders.</param>
+        /// <returns>The combined normalized album path, or <see langword="null"/> for root.</returns>
         public static string? ResolveTargetAlbumPath(
                 string? baseAlbumPath,
                 SelectedImageFile selectedFile)

@@ -26,11 +26,11 @@ public sealed class ContentPickerModalTests : BunitContext
         [Fact]
         public void ContentTemplatePickerModal_SelectTemplate_InvokesCallbacksAndCloses()
         {
-                ContentTemplateMetadata template = CreateTemplate(name: "Quiz Intro");
+                ContentTemplateResponse template = CreateTemplate(name: "Quiz Intro");
                 this.Services.AddSingleton<IContentServiceTemplateClient>(implementationInstance: new StubTemplateClient(templates: [template]));
                 this.Services.AddPersonalUILibrary();
 
-                ContentTemplateMetadata? picked = null;
+                ContentTemplateResponse? picked = null;
                 bool isOpen = true;
 
                 IRenderedComponent<ContentTemplatePickerModal> cut = this.Render<ContentTemplatePickerModal>(
@@ -66,12 +66,12 @@ public sealed class ContentPickerModalTests : BunitContext
         [Fact]
         public void ContentImagePickerModal_ClosedVsOpen_DefersLoadUntilOpenAndForwardsSelection()
         {
-                ContentImageMetadata image = CreateImage(fileName: "leaf.png");
+                ContentImageResponse image = CreateImage(fileName: "leaf.png");
                 StubImageClient imageClient = new(images: [image]);
                 this.Services.AddSingleton<IContentServiceImageClient>(implementationInstance: imageClient);
                 this.Services.AddPersonalUILibrary();
 
-                ContentImageMetadata? picked = null;
+                ContentImageResponse? picked = null;
                 bool isOpen = false;
 
                 IRenderedComponent<ContentImagePickerModal> cut = this.Render<ContentImagePickerModal>(
@@ -89,10 +89,10 @@ public sealed class ContentPickerModalTests : BunitContext
                 Assert.True(condition: imageClient.ListCallCount > 0);
         }
 
-        private static ContentTemplateMetadata CreateTemplate(string name)
+        private static ContentTemplateResponse CreateTemplate(string name)
         {
                 DateTimeOffset now = DateTimeOffset.UtcNow;
-                return new ContentTemplateMetadata
+                return new ContentTemplateResponse
                 {
                         Id = Guid.NewGuid(),
                         ExternalId = $"template_{Guid.NewGuid():N}",
@@ -108,7 +108,7 @@ public sealed class ContentPickerModalTests : BunitContext
                 };
         }
 
-        private static ContentImageMetadata CreateImage(string fileName) =>
+        private static ContentImageResponse CreateImage(string fileName) =>
                 new()
                 {
                         Id = Guid.NewGuid(),
@@ -122,9 +122,9 @@ public sealed class ContentPickerModalTests : BunitContext
                         ConcurrencyStamp = Guid.NewGuid()
                 };
 
-        private sealed class StubTemplateClient(IReadOnlyList<ContentTemplateMetadata> templates) : IContentServiceTemplateClient
+        private sealed class StubTemplateClient(IReadOnlyList<ContentTemplateResponse> templates) : IContentServiceTemplateClient
         {
-                public Task<ContentPagedResult<ContentTemplateMetadata>> ListTemplatesAsync(
+                public Task<ContentPagedResponse<ContentTemplateResponse>> ListTemplatesAsync(
                         int page = 1,
                         int pageSize = 25,
                         ContentTemplateComponentType? componentType = null,
@@ -134,11 +134,11 @@ public sealed class ContentPickerModalTests : BunitContext
                                 query: new ContentTemplateQuery { Page = page, PageSize = pageSize, ComponentType = componentType, SearchTerm = searchTerm },
                                 cancellationToken: cancellationToken);
 
-                public Task<ContentPagedResult<ContentTemplateMetadata>> ListTemplatesAsync(
+                public Task<ContentPagedResponse<ContentTemplateResponse>> ListTemplatesAsync(
                         ContentTemplateQuery query,
                         CancellationToken cancellationToken = default)
                 {
-                        return Task.FromResult(result: new ContentPagedResult<ContentTemplateMetadata>
+                        return Task.FromResult(result: new ContentPagedResponse<ContentTemplateResponse>
                         {
                                 Items = templates,
                                 Page = 1,
@@ -147,36 +147,39 @@ public sealed class ContentPickerModalTests : BunitContext
                         });
                 }
 
-                public Task<ContentTemplateMetadata> GetTemplateAsync(Guid templateId, CancellationToken cancellationToken = default) =>
+                public Task<ContentTemplateResponse> GetTemplateAsync(Guid templateId, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
 
-                public Task<ContentTemplateMetadata> CreateTemplateAsync(CreateContentTemplateRequest request, CancellationToken cancellationToken = default) =>
+                public Task<ContentTemplateResponse> CreateTemplateAsync(ContentCreateTemplateRequest command, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
 
-                public Task<ContentTemplateMetadata> UpdateTemplateAsync(Guid templateId, UpdateContentTemplateRequest request, CancellationToken cancellationToken = default) =>
+                public Task<ContentTemplateResponse> UpdateTemplateAsync(Guid templateId, ContentUpdateTemplateRequest command, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
 
                 public Task DeleteTemplateAsync(Guid templateId, string? actorId = null, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
+
+                public Task<ContentImageTemplateReferenceResponse> IsImageReferencedByTemplateAsync(Guid imageId, CancellationToken cancellationToken = default) =>
+                        Task.FromResult(result: new ContentImageTemplateReferenceResponse(IsReferenced: false));
         }
 
-        private sealed class StubImageClient(IReadOnlyList<ContentImageMetadata> images) : IContentServiceImageClient
+        private sealed class StubImageClient(IReadOnlyList<ContentImageResponse> images) : IContentServiceImageClient
         {
                 public int ListCallCount { get; private set; }
 
-                public Task<ContentPagedResult<ContentImageMetadata>> ListImagesAsync(
+                public Task<ContentPagedResponse<ContentImageResponse>> ListImagesAsync(
                         int page = 1,
                         int pageSize = 24,
                         string? searchTerm = null,
                         CancellationToken cancellationToken = default) =>
                         this.ListImagesAsync(query: new ContentImageQuery { Page = page, PageSize = pageSize, SearchTerm = searchTerm }, cancellationToken: cancellationToken);
 
-                public Task<ContentPagedResult<ContentImageMetadata>> ListImagesAsync(
+                public Task<ContentPagedResponse<ContentImageResponse>> ListImagesAsync(
                         ContentImageQuery query,
                         CancellationToken cancellationToken = default)
                 {
                         this.ListCallCount++;
-                        return Task.FromResult(result: new ContentPagedResult<ContentImageMetadata>
+                        return Task.FromResult(result: new ContentPagedResponse<ContentImageResponse>
                         {
                                 Items = images,
                                 Page = 1,
@@ -188,24 +191,48 @@ public sealed class ContentPickerModalTests : BunitContext
                 public Task<IReadOnlyList<string>> ListAlbumsAsync(string? parentPath = null, CancellationToken cancellationToken = default) =>
                         Task.FromResult<IReadOnlyList<string>>(result: []);
 
-                public Task<ContentImageMetadata> UpdateImageMetadataAsync(Guid imageId, UpdateImageMetadataRequest request, CancellationToken cancellationToken = default) =>
+                public Task<ContentImageResponse> UpdateImageMetadataAsync(Guid imageId, ContentUpdateImageMetadataRequest command, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
 
-                public Task<ContentImageMetadata> UploadImageAsync(UploadImageRequest request, CancellationToken cancellationToken = default) =>
+                public Task<ContentImageResponse> UpdateImageMetadataAsync(string imageIdentifier, ContentUpdateImageMetadataRequest command, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
 
-                public Task<ContentImageDownload> DownloadImageAsync(Guid imageId, CancellationToken cancellationToken = default) =>
+                public Task<IReadOnlyList<ContentImageResponse>> GetImagesMetadataBatchAsync(IReadOnlyCollection<Guid> imageIds, CancellationToken cancellationToken = default) =>
+                        Task.FromResult<IReadOnlyList<ContentImageResponse>>(result: []);
+
+                public Task<ContentImageResponse> UploadImageAsync(ContentUploadImageRequest command, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
 
-                public Task<ContentImageDownload> DownloadImagePreviewAsync(Guid imageId, CancellationToken cancellationToken = default) =>
+                public Task<ContentImageDownloadResponse> DownloadImageAsync(Guid imageId, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
 
-                public Task<ContentImageMetadata> GetImageMetadataAsync(Guid imageId, CancellationToken cancellationToken = default) =>
+                public Task<ContentImageDownloadResponse> DownloadImageAsync(string imageIdentifier, CancellationToken cancellationToken = default) =>
+                        throw new NotSupportedException();
+
+                public Task<ContentImageDownloadResponse> DownloadImagePreviewAsync(Guid imageId, CancellationToken cancellationToken = default) =>
+                        throw new NotSupportedException();
+
+                public Task<ContentImageDownloadResponse> DownloadImagePreviewAsync(string imageIdentifier, CancellationToken cancellationToken = default) =>
+                        throw new NotSupportedException();
+
+                public Task<ContentImageResponse> GetImageMetadataAsync(Guid imageId, CancellationToken cancellationToken = default) =>
+                        throw new NotSupportedException();
+
+                public Task<ContentImageResponse> GetImageMetadataAsync(string imageIdentifier, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
 
                 public Task DeleteImageAsync(Guid imageId, string? actorId = null, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
 
+                public Task DeleteImageAsync(string imageIdentifier, string? actorId = null, CancellationToken cancellationToken = default) =>
+                        throw new NotSupportedException();
+
                 public Uri GetImageContentUri(Guid imageId) => new($"https://example.invalid/api/images/{imageId}/content");
+
+                public Uri GetImageContentUri(string imageIdentifier) => new($"https://example.invalid/api/images/{imageIdentifier}/content");
+
+                public Uri GetImagePreviewUri(Guid imageId) => new($"https://example.invalid/api/images/{imageId}/preview");
+
+                public Uri GetImagePreviewUri(string imageIdentifier) => new($"https://example.invalid/api/images/{imageIdentifier}/preview");
         }
 }

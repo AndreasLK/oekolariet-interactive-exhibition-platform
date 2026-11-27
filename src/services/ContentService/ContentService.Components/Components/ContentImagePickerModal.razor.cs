@@ -13,7 +13,7 @@ public sealed partial class ContentImagePickerModal : ComponentBase
         private const int DEFAULT_PAGE_SIZE = 24;
         private const string BODY_MAX_HEIGHT = "70vh";
 
-        private ContentImageMetadata? _pendingSelectedImage;
+        private ContentImageResponse? _pendingSelectedImage;
         private bool _wasOpen;
 
         /// <summary>
@@ -38,7 +38,7 @@ public sealed partial class ContentImagePickerModal : ComponentBase
         /// Gets or sets the callback invoked when the user selects an image.
         /// </summary>
         [Parameter]
-        public EventCallback<ContentImageMetadata> OnImageSelected { get; set; }
+        public EventCallback<ContentImageResponse> OnImageSelected { get; set; }
 
         /// <summary>
         /// Gets or sets the optional default recursive album path opened by the embedded gallery.
@@ -94,7 +94,7 @@ public sealed partial class ContentImagePickerModal : ComponentBase
                 }
         }
 
-        private void HandlePendingSelectionChanged(ContentImageMetadata? image) =>
+        private void HandlePendingSelectionChanged(ContentImageResponse? image) =>
                 this._pendingSelectedImage = image;
 
         private async Task HandleConfirmSelectionAsync()

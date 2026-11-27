@@ -38,8 +38,8 @@ public sealed partial class Home : ComponentBase, IDisposable
         private const string PLASTIK_ALBUM = "Genbrug/Plastik";
 
         private readonly CancellationTokenSource _disposeCts = new();
-        private ContentImageMetadata? _selectedImage;
-        private ContentTemplateMetadata? _selectedTemplate;
+        private ContentImageResponse? _selectedImage;
+        private ContentTemplateResponse? _selectedTemplate;
         private string? _activeHostAlbum;
         private bool _lockHostAlbum;
         private bool _isTestingDownload;
@@ -63,7 +63,9 @@ public sealed partial class Home : ComponentBase, IDisposable
                         return;
                 }
 
-                // Defer below-the-fold template gallery loading so the above-the-fold image library renders and fetches first.
+                // Non-standard render yield: A 1 ms Task.Delay lets Blazor WASM flush the first paint and start
+                // above-the-fold image requests before ContentTemplateGallery mounts and competes for browser HTTP connections.
+                // Loss: Delays template gallery mount by one render frame.
                 try
                 {
                         await Task.Delay(millisecondsDelay: DEFER_BELOW_FOLD_DELAY_MILLISECONDS, cancellationToken: this._disposeCts.Token);
@@ -109,7 +111,7 @@ public sealed partial class Home : ComponentBase, IDisposable
         /// <summary>
         /// Receives the image picked inside <c>ContentImageGallery</c> or <c>ContentImagePickerModal</c> and resets any stale download verification message.
         /// </summary>
-        private Task HandleImageSelectedAsync(ContentImageMetadata selectedImage)
+        private Task HandleImageSelectedAsync(ContentImageResponse selectedImage)
         {
                 // Clear previous download verification summary whenever a different image is chosen.
                 this._selectedImage = selectedImage;
@@ -121,7 +123,7 @@ public sealed partial class Home : ComponentBase, IDisposable
         /// <summary>
         /// Receives the template picked inside <c>ContentTemplateGallery</c> or <c>ContentTemplatePickerModal</c>.
         /// </summary>
-        private Task HandleTemplateSelectedAsync(ContentTemplateMetadata selectedTemplate)
+        private Task HandleTemplateSelectedAsync(ContentTemplateResponse selectedTemplate)
         {
                 this._selectedTemplate = selectedTemplate;
                 this.Toasts.ShowInfo(messageText: $"Selected template '{selectedTemplate.Name}' ({selectedTemplate.ComponentType}).");
@@ -137,7 +139,7 @@ public sealed partial class Home : ComponentBase, IDisposable
         private void HandleTemplatePickerVisibilityChanged(bool isOpen) => this._isTemplatePickerOpen = isOpen;
 
         /// <summary>
-        /// Exercises <see cref="IContentServiceImageClient.DownloadImageAsync"/> end-to-end and disposes the streamed HTTP response safely.
+        /// Exercises <see cref="IContentServiceImageClient.DownloadImageAsync(Guid, CancellationToken)"/> end-to-end and disposes the streamed HTTP response safely.
         /// </summary>
         private async Task HandleTestDownloadClickedAsync()
         {
@@ -149,8 +151,8 @@ public sealed partial class Home : ComponentBase, IDisposable
                 this._isTestingDownload = true;
                 try
                 {
-                        // ContentImageDownload owns both the network stream and underlying HttpResponseMessage; disposing it closes the connection cleanly.
-                        using ContentImageDownload download = await this.ImageClient.DownloadImageAsync(imageId: this._selectedImage.Id);
+                        // ContentImageDownloadResponse owns both the network stream and underlying HttpResponseMessage; disposing it closes the connection cleanly.
+                        using ContentImageDownloadResponse download = await this.ImageClient.DownloadImageAsync(imageId: this._selectedImage.Id);
                         long downloadedBytes = await CountStreamBytesAsync(stream: download.Content);
 
                         this._lastDownloadSummary = $"Downloaded {downloadedBytes:N0} bytes ({download.ContentType}).";

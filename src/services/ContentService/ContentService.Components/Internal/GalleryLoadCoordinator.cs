@@ -8,6 +8,16 @@ namespace ContentService.Components.Internal;
 /// <summary>
 /// Coordinates cancellable parallel gallery catalog fetches and recoverable error formatting for <c>ContentImageGallery</c>.
 /// </summary>
+/// <remarks>
+/// Non-standard cancellation hand-off: Uses lock-free <c>Interlocked.Exchange</c> and cancels each displaced
+/// <see cref="CancellationTokenSource"/> before disposing it.
+/// <para>
+/// What we gain: Rapid keystrokes or component unmount never race on CTS disposal, and in-flight awaits observe
+/// <see cref="OperationCanceledException"/> rather than <see cref="ObjectDisposedException"/>.
+/// What we lose: Callers must check <see cref="IsDisposed"/> and <c>cancellationToken.IsCancellationRequested</c>
+/// after <see langword="await"/> to avoid writing stale results into UI state.
+/// </para>
+/// </remarks>
 internal sealed class GalleryLoadCoordinator : IDisposable
 {
         private CancellationTokenSource? _loadCts;
@@ -44,13 +54,13 @@ internal sealed class GalleryLoadCoordinator : IDisposable
         /// <param name="query">The paginated image query criteria.</param>
         /// <param name="cancellationToken">The token cancelling superseded requests.</param>
         /// <returns>The fetched image page and sorted immediate child album paths.</returns>
-        public static async Task<(ContentPagedResult<ContentImageMetadata> Images, IReadOnlyList<string> ChildAlbums)> FetchCatalogAsync(
+        public static async Task<(ContentPagedResponse<ContentImageResponse> Images, IReadOnlyList<string> ChildAlbums)> FetchCatalogAsync(
                 IContentServiceImageClient imageClient,
                 ContentImageQuery query,
                 CancellationToken cancellationToken)
         {
                 // Start both independent HTTP calls before awaiting so total wait time equals the slower request instead of their sum.
-                Task<ContentPagedResult<ContentImageMetadata>> imagesTask = imageClient.ListImagesAsync(
+                Task<ContentPagedResponse<ContentImageResponse>> imagesTask = imageClient.ListImagesAsync(
                         query: query,
                         cancellationToken: cancellationToken);
                 Task<IReadOnlyList<string>> albumsTask = imageClient.ListAlbumsAsync(

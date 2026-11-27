@@ -31,8 +31,8 @@ public sealed class ContentServiceTemplateClientTests
         {
                 // Arrange
                 Guid templateId = Guid.NewGuid();
-                ContentTemplateMetadata expectedItem = CreateSampleMetadata(templateId: templateId);
-                ContentPagedResult<ContentTemplateMetadata> expected = new()
+                ContentTemplateResponse expectedItem = CreateSampleMetadata(templateId: templateId);
+                ContentPagedResponse<ContentTemplateResponse> expected = new()
                 {
                         Items = [expectedItem],
                         Page = 2,
@@ -44,71 +44,75 @@ public sealed class ContentServiceTemplateClientTests
                 ContentServiceTemplateClient client = CreateClient(handler: handler);
 
                 // Act
-                ContentPagedResult<ContentTemplateMetadata> actual = await client.ListTemplatesAsync(page: 2, pageSize: 10, componentType: ContentTemplateComponentType.QuizTemplate, searchTerm: "  climate quiz  ", cancellationToken: TestContext.Current.CancellationToken);
+                ContentPagedResponse<ContentTemplateResponse> actual = await client.ListTemplatesAsync(page: 2, pageSize: 10, componentType: ContentTemplateComponentType.QuizTemplate, searchTerm: "  climate quiz  ", cancellationToken: TestContext.Current.CancellationToken);
 
                 // Assert
                 Assert.Equal(expected: expected.TotalCount, actual: actual.TotalCount);
                 Assert.Single(collection: actual.Items);
-                Assert.Equal(expected: expectedItem, actual: actual.Items[0]);
+                Assert.Equal(expected: expectedItem.Id, actual: actual.Items[0].Id);
+                Assert.Equal(expected: expectedItem.Name, actual: actual.Items[0].Name);
+                Assert.Equal(expected: expectedItem.ReferencedPictureReferences, actual: actual.Items[0].ReferencedPictureReferences);
                 Assert.Equal(
-                        expected: "https://content.oekolariet.dk/content/api/templates?page=2&pageSize=10&componentType=QuizTemplate&searchTerm=climate%20quiz",
+                        expected: "https://content.oekolariet.dk/content/api/v1/templates?page=2&pageSize=10&componentType=QuizTemplate&searchTerm=climate%20quiz",
                         actual: handler.LastRequest?.RequestUri?.AbsoluteUri);
         }
 
         /// <summary>
-        /// Verifies that <see cref="ContentServiceTemplateClient.GetTemplateAsync"/> calls <c>GET /api/templates/{id}</c> and deserializes the template metadata.
+        /// Verifies that <see cref="ContentServiceTemplateClient.GetTemplateAsync"/> calls <c>GET /api/v1/templates/{id}</c> and deserializes the template metadata.
         /// </summary>
         [Fact]
         public async Task GetTemplateAsync_WithValidId_RequestsExpectedUriAndDeserializesTemplateAsync()
         {
                 // Arrange
                 Guid templateId = Guid.NewGuid();
-                ContentTemplateMetadata expected = CreateSampleMetadata(templateId: templateId);
+                ContentTemplateResponse expected = CreateSampleMetadata(templateId: templateId);
                 StubHttpMessageHandler handler = new(responder: (_, _) => Task.FromResult(result: CreateJsonResponse(statusCode: HttpStatusCode.OK, payload: expected)));
                 ContentServiceTemplateClient client = CreateClient(handler: handler);
 
                 // Act
-                ContentTemplateMetadata actual = await client.GetTemplateAsync(templateId: templateId, cancellationToken: TestContext.Current.CancellationToken);
+                ContentTemplateResponse actual = await client.GetTemplateAsync(templateId: templateId, cancellationToken: TestContext.Current.CancellationToken);
 
                 // Assert
-                Assert.Equal(expected: expected, actual: actual);
+                Assert.Equal(expected: expected.Id, actual: actual.Id);
+                Assert.Equal(expected: expected.Name, actual: actual.Name);
+                Assert.Equal(expected: expected.ReferencedPictureReferences, actual: actual.ReferencedPictureReferences);
                 Assert.Equal(expected: HttpMethod.Get, actual: handler.LastRequest?.Method);
                 Assert.Equal(
-                        expected: $"https://content.oekolariet.dk/content/api/templates/{templateId:D}",
+                        expected: $"https://content.oekolariet.dk/content/api/v1/templates/{templateId:D}",
                         actual: handler.LastRequest?.RequestUri?.AbsoluteUri);
         }
 
         /// <summary>
-        /// Verifies that <see cref="ContentServiceTemplateClient.CreateTemplateAsync"/> sends <c>POST /api/templates</c> with actor header and JSON body.
+        /// Verifies that <see cref="ContentServiceTemplateClient.CreateTemplateAsync"/> sends <c>POST /api/v1/templates</c> with actor header and JSON body.
         /// </summary>
         [Fact]
         public async Task CreateTemplateAsync_WithValidRequest_SendsPostWithActorHeaderAndBodyAsync()
         {
                 // Arrange
                 Guid templateId = Guid.NewGuid();
-                ContentTemplateMetadata expected = CreateSampleMetadata(templateId: templateId);
+                ContentTemplateResponse expected = CreateSampleMetadata(templateId: templateId);
                 StubHttpMessageHandler handler = new(responder: (_, _) => Task.FromResult(result: CreateJsonResponse(statusCode: HttpStatusCode.Created, payload: expected)));
                 ContentServiceTemplateClient client = CreateClient(handler: handler);
 
-                CreateContentTemplateRequest request = new()
-                {
-                        Name = "Climate Quiz",
-                        ComponentType = ContentTemplateComponentType.QuizTemplate,
-                        SchemaJson = "{\"title\":\"Climate\"}"
-                };
+                ContentCreateTemplateRequest command = new(
+                        Name: "Climate Quiz",
+                        ComponentType: ContentTemplateComponentType.QuizTemplate,
+                        SchemaJson: "{\"title\":\"Climate\"}");
 
                 // Act
-                ContentTemplateMetadata actual = await client.CreateTemplateAsync(request: request, cancellationToken: TestContext.Current.CancellationToken);
+                ContentTemplateResponse actual = await client.CreateTemplateAsync(command: command, cancellationToken: TestContext.Current.CancellationToken);
 
                 // Assert
-                Assert.Equal(expected: expected, actual: actual);
+                Assert.Equal(expected: expected.Id, actual: actual.Id);
+                Assert.Equal(expected: expected.Name, actual: actual.Name);
+                Assert.Equal(expected: expected.ReferencedPictureReferences, actual: actual.ReferencedPictureReferences);
                 Assert.Equal(expected: HttpMethod.Post, actual: handler.LastRequest?.Method);
-                Assert.Equal(expected: "https://content.oekolariet.dk/content/api/templates", actual: handler.LastRequest?.RequestUri?.AbsoluteUri);
+                Assert.Equal(expected: "https://content.oekolariet.dk/content/api/v1/templates", actual: handler.LastRequest?.RequestUri?.AbsoluteUri);
                 Assert.Equal(expected: DEFAULT_ACTOR_ID, actual: handler.LastRequest?.Headers.GetValues(ACTOR_HEADER_NAME).Single());
         }
 
         /// <summary>
-        /// Verifies that <see cref="ContentServiceTemplateClient.UpdateTemplateAsync"/> sends <c>PUT /api/templates/{id}</c> and maps 409 Conflict to <see cref="ContentServiceApiException"/>.
+        /// Verifies that <see cref="ContentServiceTemplateClient.UpdateTemplateAsync"/> sends <c>PUT /api/v1/templates/{id}</c> and maps 409 Conflict to <see cref="ContentServiceApiException"/>.
         /// </summary>
         [Fact]
         public async Task UpdateTemplateAsync_WhenConflictReturned_ThrowsContentServiceApiExceptionAsync()
@@ -124,17 +128,15 @@ public sealed class ContentServiceTemplateClientTests
                 }));
                 ContentServiceTemplateClient client = CreateClient(handler: handler);
 
-                UpdateContentTemplateRequest request = new()
-                {
-                        Name = "Updated Quiz",
-                        SchemaJson = "{\"title\":\"Updated\"}",
-                        ExpectedConcurrencyStamp = Guid.NewGuid(),
-                        ActorId = "custom-actor"
-                };
+                ContentUpdateTemplateRequest command = new(
+                        Name: "Updated Quiz",
+                        SchemaJson: "{\"title\":\"Updated\"}",
+                        ExpectedConcurrencyStamp: Guid.NewGuid(),
+                        ActorId: "custom-actor");
 
                 // Act & Assert
                 ContentServiceApiException ex = await Assert.ThrowsAsync<ContentServiceApiException>(
-                        testCode: () => client.UpdateTemplateAsync(templateId: templateId, request: request, cancellationToken: TestContext.Current.CancellationToken));
+                        testCode: () => client.UpdateTemplateAsync(templateId: templateId, command: command, cancellationToken: TestContext.Current.CancellationToken));
 
                 Assert.Equal(expected: HttpStatusCode.Conflict, actual: ex.StatusCode);
                 Assert.Equal(expected: HttpMethod.Put, actual: handler.LastRequest?.Method);
@@ -142,7 +144,7 @@ public sealed class ContentServiceTemplateClientTests
         }
 
         /// <summary>
-        /// Verifies that <see cref="ContentServiceTemplateClient.DeleteTemplateAsync"/> sends <c>DELETE /api/templates/{id}</c> with actor attribution.
+        /// Verifies that <see cref="ContentServiceTemplateClient.DeleteTemplateAsync"/> sends <c>DELETE /api/v1/templates/{id}</c> with actor attribution.
         /// </summary>
         [Fact]
         public async Task DeleteTemplateAsync_WithValidId_SendsDeleteWithActorHeaderAsync()
@@ -158,7 +160,7 @@ public sealed class ContentServiceTemplateClientTests
                 // Assert
                 Assert.Equal(expected: HttpMethod.Delete, actual: handler.LastRequest?.Method);
                 Assert.Equal(
-                        expected: $"https://content.oekolariet.dk/content/api/templates/{templateId:D}",
+                        expected: $"https://content.oekolariet.dk/content/api/v1/templates/{templateId:D}",
                         actual: handler.LastRequest?.RequestUri?.AbsoluteUri);
                 Assert.Equal(expected: DEFAULT_ACTOR_ID, actual: handler.LastRequest?.Headers.GetValues(ACTOR_HEADER_NAME).Single());
         }
@@ -218,7 +220,7 @@ public sealed class ContentServiceTemplateClientTests
                         options: Microsoft.Extensions.Options.Options.Create(options: options));
         }
 
-        private static ContentTemplateMetadata CreateSampleMetadata(Guid templateId) =>
+        private static ContentTemplateResponse CreateSampleMetadata(Guid templateId) =>
                 new()
                 {
                         Id = templateId,

@@ -30,10 +30,10 @@ public sealed partial class UserPreview : ComponentBase, IDisposable
 
         private readonly CancellationTokenSource _disposeCts = new();
         private PreviewTab _activeTab = PreviewTab.MediaLibrary;
-        private ContentStorageHealthReport? _storageHealth;
-        private ContentImageMetadata? _selectedImage;
-        private ContentTemplateMetadata? _selectedTemplate;
-        private ContentPublishBundle? _resolvedBundle;
+        private ContentStorageHealthResponse? _storageHealth;
+        private ContentImageResponse? _selectedImage;
+        private ContentTemplateResponse? _selectedTemplate;
+        private ContentPublishBundleResponse? _resolvedBundle;
         private bool _isLoadingHealth;
         private bool _isDownloadingImage;
         private bool _isResolvingBundle;
@@ -43,10 +43,7 @@ public sealed partial class UserPreview : ComponentBase, IDisposable
         private IContentServiceImageClient ImageClient { get; set; } = default!;
 
         [Inject]
-        private IContentServicePublishingClient PublishingClient { get; set; } = default!;
-
-        [Inject]
-        private IContentServiceHealthClient HealthClient { get; set; } = default!;
+        private IContentServicePlatformClient PlatformClient { get; set; } = default!;
 
         [Inject]
         private ToastService Toasts { get; set; } = default!;
@@ -82,7 +79,7 @@ public sealed partial class UserPreview : ComponentBase, IDisposable
                 this._isLoadingHealth = true;
                 try
                 {
-                        this._storageHealth = await this.HealthClient.GetStorageHealthAsync(cancellationToken: this._disposeCts.Token);
+                        this._storageHealth = await this.PlatformClient.GetStorageHealthAsync(cancellationToken: this._disposeCts.Token);
                 }
                 catch (OperationCanceledException)
                 {
@@ -98,7 +95,7 @@ public sealed partial class UserPreview : ComponentBase, IDisposable
                 }
         }
 
-        private Task HandleImageSelectedAsync(ContentImageMetadata selectedImage)
+        private Task HandleImageSelectedAsync(ContentImageResponse selectedImage)
         {
                 this._selectedImage = selectedImage;
                 this._resolvedBundle = null;
@@ -106,7 +103,7 @@ public sealed partial class UserPreview : ComponentBase, IDisposable
                 return Task.CompletedTask;
         }
 
-        private Task HandleTemplateSelectedAsync(ContentTemplateMetadata selectedTemplate)
+        private Task HandleTemplateSelectedAsync(ContentTemplateResponse selectedTemplate)
         {
                 this._selectedTemplate = selectedTemplate;
                 this._resolvedBundle = null;
@@ -124,8 +121,8 @@ public sealed partial class UserPreview : ComponentBase, IDisposable
                 this._isDownloadingImage = true;
                 try
                 {
-                        // Dispose ContentImageDownload immediately after streaming so the HTTP connection is released cleanly.
-                        using ContentImageDownload download = await this.ImageClient.DownloadImageAsync(
+                        // Dispose ContentImageDownloadResponse immediately after streaming so the HTTP connection is released cleanly.
+                        using ContentImageDownloadResponse download = await this.ImageClient.DownloadImageAsync(
                                 imageId: this._selectedImage.Id,
                                 cancellationToken: this._disposeCts.Token);
                         long downloadedBytes = await CountStreamBytesAsync(
@@ -167,14 +164,14 @@ public sealed partial class UserPreview : ComponentBase, IDisposable
                                 ? "{}"
                                 : JsonSerializer.Serialize(value: new { picture = this._selectedImage.PictureReference });
 
-                        ResolvePublishBundleRequest request = new()
+                        ContentResolvePublishBundleQuery request = new()
                         {
                                 TemplateId = this._selectedTemplate?.Id,
                                 ImplementationJson = implementationJson
                         };
 
-                        this._resolvedBundle = await this.PublishingClient.ResolvePublishBundleAsync(
-                                request: request,
+                        this._resolvedBundle = await this.PlatformClient.ResolvePublishBundleAsync(
+                                query: request,
                                 cancellationToken: this._disposeCts.Token);
 
                         this.Toasts.ShowSuccess(messageText: $"Resolved bundle with {this._resolvedBundle.Assets.Count} verified asset(s).");

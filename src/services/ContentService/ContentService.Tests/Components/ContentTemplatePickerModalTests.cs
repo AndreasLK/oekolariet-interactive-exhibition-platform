@@ -20,7 +20,7 @@ public sealed class ContentTemplatePickerModalTests : BunitContext
         public void SelectionToggle_WhenClicked_KeepsModalOpenUntilConfirmButtonClicked()
         {
                 // Arrange
-                ContentTemplateMetadata sampleTemplate = new()
+                ContentTemplateResponse sampleTemplate = new()
                 {
                         Id = Guid.NewGuid(),
                         ExternalId = "tpl-affaldsquiz",
@@ -29,11 +29,12 @@ public sealed class ContentTemplatePickerModalTests : BunitContext
                         SchemaVersion = 1,
                         SchemaJson = "{\"Type\":\"Column\",\"Children\":[]}",
                         IsArchived = false,
+                        ReferencedPictureReferences = [],
                         CreatedAt = DateTimeOffset.UtcNow,
                         UpdatedAt = DateTimeOffset.UtcNow,
                         ConcurrencyStamp = Guid.NewGuid()
                 };
-                ContentTemplateMetadata? confirmedTemplate = null;
+                ContentTemplateResponse? confirmedTemplate = null;
                 bool isOpen = true;
 
                 this.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -48,7 +49,7 @@ public sealed class ContentTemplatePickerModalTests : BunitContext
                                         value: EventCallback.Factory.Create<bool>(receiver: this, callback: updated => isOpen = updated))
                                 .Add(
                                         parameterSelector: component => component.OnTemplateSelected,
-                                        value: EventCallback.Factory.Create<ContentTemplateMetadata>(receiver: this, callback: template => confirmedTemplate = template)));
+                                        value: EventCallback.Factory.Create<ContentTemplateResponse>(receiver: this, callback: template => confirmedTemplate = template)));
 
                 AngleSharp.Dom.IElement confirmButtonBefore = cut.FindAll(cssSelector: "button")
                         .First(predicate: button => button.TextContent.Trim() == "Vælg");
@@ -76,15 +77,15 @@ public sealed class ContentTemplatePickerModalTests : BunitContext
                 Assert.False(condition: isOpen);
         }
 
-        private sealed class StubTemplateClient(ContentTemplateMetadata template) : IContentServiceTemplateClient
+        private sealed class StubTemplateClient(ContentTemplateResponse template) : IContentServiceTemplateClient
         {
-                public Task<ContentPagedResult<ContentTemplateMetadata>> ListTemplatesAsync(
+                public Task<ContentPagedResponse<ContentTemplateResponse>> ListTemplatesAsync(
                         int page = 1,
                         int pageSize = 25,
                         ContentTemplateComponentType? componentType = null,
                         string? searchTerm = null,
                         CancellationToken cancellationToken = default) =>
-                        Task.FromResult(result: new ContentPagedResult<ContentTemplateMetadata>
+                        Task.FromResult(result: new ContentPagedResponse<ContentTemplateResponse>
                         {
                                 Items = [template],
                                 Page = page,
@@ -92,10 +93,10 @@ public sealed class ContentTemplatePickerModalTests : BunitContext
                                 TotalCount = 1
                         });
 
-                public Task<ContentPagedResult<ContentTemplateMetadata>> ListTemplatesAsync(
+                public Task<ContentPagedResponse<ContentTemplateResponse>> ListTemplatesAsync(
                         ContentTemplateQuery query,
                         CancellationToken cancellationToken = default) =>
-                        Task.FromResult(result: new ContentPagedResult<ContentTemplateMetadata>
+                        Task.FromResult(result: new ContentPagedResponse<ContentTemplateResponse>
                         {
                                 Items = [template],
                                 Page = query.Page,
@@ -103,16 +104,19 @@ public sealed class ContentTemplatePickerModalTests : BunitContext
                                 TotalCount = 1
                         });
 
-                public Task<ContentTemplateMetadata> GetTemplateAsync(Guid templateId, CancellationToken cancellationToken = default) =>
+                public Task<ContentTemplateResponse> GetTemplateAsync(Guid templateId, CancellationToken cancellationToken = default) =>
                         Task.FromResult(result: template);
 
-                public Task<ContentTemplateMetadata> CreateTemplateAsync(CreateContentTemplateRequest request, CancellationToken cancellationToken = default) =>
+                public Task<ContentTemplateResponse> CreateTemplateAsync(ContentCreateTemplateRequest command, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
 
-                public Task<ContentTemplateMetadata> UpdateTemplateAsync(Guid templateId, UpdateContentTemplateRequest request, CancellationToken cancellationToken = default) =>
+                public Task<ContentTemplateResponse> UpdateTemplateAsync(Guid templateId, ContentUpdateTemplateRequest command, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
 
                 public Task DeleteTemplateAsync(Guid templateId, string? actorId = null, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
+
+                public Task<ContentImageTemplateReferenceResponse> IsImageReferencedByTemplateAsync(Guid imageId, CancellationToken cancellationToken = default) =>
+                        Task.FromResult(result: new ContentImageTemplateReferenceResponse(IsReferenced: false));
         }
 }

@@ -30,7 +30,7 @@ public sealed class ContentServiceImageUploadTests
                 // Official 8-byte PNG magic header (0x89 + ASCII "PNG" + CRLF + Ctrl+Z + LF) simulating a valid PNG upload stream.
                 byte[] payloadBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
                 Guid expectedId = Guid.NewGuid();
-                ContentImageMetadata expectedMetadata = CreateSampleMetadata(id: expectedId, fileName: DANISH_FILE_NAME);
+                ContentImageResponse expectedMetadata = CreateSampleMetadata(id: expectedId, fileName: DANISH_FILE_NAME);
                 StubHttpMessageHandler handler = CreateMetadataResponseHandler(metadata: expectedMetadata);
 
                 ContentServiceImageClient client = CreateClient(
@@ -39,7 +39,7 @@ public sealed class ContentServiceImageUploadTests
                         defaultActorId: DEFAULT_ACTOR_ID);
 
                 await using NonSeekableReadStream stream = new(data: payloadBytes);
-                UploadImageRequest request = new()
+                ContentUploadImageRequest request = new()
                 {
                         Content = stream,
                         FileName = DANISH_FILE_NAME,
@@ -48,7 +48,7 @@ public sealed class ContentServiceImageUploadTests
                         ActorId = EXPLICIT_ACTOR_ID
                 };
 
-                ContentImageMetadata actual = await client.UploadImageAsync(request: request, cancellationToken: TestContext.Current.CancellationToken);
+                ContentImageResponse actual = await client.UploadImageAsync(command: request, cancellationToken: TestContext.Current.CancellationToken);
 
                 Assert.Equal(expected: expectedMetadata, actual: actual);
                 Assert.NotNull(handler.LastRequest);
@@ -77,7 +77,7 @@ public sealed class ContentServiceImageUploadTests
         [Fact]
         public async Task UploadImageAsync_WhenAltTextNullAndActorWhitespace_OmitsOptionalPartsAndActorHeaderAsync()
         {
-                ContentImageMetadata expectedMetadata = CreateSampleMetadata(id: Guid.NewGuid(), fileName: "leaf.png");
+                ContentImageResponse expectedMetadata = CreateSampleMetadata(id: Guid.NewGuid(), fileName: "leaf.png");
                 StubHttpMessageHandler handler = CreateMetadataResponseHandler(metadata: expectedMetadata);
 
                 ContentServiceImageClient client = CreateClient(
@@ -86,7 +86,7 @@ public sealed class ContentServiceImageUploadTests
                         defaultActorId: "   ");
 
                 await using MemoryStream stream = new(buffer: [1, 2, 3, 4]);
-                UploadImageRequest request = new()
+                ContentUploadImageRequest request = new()
                 {
                         Content = stream,
                         FileName = "leaf.png",
@@ -95,7 +95,7 @@ public sealed class ContentServiceImageUploadTests
                         ActorId = "  "
                 };
 
-                _ = await client.UploadImageAsync(request: request, cancellationToken: TestContext.Current.CancellationToken);
+                _ = await client.UploadImageAsync(command: request, cancellationToken: TestContext.Current.CancellationToken);
 
                 Assert.NotNull(handler.LastRequest);
                 Assert.False(handler.LastRequest.Headers.Contains(name: "X-Actor-Id"));
@@ -123,7 +123,7 @@ public sealed class ContentServiceImageUploadTests
                 unreadableStream.Dispose();
 
                 await Assert.ThrowsAsync<ArgumentException>(
-                        testCode: () => client.UploadImageAsync(request: new UploadImageRequest
+                        testCode: () => client.UploadImageAsync(command: new ContentUploadImageRequest
                         {
                                 Content = unreadableStream,
                                 FileName = "bad.png",
@@ -132,7 +132,7 @@ public sealed class ContentServiceImageUploadTests
 
                 await using MemoryStream readableStream = new(buffer: [1, 2]);
                 await Assert.ThrowsAsync<ArgumentException>(
-                        testCode: () => client.UploadImageAsync(request: new UploadImageRequest
+                        testCode: () => client.UploadImageAsync(command: new ContentUploadImageRequest
                         {
                                 Content = readableStream,
                                 FileName = "bad\"name.png",
@@ -140,7 +140,7 @@ public sealed class ContentServiceImageUploadTests
                         }, cancellationToken: TestContext.Current.CancellationToken));
 
                 await Assert.ThrowsAsync<ArgumentException>(
-                        testCode: () => client.UploadImageAsync(request: new UploadImageRequest
+                        testCode: () => client.UploadImageAsync(command: new ContentUploadImageRequest
                         {
                                 Content = readableStream,
                                 FileName = "valid.png",
@@ -148,7 +148,7 @@ public sealed class ContentServiceImageUploadTests
                         }, cancellationToken: TestContext.Current.CancellationToken));
 
                 await Assert.ThrowsAsync<ArgumentException>(
-                        testCode: () => client.UploadImageAsync(request: new UploadImageRequest
+                        testCode: () => client.UploadImageAsync(command: new ContentUploadImageRequest
                         {
                                 Content = readableStream,
                                 FileName = "valid.png",
@@ -159,7 +159,7 @@ public sealed class ContentServiceImageUploadTests
                 Assert.Equal(expected: 0, actual: callCount);
         }
 
-        private static StubHttpMessageHandler CreateMetadataResponseHandler(ContentImageMetadata metadata) =>
+        private static StubHttpMessageHandler CreateMetadataResponseHandler(ContentImageResponse metadata) =>
                 new(responder: (_, _) => Task.FromResult(new HttpResponseMessage(statusCode: HttpStatusCode.Created)
                 {
                         Content = new StringContent(
@@ -183,7 +183,7 @@ public sealed class ContentServiceImageUploadTests
                         }));
         }
 
-        private static ContentImageMetadata CreateSampleMetadata(Guid id, string fileName) =>
+        private static ContentImageResponse CreateSampleMetadata(Guid id, string fileName) =>
                 new()
                 {
                         Id = id,

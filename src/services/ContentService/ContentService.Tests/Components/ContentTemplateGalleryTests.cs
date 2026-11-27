@@ -26,9 +26,9 @@ public sealed class ContentTemplateGalleryTests : BunitContext
         {
                 // Arrange
                 List<ContentTemplateQuery> recordedQueries = [];
-                ContentTemplateMetadata first = CreateTemplate(name: "Template Alpha");
-                ContentTemplateMetadata second = CreateTemplate(name: "Template Beta");
-                ContentTemplateMetadata third = CreateTemplate(name: "Template Gamma");
+                ContentTemplateResponse first = CreateTemplate(name: "Template Alpha");
+                ContentTemplateResponse second = CreateTemplate(name: "Template Beta");
+                ContentTemplateResponse third = CreateTemplate(name: "Template Gamma");
 
                 this.JSInterop.Mode = JSRuntimeMode.Loose;
                 this.Services.AddPersonalUILibrary(configure: static _ => { });
@@ -65,7 +65,7 @@ public sealed class ContentTemplateGalleryTests : BunitContext
                 Assert.Equal(expected: ContentTemplateComponentType.InfoScreen, actual: recordedQueries[^1].ComponentType);
         }
 
-        private static ContentTemplateMetadata CreateTemplate(string name) => new()
+        private static ContentTemplateResponse CreateTemplate(string name) => new()
         {
                 Id = Guid.NewGuid(),
                 ExternalId = $"tpl-{name.ToLowerInvariant().Replace(oldValue: " ", newValue: "-")}",
@@ -74,16 +74,17 @@ public sealed class ContentTemplateGalleryTests : BunitContext
                 SchemaVersion = 1,
                 SchemaJson = "{\"Type\":\"Column\",\"Children\":[]}",
                 IsArchived = false,
+                ReferencedPictureReferences = [],
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow,
                 ConcurrencyStamp = Guid.NewGuid()
         };
 
         private sealed class PagedStubTemplateClient(
-                IReadOnlyList<ContentTemplateMetadata> allTemplates,
+                IReadOnlyList<ContentTemplateResponse> allTemplates,
                 List<ContentTemplateQuery> recordedQueries) : IContentServiceTemplateClient
         {
-                public Task<ContentPagedResult<ContentTemplateMetadata>> ListTemplatesAsync(
+                public Task<ContentPagedResponse<ContentTemplateResponse>> ListTemplatesAsync(
                         int page = 1,
                         int pageSize = 25,
                         ContentTemplateComponentType? componentType = null,
@@ -99,17 +100,17 @@ public sealed class ContentTemplateGalleryTests : BunitContext
                                 },
                                 cancellationToken: cancellationToken);
 
-                public Task<ContentPagedResult<ContentTemplateMetadata>> ListTemplatesAsync(
+                public Task<ContentPagedResponse<ContentTemplateResponse>> ListTemplatesAsync(
                         ContentTemplateQuery query,
                         CancellationToken cancellationToken = default)
                 {
                         recordedQueries.Add(item: query);
-                        List<ContentTemplateMetadata> pageItems = allTemplates
+                        List<ContentTemplateResponse> pageItems = allTemplates
                                 .Skip(count: (query.Page - 1) * query.PageSize)
                                 .Take(count: query.PageSize)
                                 .ToList();
 
-                        return Task.FromResult(result: new ContentPagedResult<ContentTemplateMetadata>
+                        return Task.FromResult(result: new ContentPagedResponse<ContentTemplateResponse>
                         {
                                 Items = pageItems,
                                 Page = query.Page,
@@ -118,19 +119,19 @@ public sealed class ContentTemplateGalleryTests : BunitContext
                         });
                 }
 
-                public Task<ContentTemplateMetadata> GetTemplateAsync(Guid templateId, CancellationToken cancellationToken = default) =>
+                public Task<ContentTemplateResponse> GetTemplateAsync(Guid templateId, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
 
-                public Task<ContentTemplateMetadata> CreateTemplateAsync(CreateContentTemplateRequest request, CancellationToken cancellationToken = default) =>
+                public Task<ContentTemplateResponse> CreateTemplateAsync(ContentCreateTemplateRequest command, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
 
-                public Task<ContentTemplateMetadata> UpdateTemplateAsync(Guid templateId, UpdateContentTemplateRequest request, CancellationToken cancellationToken = default) =>
+                public Task<ContentTemplateResponse> UpdateTemplateAsync(Guid templateId, ContentUpdateTemplateRequest command, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
 
                 public Task DeleteTemplateAsync(Guid templateId, string? actorId = null, CancellationToken cancellationToken = default) =>
                         throw new NotSupportedException();
 
-                public Task<bool> IsImageReferencedByTemplateAsync(Guid imageId, CancellationToken cancellationToken = default) =>
-                        throw new NotSupportedException();
+                public Task<ContentImageTemplateReferenceResponse> IsImageReferencedByTemplateAsync(Guid imageId, CancellationToken cancellationToken = default) =>
+                        Task.FromResult(result: new ContentImageTemplateReferenceResponse(IsReferenced: false));
         }
 }

@@ -21,13 +21,13 @@ public sealed class ContentImagePickerModalTests : BunitContext
         public void SelectionToggle_WhenClicked_KeepsModalOpenUntilConfirmButtonClicked()
         {
                 // Arrange
-                ContentImageMetadata sampleImage = CreateMetadata(fileName: "leaf.png");
-                ContentImageMetadata? confirmedImage = null;
+                ContentImageResponse sampleImage = CreateMetadata(fileName: "leaf.png");
+                ContentImageResponse? confirmedImage = null;
                 bool isOpen = true;
 
                 StubContentImageClient stubClient = new()
                 {
-                        OnListImagesQueryAsync = (query, _) => Task.FromResult(result: new ContentPagedResult<ContentImageMetadata>
+                        OnListImagesQueryAsync = (query, _) => Task.FromResult(result: new ContentPagedResponse<ContentImageResponse>
                         {
                                 Items = [sampleImage],
                                 Page = query.Page,
@@ -48,7 +48,7 @@ public sealed class ContentImagePickerModalTests : BunitContext
                                         value: EventCallback.Factory.Create<bool>(receiver: this, callback: updated => isOpen = updated))
                                 .Add(
                                         parameterSelector: component => component.OnImageSelected,
-                                        value: EventCallback.Factory.Create<ContentImageMetadata>(receiver: this, callback: image => confirmedImage = image)));
+                                        value: EventCallback.Factory.Create<ContentImageResponse>(receiver: this, callback: image => confirmedImage = image)));
 
                 AngleSharp.Dom.IElement confirmButtonBefore = cut.FindAll(cssSelector: "button")
                         .First(predicate: button => button.TextContent.Trim() == "Vælg");
@@ -77,10 +77,10 @@ public sealed class ContentImagePickerModalTests : BunitContext
                 Assert.False(condition: isOpen);
         }
 
-        private static ContentImageMetadata CreateMetadata(string fileName)
+        private static ContentImageResponse CreateMetadata(string fileName)
         {
                 Guid id = Guid.NewGuid();
-                return new ContentImageMetadata
+                return new ContentImageResponse
                 {
                         Id = id,
                         PictureReference = $"picture.node-1.{id:D}",

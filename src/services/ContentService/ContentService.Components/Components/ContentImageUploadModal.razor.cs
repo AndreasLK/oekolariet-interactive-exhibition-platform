@@ -86,7 +86,7 @@ public sealed partial class ContentImageUploadModal : ComponentBase, IAsyncDispo
         /// Gets or sets the callback invoked after at least one image uploads successfully, passing the newly persisted metadata records.
         /// </summary>
         [Parameter]
-        public EventCallback<IReadOnlyList<ContentImageMetadata>> OnUploadCompleted { get; set; }
+        public EventCallback<IReadOnlyList<ContentImageResponse>> OnUploadCompleted { get; set; }
 
         /// <inheritdoc />
         protected override async Task OnParametersSetAsync()
@@ -137,7 +137,7 @@ public sealed partial class ContentImageUploadModal : ComponentBase, IAsyncDispo
                 try
                 {
                         Task<IReadOnlyList<string>> albumsTask = this.ImageClient.ListAlbumsAsync(parentPath: null);
-                        Task<ContentPagedResult<ContentImageMetadata>> imagesTask = this.ImageClient.ListImagesAsync(
+                        Task<ContentPagedResponse<ContentImageResponse>> imagesTask = this.ImageClient.ListImagesAsync(
                                 query: new ContentImageQuery
                                 {
                                         Page = SUGGESTIONS_PAGE,
@@ -158,7 +158,7 @@ public sealed partial class ContentImageUploadModal : ComponentBase, IAsyncDispo
 
         private void CollectSuggestedAlbums(
                 IReadOnlyList<string> rootAlbums,
-                IReadOnlyList<ContentImageMetadata> images)
+                IReadOnlyList<ContentImageResponse> images)
         {
                 HashSet<string> uniqueAlbums = new(comparer: StringComparer.OrdinalIgnoreCase);
 
@@ -170,7 +170,7 @@ public sealed partial class ContentImageUploadModal : ComponentBase, IAsyncDispo
                         }
                 }
 
-                foreach (ContentImageMetadata image in images)
+                foreach (ContentImageResponse image in images)
                 {
                         if (!string.IsNullOrWhiteSpace(value: image.AlbumPath))
                         {
@@ -181,11 +181,11 @@ public sealed partial class ContentImageUploadModal : ComponentBase, IAsyncDispo
                 this._suggestedAlbums.AddRange(collection: uniqueAlbums.OrderBy(keySelector: static album => album, comparer: StringComparer.OrdinalIgnoreCase));
         }
 
-        private void CollectSuggestedTags(IReadOnlyList<ContentImageMetadata> images)
+        private void CollectSuggestedTags(IReadOnlyList<ContentImageResponse> images)
         {
                 HashSet<string> uniqueTags = new(comparer: StringComparer.OrdinalIgnoreCase);
 
-                foreach (ContentImageMetadata image in images)
+                foreach (ContentImageResponse image in images)
                 {
                         foreach (string tag in image.Tags)
                         {
@@ -386,7 +386,7 @@ public sealed partial class ContentImageUploadModal : ComponentBase, IAsyncDispo
                 }
 
                 this._isUploading = true;
-                (List<ContentImageMetadata> Uploaded, int FailedCount) outcome;
+                (List<ContentImageResponse> Uploaded, int FailedCount) outcome;
 
                 try
                 {
@@ -411,7 +411,7 @@ public sealed partial class ContentImageUploadModal : ComponentBase, IAsyncDispo
         }
 
         private async Task ReportBatchOutcomeAsync(
-                IReadOnlyList<ContentImageMetadata> uploaded,
+                IReadOnlyList<ContentImageResponse> uploaded,
                 int failedCount)
         {
                 if (uploaded.Count == 0)
