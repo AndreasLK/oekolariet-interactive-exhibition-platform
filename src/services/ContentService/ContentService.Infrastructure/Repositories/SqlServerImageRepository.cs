@@ -195,8 +195,10 @@ public sealed class SqlServerImageRepository : IImageRepository
         {
                 ArgumentNullException.ThrowIfNull(argument: image);
 
-                // Update in a single SQL UPDATE ... WHERE ConcurrencyStamp = @expected statement (no prior SELECT+SaveChanges round-trip).
-                // Rotating ConcurrencyStamp here ensures any second editor holding the old stamp will see rowsAffected == 0.
+                // Non-standard optimistic concurrency: Uses a single-statement ExecuteUpdateAsync predicate instead of
+                // loading a tracked entity and calling SaveChangesAsync.
+                // Gain: Atomic check-and-update in one SQL round-trip without tracking overhead.
+                // Loss: Bypasses EF Core ChangeTracker interceptors/events and requires a follow-up AnyAsync on 0 rows to distinguish 404 from 409.
                 int rowsAffected = await this._dbContext.Images
                         .Where(existing => existing.Id == image.Id
                                 && !existing.IsDeleted

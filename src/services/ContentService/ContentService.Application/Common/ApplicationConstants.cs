@@ -80,6 +80,16 @@ public static class ApplicationConstants
         public const string DEFAULT_STORAGE_NODE_ID = "node-1";
 
         /// <summary>
+        /// Default Dapr Pub/Sub component name used when configuration omits <c>ContentStorage:PubSubName</c>.
+        /// </summary>
+        public const string DEFAULT_PUBSUB_NAME = "contentservice-pubsub";
+
+        /// <summary>
+        /// Default timeout in seconds when waiting for peer storage nodes to respond to a pool scatter-gather broadcast.
+        /// </summary>
+        public const int DEFAULT_POOL_REQUEST_TIMEOUT_SECONDS = 5;
+
+        /// <summary>
         /// Provides a fallback 5 GiB quota when configuration omits <c>TotalQuotaBytes</c>, preventing accidental unbounded image growth.
         /// </summary>
         public const long DEFAULT_TOTAL_QUOTA_BYTES = DEFAULT_TOTAL_QUOTA_GIBIBYTES * BYTES_PER_GIBIBYTE;
